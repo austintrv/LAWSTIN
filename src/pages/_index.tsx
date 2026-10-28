@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer } from "lucide-react";
+import { ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles } from "lucide-react";
 import { Button } from "../components/Button";
 import { Skeleton } from "../components/Skeleton";
 import { QuizSession, type QuizMode } from "../components/QuizSession";
+import { SettingsPanel } from "../components/SettingsPanel";
+import { WrittenPractice } from "../components/WrittenPractice";
 import { useLawstinData } from "../helpers/useLawstinData";
+import { useLawstinAi } from "../helpers/useLawstinAi";
 import { switchToAutoMode } from "../helpers/themeMode";
 import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
@@ -21,6 +24,7 @@ const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
 export default function LawstinApp() {
   const { query, answer, mark } = useLawstinData();
+  const { harder } = useLawstinAi();
   const state = query.data;
   const e = useMemo(() => studyEngine(state), [state]);
   const [tab, setTab] = useState<Tab>("study");
@@ -28,6 +32,9 @@ export default function LawstinApp() {
   const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: () => RoundItem[] } | null>(null);
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
   const [examSheet, setExamSheet] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [writing, setWriting] = useState(false);
+  const [celebrate, setCelebrate] = useState(false);
   const [greeting, setGreeting] = useState(() => {
     const h = new Date().getHours();
     return h < 5 || h >= 22 ? `Still up, ${NAME}?` : h < 12 ? `Good morning, ${NAME}` : h < 17 ? `Good afternoon, ${NAME}` : `Good evening, ${NAME}`;
@@ -35,6 +42,7 @@ export default function LawstinApp() {
   const greeted = useRef(false);
   const paneRefs = useRef<Record<Tab, HTMLDivElement | null>>({ progress: null, study: null, activity: null });
   const hiddenAt = useRef(0);
+  const prevToday = useRef<number | null>(null);
   const [compact, setCompact] = useState<Record<Tab, boolean>>({ progress: false, study: false, activity: false });
   const onPaneScroll = (k: Tab, el: HTMLDivElement) => {
     const on = el.scrollTop > 52;
@@ -42,15 +50,6 @@ export default function LawstinApp() {
   };
 
   useEffect(() => { switchToAutoMode(); }, []);
-
-  // Let the app draw edge to edge on iPhone so safe-area insets are real numbers;
-  // without this the tab bar sits inside the home-indicator swipe zone.
-  useEffect(() => {
-    const m = document.querySelector('meta[name="viewport"]');
-    const want = "width=device-width,initial-scale=1,viewport-fit=cover";
-    if (m) { if (!m.getAttribute("content")?.includes("viewport-fit=cover")) m.setAttribute("content", want); }
-    else { const n = document.createElement("meta"); n.name = "viewport"; n.content = want; document.head.appendChild(n); }
-  }, []);
 
   useEffect(() => {
     if (!state || greeted.current) return;
@@ -71,6 +70,21 @@ export default function LawstinApp() {
     return () => document.removeEventListener("visibilitychange", onVis);
   }, [query]);
 
+  // Daily goal: celebrate once when today's count crosses the goal.
+  const todayAnswered = e.todayCount?.answered ?? 0;
+  useEffect(() => {
+    if (!state) return;
+    const prev = prevToday.current;
+    prevToday.current = todayAnswered;
+    if (prev !== null && prev < DAILY_GOAL && todayAnswered >= DAILY_GOAL) {
+      setCelebrate(true);
+      haptic();
+      toast("Daily goal done");
+      const t = setTimeout(() => setCelebrate(false), 2400);
+      return () => clearTimeout(t);
+    }
+  }, [todayAnswered, state]);
+
   const start = (source: () => RoundItem[], mode: QuizMode = "practice") => {
     const items = source();
     if (!items.length) { toast("Nothing to study here yet"); return; }
@@ -80,6 +94,7 @@ export default function LawstinApp() {
   };
 
   const onAnswer = async (q: QuestionDTO, choice: string) => {
+    if (q.id.startsWith("ai-")) return choice === q.answer;
     try {
       const res = await answer.mutateAsync({ questionId: q.id, choice: choice as "A" | "B" | "C" | "D", localDate: dateKey.today() });
       return res.correct;
@@ -89,12 +104,21 @@ export default function LawstinApp() {
     }
   };
 
+  const onHarder = async (q: QuestionDTO) => {
+    try {
+      const res = await harder.mutateAsync({ question: q });
+      return res.question;
+    } catch (err) {
+      toast.error((err as Error).message || "Couldn’t write a harder version");
+      return null;
+    }
+  };
+
   const loading = !state && query.isFetching;
   const failed = !state && query.isError;
 
   return (
     <div className={styles.app}>
-
       <main className={styles.panes}>
         {(["progress", "study", "activity"] as const).map((k) => (
           <div key={k} ref={(el) => { paneRefs.current[k] = el; }} className={`${styles.pane} ${tab === k ? styles.paneOn : ""}`} aria-hidden={tab !== k}
@@ -104,7 +128,10 @@ export default function LawstinApp() {
             </div>
             <div className={styles.shell}>
               <header className={styles.head}>
-                <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
+                <div className={styles.headRow}>
+                  <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
+                  <button className={styles.avatar} onClick={() => { haptic(); setSettingsOpen(true); }} aria-label="Settings">{NAME[0]}</button>
+                </div>
                 <h1 className={k === "study" ? styles.greet : styles.title}>{k === "study" ? greeting : k === "progress" ? "Progress" : "Activity"}</h1>
               </header>
 
@@ -118,14 +145,20 @@ export default function LawstinApp() {
               )}
 
               {state && k === "study" && (
-                <StudyView e={e} state={state} filter={filter} setFilter={setFilter}
+                <StudyView e={e} state={state} filter={filter} setFilter={setFilter} celebrate={celebrate}
                   onStart={() => start(() => studyEngine(query.data).buildRound(filter))}
                   onCourse={(c) => start(() => studyEngine(query.data).buildRound(c))}
                   onMissed={() => start(() => studyEngine(query.data).listRound(studyEngine(query.data).queues(filter).missed))}
                   onStarred={() => start(() => studyEngine(query.data).listRound(studyEngine(query.data).queues(filter).starred))}
-                  onExam={() => setExamSheet(true)} />
+                  onExam={() => { haptic(); setExamSheet(true); }}
+                  onWrite={() => { haptic(); setWriting(true); }}
+                  onUpdate={(list, c) => start(() => {
+                    const eng = studyEngine(query.data);
+                    const left = list.filter((q) => !(eng.prog(q.id)?.seen));
+                    return left.length ? eng.listRound(left) : c ? eng.buildRound(c) : eng.buildRound("all");
+                  })} />
               )}
-              {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => setTopicSheet({ course, topic })} />}
+              {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
               {state && k === "activity" && <ActivityView e={e} state={state} />}
             </div>
           </div>
@@ -155,7 +188,7 @@ export default function LawstinApp() {
               </div>
             ))}
           </div>
-          <Button className={styles.big} onClick={() => start(() => studyEngine(query.data).topicRound(topicSheet.course, topicSheet.topic))}>Drill this topic</Button>
+          <Button className={`${styles.big} ${styles.cta}`} onClick={() => start(() => studyEngine(query.data).topicRound(topicSheet.course, topicSheet.topic))}>Drill this topic</Button>
         </BottomSheet>
       )}
 
@@ -165,6 +198,14 @@ export default function LawstinApp() {
         </BottomSheet>
       )}
 
+      {settingsOpen && (
+        <BottomSheet onClose={() => setSettingsOpen(false)} title="Settings">
+          <SettingsPanel />
+        </BottomSheet>
+      )}
+
+      {writing && <WrittenPractice onClose={() => setWriting(false)} />}
+
       {session && (
         <QuizSession
           key={session.key}
@@ -172,6 +213,7 @@ export default function LawstinApp() {
           mode={session.mode}
           getProgress={(id) => studyEngine(query.data).prog(id)}
           onAnswer={onAnswer}
+          onHarder={session.mode === "practice" ? onHarder : undefined}
           onStar={(q, starred) => mark.mutate({ action: "star", questionId: q.id, starred })}
           onGuess={(q) => mark.mutate({ action: "guess", questionId: q.id, localDate: dateKey.today() })}
           onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
@@ -218,9 +260,9 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, filter, setFilter, onStart, onCourse, onMissed, onStarred, onExam }: {
-  e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void;
-  onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void;
+function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+  e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
+  onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
   if (!e.questions.length) {
     return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2><p>New questions arrive Tuesday, Thursday, and Saturday mornings.</p></div>;
@@ -234,7 +276,10 @@ function StudyView({ e, state, filter, setFilter, onStart, onCourse, onMissed, o
   const roundLabel = !avail ? "All caught up" : ready ? `Start ${roundN} question${roundN === 1 ? "" : "s"}` : `Review ${roundN} ahead`;
   const run = state.runs[0];
   const goalPct = Math.min(1, today / DAILY_GOAL);
+  const goalDone = today >= DAILY_GOAL;
   const circ = 2 * Math.PI * 16;
+  const streak = e.streak();
+  const studiedToday = today > 0;
   return (
     <>
       <div className={`${styles.card} ${styles.hero}`}>
@@ -254,13 +299,22 @@ function StudyView({ e, state, filter, setFilter, onStart, onCourse, onMissed, o
       </div>
 
       <div className={styles.tiles}>
-        <div className={`${styles.card} ${styles.tile}`}><b><Num v={e.streak()} /></b><span>Day streak</span></div>
-        <div className={`${styles.card} ${styles.tile} ${styles.goalTile}`}>
+        <div className={`${styles.card} ${styles.tile} ${styles.streakTile} ${streak && studiedToday ? styles.streakLit : ""}`}>
+          <div className={styles.streakTop}>
+            <b><Num v={streak} /></b>
+            <Flame size={20} className={styles.flame} fill={streak && studiedToday ? "currentColor" : "none"} strokeWidth={2} />
+          </div>
+          <span>Day streak</span>
+        </div>
+        <div className={`${styles.card} ${styles.tile} ${styles.goalTile} ${goalDone ? styles.goalDone : ""} ${celebrate ? styles.goalBurst : ""}`}>
           <div><b><Num v={today} /></b><span>of {DAILY_GOAL} today</span></div>
-          <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
-            <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
-            <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct) }} />
-          </svg>
+          <span className={styles.goalWrap}>
+            <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
+              <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
+              <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct), opacity: today ? 1 : 0 }} />
+            </svg>
+            {goalDone && <Check size={14} strokeWidth={3.2} className={styles.goalCheck} />}
+          </span>
         </div>
         <div className={`${styles.card} ${styles.tile}`}><b>{week.a ? <Num v={pct(week.c, week.a)} suffix="%" /> : "—"}</b><span>Correct, 7 days</span></div>
       </div>
@@ -292,6 +346,11 @@ function StudyView({ e, state, filter, setFilter, onStart, onCourse, onMissed, o
             <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
             <ChevronRight size={18} className={styles.chev} />
           </button>
+          <button className={styles.row} onClick={onWrite}>
+            <span className={styles.dot} style={{ background: "var(--uh-red)" }}><PenLine size={12} color="#fff" strokeWidth={2.4} /></span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Written practice</span></span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
           <button className={styles.row} onClick={onMissed} disabled={!qs.missed.length}>
             <span className={styles.dot} style={{ background: "var(--error)" }}>!</span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Missed questions</span></span>
@@ -307,20 +366,69 @@ function StudyView({ e, state, filter, setFilter, onStart, onCourse, onMissed, o
         </div>
       </section>
 
-      {run && (
-        <section className={styles.sec}>
-          <div className={styles.secH}><h2>Latest update</h2><small>{new Date(`${run.date}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</small></div>
-          <div className={`${styles.card} ${styles.note}`}>
-            <div className={styles.pills}>
-              {Object.entries(run.byCourse).filter(([, n]) => n).map(([k, n]) => (
-                <span key={k} className={styles.pill}>+{n} {COURSES[k as CourseCode]?.short ?? k}</span>
-              ))}
-            </div>
-            <p>{run.note}</p>
-          </div>
-        </section>
-      )}
+      {run && <UpdateCard e={e} run={run} onStudy={onUpdate} />}
     </>
+  );
+}
+
+type Run = NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>["runs"][number];
+
+function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+  const [open, setOpen] = useState(false);
+  // Questions written by this update: matched by batch, which update runs stamp with the run date.
+  const added = e.questions.filter((q) => q.batch?.includes(run.date));
+  const courses = (Object.entries(run.byCourse) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k]);
+  const rows = courses.map(([k, n]) => {
+    const qs = added.filter((q) => q.course === k);
+    const left = qs.length ? qs.filter((q) => !e.prog(q.id)?.seen).length : Math.min(n, e.queues(k).fresh.length);
+    return { k, n, qs, left };
+  });
+  const total = rows.reduce((a, r) => a + r.n, 0) || run.added;
+  const left = rows.reduce((a, r) => a + r.left, 0);
+  const doneN = Math.max(0, total - left);
+  const circ = 2 * Math.PI * 15;
+  const fmtDate = new Date(`${run.date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+  const today = run.date === e.today;
+  return (
+    <section className={styles.sec}>
+      <div className={styles.secH}><h2>{today ? "New today" : "Latest update"}</h2><small>{fmtDate}</small></div>
+      <div className={`${styles.card} ${styles.upd}`}>
+        <div className={styles.updTop}>
+          <span className={styles.updRing}>
+            <svg viewBox="0 0 36 36" aria-hidden="true">
+              <circle cx="18" cy="18" r="15" className={styles.updTrack} />
+              <circle cx="18" cy="18" r="15" className={styles.updVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - (total ? doneN / total : 0)) }} />
+            </svg>
+            {left === 0 ? <Check size={14} strokeWidth={3} className={styles.updCheck} /> : <Sparkles size={14} className={styles.updSpark} />}
+          </span>
+          <div className={styles.updHead}>
+            <b>{total} new question{total === 1 ? "" : "s"}</b>
+            <span>{left === 0 ? "All studied" : `${left} left to study`}</span>
+          </div>
+          {left > 0 && (
+            <button className={styles.updGo} onClick={() => onStudy(added, null)}>Study</button>
+          )}
+        </div>
+        <div className={styles.updRows}>
+          {rows.map((r) => {
+            const c = COURSES[r.k];
+            return (
+              <button key={r.k} className={styles.updRow} onClick={() => onStudy(r.qs, r.k)}>
+                <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
+                <span className={styles.updName}>{c.short}</span>
+                <span className={styles.updCount}>{r.left === 0 ? <><Check size={13} strokeWidth={3} /> Done</> : `${r.left} of ${r.n}`}</span>
+                <ChevronRight size={16} className={styles.chev} />
+              </button>
+            );
+          })}
+        </div>
+        {run.note && (
+          <button className={`${styles.updNote} ${open ? styles.updNoteOpen : ""}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+            <span>{run.note}</span>
+          </button>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -340,9 +448,9 @@ function ProgressView({ e, onTopic }: { e: Engine; onTopic: (c: CourseCode, t: s
   return (
     <>
       <div className={styles.tiles}>
-        <div className={`${styles.card} ${styles.tile}`}><b>{m.correct + m.wrong ? `${pct(m.correct, m.correct + m.wrong)}%` : "—"}</b><span>Correct overall</span></div>
-        <div className={`${styles.card} ${styles.tile}`}><b>{m.correct + m.wrong}</b><span>Answers given</span></div>
-        <div className={`${styles.card} ${styles.tile}`}><b>{m.seen}</b><span>Questions seen</span></div>
+        <div className={`${styles.card} ${styles.tile}`}><b>{m.correct + m.wrong ? <Num v={pct(m.correct, m.correct + m.wrong)} suffix="%" /> : "—"}</b><span>Correct overall</span></div>
+        <div className={`${styles.card} ${styles.tile}`}><b><Num v={m.correct + m.wrong} /></b><span>Answers given</span></div>
+        <div className={`${styles.card} ${styles.tile}`}><b><Num v={m.seen} /></b><span>Questions seen</span></div>
       </div>
       <section className={styles.sec}>
         <div className={styles.secH}><h2>Which wrong answers catch you</h2></div>
@@ -450,19 +558,19 @@ function ExamPicker({ e, onStart }: { e: Engine; onStart: (f: Filter, n: number)
     <div className={styles.examPick}>
       <div className={styles.seg} role="group" aria-label="Exam course">
         {([["pr", "Pro Res"], ["il", "Intl Law"], ["asy", "Asylum"], ["all", "Mixed"]] as const).map(([k, l]) => (
-          <button key={k} aria-pressed={f === k} className={f === k ? styles.segOn : ""} onClick={() => setF(k)}>{l}</button>
+          <button key={k} aria-pressed={f === k} className={f === k ? styles.segOn : ""} onClick={() => { haptic(); setF(k); }}>{l}</button>
         ))}
       </div>
       {lengths.length > 1 && (
         <div className={styles.seg} role="group" aria-label="Exam length">
           {lengths.map((k) => (
-            <button key={k} aria-pressed={size === k} className={size === k ? styles.segOn : ""} onClick={() => setN(k)}>
+            <button key={k} aria-pressed={size === k} className={size === k ? styles.segOn : ""} onClick={() => { haptic(); setN(k); }}>
               {k === available ? `All ${k}` : k}
             </button>
           ))}
         </div>
       )}
-      <Button className={styles.big} disabled={!size} onClick={() => onStart(f, size)}>
+      <Button className={`${styles.big} ${styles.cta}`} disabled={!size} onClick={() => onStart(f, size)}>
         {size ? `Start ${size}-question exam` : "No questions yet"}
       </Button>
     </div>

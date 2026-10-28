@@ -43,11 +43,11 @@ function byCourse<T extends { q: QuestionDTO }>(items: T[]): T[][] {
 }
 
 /** Pure study logic over the loaded state. */
-export function studyEngine(state: State | undefined) {
+export function studyEngine(state: State | undefined, todayKey?: string) {
   const questions = state?.questions ?? [];
   const pmap = new Map<string, ProgressDTO>((state?.progress ?? []).map((p) => [p.questionId, p]));
   const days = new Map((state?.days ?? []).map((d) => [d.date, d]));
-  const today = dateKey.today();
+  const today = todayKey ?? dateKey.today();
   const prog = (id: string) => pmap.get(id);
   const seen = (id: string) => (prog(id)?.seen ?? 0) > 0;
   const inFilter = (q: QuestionDTO, f: Filter) => f === "all" || q.course === f;
