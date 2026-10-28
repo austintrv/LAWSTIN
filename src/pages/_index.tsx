@@ -177,8 +177,9 @@ export default function LawstinApp({ userId }: { userId: string }) {
                   onWrite={() => { haptic(); setWriting(true); }}
                   onUpdate={(list, c) => start(() => {
                     const eng = studyEngine(query.data);
+                    if (!list.length) return eng.buildRound(c ?? "all");
                     const left = list.filter((q) => !(eng.prog(q.id)?.seen));
-                    return left.length ? eng.listRound(left) : c ? eng.buildRound(c) : eng.buildRound("all");
+                    return eng.listRound(left.length ? left : list);
                   })} />
               )}
               {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
@@ -198,7 +199,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
       </main>
 
       <nav className={styles.tabbar} aria-label="Sections">
-        <button className={styles.wordmark} onClick={() => navigate("study")}>Lawstin<span>UH Law Center</span></button>
+        <button className={styles.wordmark} onClick={() => navigate("study")}>Lawstin</button>
         <div className={styles.tabs}>
           {([["study", "Study", BookCheck], ["courses", "Courses", LibraryBig], ["progress", "Progress", BarChart3], ["activity", "Activity", CalendarDays]] as const).map(([k, label, Icon]) => (
             <button key={k} className={`${styles.tab} ${tab === k ? styles.tabOn : ""}`} aria-current={tab === k ? "page" : undefined}
@@ -407,7 +408,6 @@ function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, 
 type Run = NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>["runs"][number];
 
 function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
-  const [open, setOpen] = useState(false);
   // Questions written by this update: matched by batch, which update runs stamp with the run date.
   const added = e.questions.filter((q) => q.batch?.includes(run.date));
   const courses = (Object.entries(run.byCourse) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k]);
@@ -455,11 +455,7 @@ function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
             );
           })}
         </div>
-        {run.note && (
-          <button className={`${styles.updNote} ${open ? styles.updNoteOpen : ""}`} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
-            <span>{run.note}</span>
-          </button>
-        )}
+        <div className={styles.updTopics}><TopicBubbles bubbles={topicBubbles(e, run, added)} onStudy={onStudy} /></div>
       </div>
     </section>
   );
@@ -603,8 +599,10 @@ function UpdateFeed({ e, runs, onStudy }: { e: Engine; runs: Run[]; onStudy: (it
   );
 }
 
-function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
-  const added = e.questions.filter((q) => q.batch?.includes(run.date));
+type Bubble = { course: CourseCode; label: string; qs: QuestionDTO[]; n: number; left: number };
+
+/** Topics an update added, grouped by course; falls back to course totals when questions can't be matched by batch. */
+function topicBubbles(e: Engine, run: Run, added: QuestionDTO[]): Bubble[] {
   const groups = new Map<string, { course: CourseCode; label: string; qs: QuestionDTO[] }>();
   for (const q of added) {
     if (!COURSES[q.course]) continue;
@@ -613,12 +611,33 @@ function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
     g.qs.push(q);
     groups.set(key, g);
   }
-  let bubbles = [...groups.values()].sort((a, b) => COURSE_KEYS.indexOf(a.course) - COURSE_KEYS.indexOf(b.course) || b.qs.length - a.qs.length)
+  const bubbles = [...groups.values()].sort((a, b) => COURSE_KEYS.indexOf(a.course) - COURSE_KEYS.indexOf(b.course) || b.qs.length - a.qs.length)
     .map((g) => ({ ...g, n: g.qs.length, left: g.qs.filter((q) => !e.prog(q.id)?.seen).length }));
   if (!bubbles.length) {
-    bubbles = (Object.entries(run.byCourse) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k])
+    return (Object.entries(run.byCourse) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k])
       .map(([k, n]) => ({ course: k, label: COURSES[k].short, qs: [], n, left: n }));
   }
+  return bubbles;
+}
+
+function TopicBubbles({ bubbles, onStudy }: { bubbles: Bubble[]; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+  return (
+    <div className={styles.bubbles}>
+      {bubbles.map((b) => (
+        <button key={`${b.course}|${b.label}`} className={`${styles.bubble} ${b.left === 0 ? styles.bubbleDone : ""}`}
+          style={{ "--c": COURSES[b.course].color } as React.CSSProperties} onClick={() => onStudy(b.qs, b.course)}>
+          {b.left === 0 ? <Check size={12} strokeWidth={3} /> : <i />}
+          <span>{b.label}</span>
+          <small>{b.n}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+  const added = e.questions.filter((q) => q.batch?.includes(run.date));
+  const bubbles = topicBubbles(e, run, added);
   const left = bubbles.reduce((a, b) => a + b.left, 0);
   return (
     <div className={`${styles.card} ${styles.note}`}>
@@ -631,16 +650,7 @@ function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
         <b>{run.added} new question{run.added === 1 ? "" : "s"}</b>
         <span>{left === 0 ? "All studied" : left === run.added ? "Tap a topic to start" : `${left} left to study`}</span>
       </button>
-      <div className={styles.bubbles}>
-        {bubbles.map((b) => (
-          <button key={`${b.course}|${b.label}`} className={`${styles.bubble} ${b.left === 0 ? styles.bubbleDone : ""}`}
-            style={{ "--c": COURSES[b.course].color } as React.CSSProperties} onClick={() => onStudy(b.qs, b.course)}>
-            {b.left === 0 ? <Check size={12} strokeWidth={3} /> : <i />}
-            <span>{b.label}</span>
-            <small>{b.n}</small>
-          </button>
-        ))}
-      </div>
+      <TopicBubbles bubbles={bubbles} onStudy={onStudy} />
     </div>
   );
 }

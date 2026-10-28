@@ -60,13 +60,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
 
   return <div ref={root} className={styles.courses}>
     {!course ? <>
-      <section className={styles.semester}>
-        <div className={styles.semesterCopy}><p className={styles.overline}>UH Law Center · Fall 2026</p><h2>Five courses.<br /><em>One workspace.</em></h2>
-          <button className={styles.primary} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} flashcards` : "Flashcards up to date"}<ArrowRight size={18} /></button>
-        </div>
-        <div className={styles.sculpture} aria-hidden="true"><div className={styles.orbit} /><div className={styles.orbitTwo} /><div className={styles.sculptureCard}><Scale /><span>Learn.</span></div><div className={styles.sculptureCardTwo}><GitBranch /><span>Connect.</span></div><div className={styles.sculptureCardThree}><Layers3 /><span>Recall.</span></div><div className={styles.sphere} /></div>
-      </section>
-      <div className={styles.sectionHead}><h2>Your courses</h2><span>{store.materials.length} study materials</span></div>
+      <div className={styles.sectionHead}><h2>Your courses</h2><button className={styles.primary} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} flashcards` : "Flashcards up to date"}</button></div>
       <div className={styles.courseGrid}>
         {SCHOOL_ORDER.map((key, index) => {
           const c = SCHOOL_COURSES[key], Icon = ICONS[key];
