@@ -19,11 +19,6 @@ export function SignIn() {
 
   return (
     <div className={styles.wrap}>
-      <section className={styles.welcome}>
-        <p>Lawstin</p>
-        <h2>Your law school.<br /><em>In one place.</em></h2>
-        <div className={styles.geometry} aria-hidden="true"><i /><i /><i /></div>
-      </section>
       <form className={styles.card} onSubmit={submit}>
         <span className={styles.eyebrow}>Lawstin</span>
         <h1 className={styles.greet}>Welcome back, Austin</h1>
