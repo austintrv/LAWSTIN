@@ -91,18 +91,16 @@
 .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .tile { padding: 14px 14px 13px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .tile b { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.tile span { font-size: 12.5px; color: var(--muted-foreground); line-height: 1.25; }
+.tile > span { font-size: 13px; color: var(--muted-foreground); line-height: 1.25; }
 
 .streakTop { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .flame { color: var(--faint-foreground); flex-shrink: 0; transition: color 0.3s; }
 .streakLit .flame { color: #f05a28; animation: flicker 2.6s ease-in-out infinite; transform-origin: 50% 90%; }
 @keyframes flicker { 0%, 100% { transform: scale(1) rotate(0deg); } 30% { transform: scale(1.06) rotate(-3deg); } 60% { transform: scale(0.97) rotate(2deg); } }
 
-.goalTile { flex-direction: row; align-items: center; justify-content: space-between; gap: 6px; }
-.goalTile > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.goalWrap { position: relative; width: 34px; height: 34px; flex-shrink: 0; display: grid; place-items: center; }
-.goalRing { width: 34px; height: 34px; transform: rotate(-90deg); }
-.goalRing circle { fill: none; stroke-width: 5; stroke-linecap: round; }
+.goalWrap { position: relative; width: 24px; height: 24px; flex-shrink: 0; display: grid; place-items: center; }
+.goalRing { width: 24px; height: 24px; transform: rotate(-90deg); }
+.goalRing circle { fill: none; stroke-width: 6; stroke-linecap: round; }
 .goalRing .goalTrack { stroke: var(--uh-red-soft); }
 .goalRing .goalVal { stroke: var(--uh-red); transition: stroke-dashoffset 0.8s var(--ease-ios), opacity 0.3s; }
 .goalCheck { position: absolute; color: var(--uh-red); animation: checkIn 0.5s var(--ease-ios); }
@@ -262,12 +260,11 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   .pane[data-pane="study"] .hero { padding: 32px; min-height: 270px; justify-content: space-between; }
   .pane[data-pane="study"] .tiles { height: 270px; grid-template-columns: 1fr; }
   .pane[data-pane="study"] .tile { flex-direction: row; align-items: center; justify-content: space-between; padding: 16px 24px; }
-  .pane[data-pane="study"] .streakTop { min-width: 90px; }
-  .pane[data-pane="study"] .goalTile>div { flex-direction: row; align-items: center; gap: 16px; }
+  .pane[data-pane="study"] .streakTop { min-width: 110px; gap: 14px; justify-content: flex-start; }
   .pane[data-pane="progress"] .shell, .pane[data-pane="activity"] .shell { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
   .pane[data-pane="progress"] .head, .pane[data-pane="progress"] .tiles, .pane[data-pane="activity"] .head, .pane[data-pane="activity"] section:first-of-type { grid-column: 1/-1; }
   .split b { font-size: 40px; }
-  .split span, .tile span, .rowSub, .secH small, .updHead span, .ruleSub, .ruleItem small { font-size: 16px; }
+  .split span, .tile > span, .rowSub, .secH small, .updHead span, .ruleSub, .ruleItem small { font-size: 16px; }
   .seg button { font-size: 16px; min-height: 44px; }
   .row { min-height: 76px; padding: 20px; }
   .rowTitle { font-size: 18px; }

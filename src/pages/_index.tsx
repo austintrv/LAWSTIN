@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
+import { Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
 const Courses = lazy(() => import("../components/Courses").then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
 import { Skeleton } from "../components/Skeleton";
@@ -410,17 +410,26 @@ function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, 
           </div>
           <span>Day streak</span>
         </div>
-        <div className={`${styles.card} ${styles.tile} ${styles.goalTile} ${goalDone ? styles.goalDone : ""} ${celebrate ? styles.goalBurst : ""}`}>
-          <div><b><Num v={today} /></b><span>of {DAILY_GOAL} today</span></div>
-          <span className={styles.goalWrap}>
-            <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
-              <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
-              <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct), opacity: today ? 1 : 0 }} />
-            </svg>
-            {goalDone && <Check size={14} strokeWidth={3.2} className={styles.goalCheck} />}
-          </span>
+        <div className={`${styles.card} ${styles.tile} ${goalDone ? styles.goalDone : ""} ${celebrate ? styles.goalBurst : ""}`}>
+          <div className={styles.streakTop}>
+            <b><Num v={today} /></b>
+            <span className={styles.goalWrap}>
+              <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
+                <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
+                <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct), opacity: today ? 1 : 0 }} />
+              </svg>
+              {goalDone && <Check size={12} strokeWidth={3.4} className={styles.goalCheck} />}
+            </span>
+          </div>
+          <span>of {DAILY_GOAL} today</span>
         </div>
-        <div className={`${styles.card} ${styles.tile}`}><b>{week.a ? <Num v={pct(week.c, week.a)} suffix="%" /> : "—"}</b><span>Correct, 7 days</span></div>
+        <div className={`${styles.card} ${styles.tile}`}>
+          <div className={styles.streakTop}>
+            <b>{week.a ? <Num v={pct(week.c, week.a)} suffix="%" /> : "—"}</b>
+            <Target size={20} className={styles.flame} strokeWidth={2} />
+          </div>
+          <span>Last 7 days</span>
+        </div>
       </div>
 
       <DueSoonCard />
