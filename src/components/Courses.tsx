@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, ClipboardList, Columns3, Download, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, Printer, RotateCcw, Scale, Search, Star, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, ClipboardList, Columns3, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, Printer, RotateCcw, Scale, Search, Star, X } from "lucide-react";
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
@@ -7,6 +7,8 @@ import { toast } from "../helpers/toast";
 import { useStudyMaterials } from "../helpers/useStudyMaterials";
 import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, weakMaterialTopics, type Flashcard, type MaterialKind, type SchoolCourse, type StudyMaterial, type StudyRecord } from "../helpers/studyMaterials";
 import type { CourseCode } from "../helpers/studyEngine";
+import { TaskList, type WorkspaceLink } from "./TaskList";
+import { dueSoon, sortTasks, useCourseTasks } from "../helpers/useCourseTasks";
 import styles from "./Courses.module.css";
 
 const ICONS = { il: Scale, asy: BookOpen, pr: GraduationCap, clinic: ClipboardList, tutoring: PenLine };
@@ -23,10 +25,24 @@ const readRoute = (): Route => {
 const go = (course?: SchoolCourse, kind?: MaterialKind, item?: string) => {
   haptic(); window.location.hash = ["", "courses", course, kind, item].filter(x => x !== undefined).join("/");
 };
+const DRIVE = (id: string, kind: "file" | "sheet") => kind === "sheet" ? `https://docs.google.com/spreadsheets/d/${id}/edit` : `https://drive.google.com/file/d/${id}/view`;
+const LINKS: Record<"clinic" | "tutoring", WorkspaceLink[]> = {
+  clinic: [
+    { title: "Clinic hour log", url: DRIVE("1Wze1NS6Jf4YDvSMQjM8zBI63MGQy8BaDHUE1n96S6N4", "sheet") },
+    { title: "Clinic syllabus", url: DRIVE("13cVAB0XHq30N1B5hPLSPsnM5DBPEHxRA", "file") },
+    { title: "Law student manual", url: DRIVE("1sKnwwB_un0Tpcv5OYMCL__ftKvrbT2gv", "file") },
+  ],
+  tutoring: [
+    { title: "Office hours", url: DRIVE("1dUsZ0ImsLMPNFvycfa4saivtGx3ubYClA0mUc6b-vi0", "sheet") },
+    { title: "Civil Procedure syllabus", url: DRIVE("1HLxMtbzvU-A8uu67mg2Vo7xjBeDRoHqa", "file") },
+    { title: "Tutor orientation", url: DRIVE("1go4tBPtHpt6mNQaYo1h9VqPFIgkDc8T_", "file") },
+  ],
+};
 const isStudyCourse = (c: SchoolCourse): c is CourseCode => c === "il" || c === "asy" || c === "pr";
 
 export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   const store = useStudyMaterials(userId);
+  const { tasks } = useCourseTasks();
   const [route, setRoute] = useState(readRoute);
   const [search, setSearch] = useState("");
   const [topic, setTopic] = useState("all");
@@ -43,6 +59,8 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
     root.current?.closest("[data-pane]")?.scrollTo({ top: 0 });
   }, [route.course, route.kind, route.item, store.materials]);
 
+  const offline = store.syncStatus === "offline";
+  useEffect(() => { if (offline) toast("Offline. Study progress will sync later."); }, [offline]);
   const course = route.course;
   const materials = course ? store.materials.filter(m => m.course === course) : store.materials;
   const cards = materials.filter((m): m is Flashcard => m.kind === "flashcard");
@@ -68,7 +86,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           const due = cardQueue(list.filter((m): m is Flashcard => m.kind === "flashcard"), store.record, state).length;
           return <button data-reveal key={key} className={`${styles.courseCard} ${isStudyCourse(key) ? "" : styles.workspaceCard}`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
             <div className={styles.courseCardTop}><span className={styles.courseIcon}><Icon size={26} strokeWidth={1.6} /></span><ArrowRight size={22} /></div>
-            <h3>{c.name}</h3>{isStudyCourse(key) && <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>}
+            <h3>{c.name}</h3>{isStudyCourse(key) ? <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p> : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}
             {isStudyCourse(key) && <div className={styles.courseTools}><span><GitBranch size={18} />Flowcharts</span><span><Layers3 size={18} />Flashcards</span></div>}
           </button>;
         })}
@@ -86,7 +104,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
         <p className={styles.overline}>Fall 2026</p><h2>{SCHOOL_COURSES[course].name}</h2>
         {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : "Flashcards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
       </section>
-      {!isStudyCourse(course) ? <section className={styles.reserved}><div className={styles.reservedIcon}>{course === "clinic" ? <ClipboardList size={40} strokeWidth={1.3} /> : <PenLine size={40} strokeWidth={1.3} />}</div><h3>{course === "clinic" ? "Civil Clinic workspace" : "Tutoring workspace"}</h3></section> : <div className={styles.courseWorkspace}>
+      {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!route.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={route.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
         })}</nav><button className={styles.writingLink} onClick={onWrite}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
@@ -99,13 +117,14 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
         </div>
       </div>}
     </>}
-    <div className={styles.storageTools}><span role="status">{store.syncStatus === "offline" ? "Offline" : ""}</span><button onClick={() => {
-      const blob = new Blob([JSON.stringify({ version: 1, exported_at: new Date().toISOString(), record: store.record }, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `lawstin-study-${dateKey.today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }}><Download size={18} />Export progress</button></div>
     {deck && <FlashcardSession key={deck.map(c => c.id).join(",")} cards={deck} store={store} onClose={() => setDeck(null)} />}
     {selected && <MaterialReader key={selected.id} material={selected} store={store} onQuiz={() => onQuiz(selected.course, selected.topic)} onClose={() => go(selected.course, selected.kind)} />}
   </div>;
+}
+
+function workspaceLine(list: Parameters<typeof sortTasks>[0]) {
+  const open = sortTasks(list).open.length, soon = dueSoon(list).length;
+  return open ? `${open} open${soon ? ` · ${soon} due soon` : ""}` : "No open tasks";
 }
 
 function SearchField({ value, onChange }: { value: string; onChange: (value: string) => void }) {

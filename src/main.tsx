@@ -17,6 +17,24 @@ document.addEventListener("touchmove", (e) => { if ((e as TouchEvent & { scale?:
 
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60 * 1000 } } });
 
+/** Keeps a rendering error from leaving a blank screen in the installed app. */
+class Boundary extends React.Component<{ children: React.ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: unknown) { console.error(error); }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, background: "var(--background)", color: "var(--foreground)", fontFamily: "var(--font-family-base)" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
+          <h1 style={{ fontFamily: "var(--font-family-script)", fontStyle: "italic", fontWeight: 400, fontSize: 36, color: "var(--uh-red)" }}>Something went wrong</h1>
+          <button onClick={() => window.location.reload()} style={{ height: 48, padding: "0 28px", borderRadius: 14, background: "var(--uh-red)", color: "#fff", fontSize: 17, fontWeight: 600 }}>Reload</button>
+        </div>
+      </div>
+    );
+  }
+}
+
 function Root() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
 
@@ -38,7 +56,7 @@ createRoot(document.getElementById("root")!).render(
     <QueryClientProvider client={queryClient}>
       <ThemeModeProvider>
         <TooltipProvider>
-          <Root />
+          <Boundary><Root /></Boundary>
           <Toaster />
         </TooltipProvider>
       </ThemeModeProvider>

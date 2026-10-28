@@ -1,0 +1,80 @@
+.wrap { position: relative; z-index: 1; display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--card); color: var(--card-foreground); border-radius: 20px; box-shadow: var(--shadow); }
+
+.add { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 16px; min-height: 60px; }
+.addDot { width: 22px; height: 22px; border-radius: 50%; border: 2px dashed color-mix(in srgb, var(--c) 55%, transparent); flex-shrink: 0; }
+.addInput { flex: 1; min-width: 0; height: 40px; border: 0; background: none; color: var(--foreground); font: inherit; font-size: 17px; outline: none; }
+.addInput::placeholder { color: var(--faint-foreground); }
+.addGo { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--c); color: #fff; flex-shrink: 0; transition: transform 0.2s var(--ease-ios), opacity 0.2s; }
+.addGo:disabled { opacity: 0.3; }
+.addGo:active:not(:disabled) { transform: scale(0.9); }
+
+.dateChip { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 10px; border-radius: 999px; background: var(--fill); color: var(--muted-foreground); font-size: 14px; font-weight: 600; white-space: nowrap; flex-shrink: 0; cursor: pointer; }
+.dateChip input { position: absolute; inset: 0; opacity: 0; width: 100%; cursor: pointer; }
+.dateSet { background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
+.dateSet.late { background: var(--error-soft); color: var(--error); }
+
+.list { list-style: none; margin: 0; padding: 0; border-top: 0.5px solid var(--border); }
+.task + .task { border-top: 0.5px solid var(--border); }
+.task { transition: opacity 0.35s ease 0.1s; }
+.leaving { opacity: 0.4; }
+.taskRow { display: flex; align-items: flex-start; gap: 12px; padding: 0 16px; }
+.check { width: 24px; height: 24px; margin-top: 15px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--c) 70%, var(--border)); display: grid; place-items: center; color: #fff; flex-shrink: 0; transition: background 0.2s, border-color 0.2s, transform 0.2s var(--ease-ios); }
+.check:active { transform: scale(0.88); }
+.checked { background: var(--c); border-color: var(--c); animation: pop 0.35s var(--ease-ios); }
+@keyframes pop { 50% { transform: scale(1.15); } }
+.taskMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 15px 0; text-align: left; }
+.taskTitle { font-size: 17px; line-height: 1.35; color: var(--card-foreground); overflow-wrap: anywhere; }
+.isDone .taskTitle, .leaving .taskTitle { color: var(--muted-foreground); text-decoration: line-through; text-decoration-color: var(--faint-foreground); }
+.taskMeta { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--muted-foreground); min-width: 0; }
+.notePreview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.late { color: var(--error); font-weight: 600; }
+.soon { color: var(--warning); font-weight: 600; }
+.later { color: var(--muted-foreground); }
+.flag { color: var(--warning); flex-shrink: 0; }
+
+.editor { display: flex; flex-direction: column; gap: 10px; padding: 0 16px 16px 52px; animation: open 0.25s var(--ease-ios); }
+@keyframes open { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.editTitle, .editNotes { width: 100%; border: 1px solid var(--border); border-radius: 12px; background: var(--fill); color: var(--foreground); font: inherit; font-size: 16px; padding: 10px 12px; outline: none; resize: vertical; }
+.editTitle:focus, .editNotes:focus { box-shadow: var(--shadow-focus); }
+.editBar { display: flex; align-items: center; gap: 8px; }
+.spacer { flex: 1; }
+.ghost { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--fill); color: var(--muted-foreground); }
+.flagOn { color: var(--warning); background: color-mix(in srgb, var(--warning) 14%, transparent); }
+.danger { color: var(--error); }
+
+.done summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 16px; cursor: pointer; font-size: 17px; font-weight: 600; }
+.done summary::-webkit-details-marker { display: none; }
+.count { color: var(--muted-foreground); font-weight: 500; font-variant-numeric: tabular-nums; }
+.chev { margin-left: auto; color: var(--faint-foreground); transition: transform 0.25s var(--ease-ios); }
+.done[open] .chev { transform: rotate(90deg); }
+
+.notes { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.notes h3 { margin: 0; font-size: 17px; font-weight: 600; }
+.notes textarea { width: 100%; border: 0; background: none; color: var(--card-foreground); font: inherit; font-size: 16px; line-height: 1.5; outline: none; resize: none; padding: 0; }
+
+.col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+@media (min-width: 1000px) {
+  .wrap { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+}
+@media (prefers-reduced-motion: reduce) { .checked, .editor { animation: none; } }
+
+.link { display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 52px; color: var(--card-foreground); font-size: 17px; }
+.link svg:first-child { color: var(--c); flex-shrink: 0; }
+.link span { flex: 1; }
+.link:active { background: var(--fill); }
+
+.hours { display: flex; align-items: center; gap: 16px; padding: 16px; }
+.hoursRing { position: relative; width: 64px; height: 64px; flex-shrink: 0; display: grid; place-items: center; }
+.hoursRing svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+.hoursRing circle { fill: none; stroke-width: 7; stroke-linecap: round; }
+.hoursTrack { stroke: color-mix(in srgb, var(--c) 16%, transparent); }
+.hoursVal { stroke: var(--c); transition: stroke-dashoffset 0.8s var(--ease-ios); }
+.hoursRing b { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hoursMain { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; }
+.hoursBig { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.hoursBig small { font-size: 16px; font-weight: 500; color: var(--muted-foreground); letter-spacing: 0; }
+.hoursSub { font-size: 14px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.hoursEdit { flex: 1; display: flex; align-items: baseline; gap: 8px; }
+.hoursEdit input { width: 110px; font: inherit; font-size: 24px; font-weight: 700; border: 1px solid var(--border); border-radius: 12px; background: var(--fill); color: var(--foreground); padding: 4px 10px; outline: none; }
+.hoursEdit span { font-size: 16px; color: var(--muted-foreground); }

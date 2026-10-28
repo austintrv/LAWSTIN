@@ -12,6 +12,9 @@ import { switchToAutoMode } from "../helpers/themeMode";
 import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
+import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
+import { SCHOOL_COURSES } from "../helpers/studyMaterials";
+import { dueLabel } from "../components/TaskList";
 import { COURSES, COURSE_KEYS, DAILY_GOAL, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import styles from "./_index.module.css";
@@ -269,6 +272,33 @@ export default function LawstinApp({ userId }: { userId: string }) {
 
 type Engine = ReturnType<typeof studyEngine>;
 
+/** Clinic and Tutoring tasks that are overdue or due within two days. Hidden when there are none. */
+function DueSoonCard() {
+  const { tasks, update } = useCourseTasks();
+  const list = dueSoon(tasks);
+  if (!list.length) return null;
+  return (
+    <section className={styles.sec}>
+      <div className={styles.secH}><h2>To do</h2></div>
+      <div className={`${styles.card} ${styles.list}`}>
+        {list.slice(0, 6).map((t) => {
+          const c = SCHOOL_COURSES[t.course], label = dueLabel(t.due!);
+          return (
+            <div key={t.id} className={styles.row}>
+              <button className={styles.todoCheck} style={{ borderColor: c.color }} aria-label="Mark done"
+                onClick={() => { haptic(); update.mutate({ id: t.id, patch: { done_at: new Date().toISOString() } }); }} />
+              <button className={styles.rowMain} onClick={() => { haptic(); window.location.hash = `/courses/${t.course}`; }}>
+                <span className={styles.rowTitle}>{t.title}</span>
+                <span className={styles.rowSub}><span className={label.tone === "late" ? styles.todoLate : label.tone === "soon" ? styles.todoSoon : ""}>{label.text}</span> · {c.short}</span>
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 // Counts up from the previous value (0 on first show) with an ease-out curve.
 function Num({ v, suffix = "" }: { v: number; suffix?: string }) {
   const [n, setN] = useState(0);
@@ -358,6 +388,8 @@ function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, 
         </div>
         <div className={`${styles.card} ${styles.tile}`}><b>{week.a ? <Num v={pct(week.c, week.a)} suffix="%" /> : "—"}</b><span>Correct, 7 days</span></div>
       </div>
+
+      <DueSoonCard />
 
       <section className={styles.sec}>
         <div className={styles.secH}><h2>Courses</h2></div>
