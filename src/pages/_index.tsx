@@ -54,10 +54,8 @@ export default function LawstinApp({ userId }: { userId: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [writing, setWriting] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
-  const [greeting, setGreeting] = useState(() => {
-    const h = new Date().getHours();
-    return h < 5 || h >= 22 ? `Still up, ${NAME}?` : h < 12 ? `Good morning, ${NAME}` : h < 17 ? `Good afternoon, ${NAME}` : `Good evening, ${NAME}`;
-  });
+  // Chosen once per open, after data loads, so the heading never swaps lines in front of you.
+  const [greeting, setGreeting] = useState<string | null>(null);
   const greeted = useRef(false);
   const paneRefs = useRef<Record<Tab, HTMLDivElement | null>>({ progress: null, study: null, activity: null, courses: null });
   const hiddenAt = useRef(0);
@@ -84,17 +82,24 @@ export default function LawstinApp({ userId }: { userId: string }) {
   };
 
   useEffect(() => {
-    if (!state || greeted.current) return;
-    greeted.current = true;
-    const g = makeGreeting(state, NAME, readRecent());
-    setGreeting(g); saveRecent(g);
-  }, [state]);
+    const pick = (s?: typeof state) => {
+      if (greeted.current) return;
+      greeted.current = true;
+      const g = makeGreeting(s, NAME, readRecent());
+      setGreeting(g); saveRecent(g);
+    };
+    if (state) { pick(state); return; }
+    // Offline or slow: greet without progress-based lines rather than leave the heading empty.
+    const t = setTimeout(() => pick(undefined), 2500);
+    return () => clearTimeout(t);
+  }, [state, greeting]);
 
   useEffect(() => {
     const onVis = () => {
       if (document.hidden) { hiddenAt.current = Date.now(); return; }
       if (hiddenAt.current && Date.now() - hiddenAt.current > 20 * 60 * 1000) {
         greeted.current = false;
+        setGreeting(null);
         query.refetch();
       }
     };
@@ -131,6 +136,30 @@ export default function LawstinApp({ userId }: { userId: string }) {
     setExamSheet(false); setTopicSheet(null);
     setSession({ items, mode, key: Date.now(), source });
   };
+
+  // A question notification opens #/q/<id>: answer that question first, then keep going with the usual queue.
+  const [deepLink, setDeepLink] = useState(() => window.location.hash.startsWith("#/q/") ? decodeURIComponent(window.location.hash.slice(4)) : null);
+  useEffect(() => {
+    const read = () => { if (window.location.hash.startsWith("#/q/")) setDeepLink(decodeURIComponent(window.location.hash.slice(4))); };
+    const onMessage = (ev: MessageEvent) => {
+      if (ev.data?.type !== "open" || typeof ev.data.url !== "string") return;
+      const hash = new URL(ev.data.url).hash;
+      if (hash) window.location.hash = hash;
+    };
+    window.addEventListener("hashchange", read);
+    navigator.serviceWorker?.addEventListener("message", onMessage);
+    return () => { window.removeEventListener("hashchange", read); navigator.serviceWorker?.removeEventListener("message", onMessage); };
+  }, []);
+  useEffect(() => {
+    if (!deepLink || !state) return;
+    setDeepLink(null);
+    history.replaceState(null, "", "#/study");
+    setTab("study");
+    const q = state.questions.find((x) => x.id === deepLink);
+    if (!q) return;
+    // Later calls receive an engine without questions already in the session, so this one is only added once.
+    start((eng) => [...(eng.questions.some((x) => x.id === q.id) ? [{ q, review: !!eng.prog(q.id)?.seen }] : []), ...eng.buildRound("all").filter((it) => it.q.id !== q.id)]);
+  }, [deepLink, state]);
 
   const onAnswer = async (q: QuestionDTO, choice: string) => {
     if (q.id.startsWith("ai-")) return choice === q.answer;
@@ -171,7 +200,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
                   <button className={styles.avatar} onClick={() => { haptic(); setSettingsOpen(true); }} aria-label="Settings">{NAME[0]}</button>
                 </div>
-                <h1 className={k === "study" ? styles.greet : styles.title}>{k === "study" ? greeting : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
+                <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? greeting ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
               </header>
 
               {loading && k !== "courses" && <LoadingCard />}
