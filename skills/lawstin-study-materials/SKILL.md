@@ -105,7 +105,7 @@ All six formats use the discriminated union in `src/helpers/studyMaterials.ts`.
 - **Sorting drills:** realistic statements, explicit categories, one defensible category per statement, and an explanation identifying the decisive rule. Do not copy casebook questions.
 - **Hypotheticals:** new realistic facts applying the sourced rules, a specific analytical question, and a compact issue-by-issue model analysis. Do not present a contested outcome as settled. The student writes before revealing the model answer.
 
-Plain, literal language. Curly quotes and apostrophes. No filler, encouragement, jokes, or unsupported claims. Match Lawstin’s Apple-style UI, red accent, readable text, and existing screen conventions; no small helper captions. Do not change UI during a routine content run.
+Plain, literal language. Curly quotes and apostrophes. No filler, encouragement, jokes, or unsupported claims. Match Lawstin’s Apple-style UI, red accent, readable text, and existing screen conventions; no small helper captions. Item text states the rule and cites legal authority; it never refers to the source documents or the drafting process (no “the notes,” “Day 18 notes,” question numbers, paragraph numbers, or instructions such as “check the state analogue”). Do not change UI during a routine content run.
 
 IDs: `{course}-{kind}-{YYYYMMDD}-{nn}`. Check all IDs against the existing manifest before drafting. Keep IDs stable after publication. `class_day`, `class_date`, `batch`, `topic`, `subtopic`, and authority are required. Never add `verified` during drafting.
 
@@ -132,7 +132,7 @@ Stamp retained items only now: `verified: {at, rounds, checker, notes}`. Retain 
 
 Prepare a private batch JSON with `materials`, `run`, and `checks`. `checks` has one row for **every** draft: `id`, `result` (`PASS`, `FIXED_PASS`, or `DROP`), `checker`, `source_locations`, and `note` explaining any fix/drop. Exclude dropped drafts from `materials` entirely. Do not publish source passages or drafting notes.
 
-Run fields: `id`, `run_date`, `created_at` (actual successful preparation timestamp), `added`, `by_course`, `by_kind`, `classes`, `weak_topics`, `history_available`, `check_counts: {drafted, passed, fixedThenPassed, dropped}`, and `note`. The counts must reconcile. The note says what was added per course, which classes and weak/half-known topics were covered, and the check outcome. Do not imply the app was updated until the actual publication succeeds.
+Run fields: `id`, `run_date`, `created_at` (actual successful preparation timestamp), `added`, `by_course`, `by_kind`, `classes`, `weak_topics`, `history_available`, `check_counts: {drafted, passed, fixedThenPassed, dropped}`, and `note`. The counts must reconcile. The note says what was added per course and which classes and weak/half-known topics were covered. Check outcomes go only in `check_counts`, never in the note. Do not imply the app was updated until the actual publication succeeds.
 
 ```text
 npm run study:publish -- /private/path/verified.batch.json

@@ -174,3 +174,8 @@
 @keyframes revealIn{from{opacity:.3;transform:translateY(24px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.courses *,.dialog *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.courseCard:hover,.materialCard:hover{transform:none}.dialog{animation:none}}
 @media print{.dialogBackdrop{position:absolute;background:white;display:block;backdrop-filter:none}.dialog{height:auto;max-height:none;max-width:none;overflow:visible;border-radius:0;box-shadow:none;animation:none}.reader{overflow:visible;padding:0}.dialogHeader,.readerToolbar,.readerFooter,.confidence,.sources,.flowControls,.highlights,.hypo textarea,.hypo>label,.hypo>button{display:none}.readerBody{font-size:12pt}.ruleSection,.flowNode,.modelAnswer,.drillItem{break-inside:avoid}.tableScroll{overflow:visible}.tableScroll table{min-width:0}.tableScroll td,.tableScroll th{padding:10px}.courses .storageTools,.courses .sidebar,.courses .semester,.courses .search{display:none}}
+.runChips{display:flex;flex-wrap:wrap;gap:8px}
+.runChips button{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 12px;border-radius:999px;background:color-mix(in srgb,var(--course-color) 13%,transparent);color:var(--course-color);font-size:15px;font-weight:600;transition:transform .2s var(--ease-ios)}
+.runChips button:active{transform:scale(.95)}
+.runChips i{width:8px;height:8px;border-radius:50%;background:var(--course-color)}
+.runChips small{font-size:13px;font-weight:700;opacity:.7;font-variant-numeric:tabular-nums}

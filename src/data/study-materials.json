@@ -5,7 +5,7 @@
       "id": "il-flashcard-20261028-01",
       "course": "il",
       "kind": "flashcard",
-      "title": "What triggers an international armed conflict under the Day 18 classification rule?",
+      "title": "Under Tadić, what triggers an international armed conflict?",
       "topic": "Laws of War",
       "subtopic": "IAC vs. NIAC",
       "class_date": "2026-10-26",
@@ -24,7 +24,7 @@
         }
       ],
       "authority": "Tadić (ICTY Appeals Chamber, 1995); Common Articles 2 and 3",
-      "front": "What triggers an international armed conflict under the Day 18 classification rule?",
+      "front": "Under Tadić, what triggers an international armed conflict?",
       "back": "A resort to armed force between states.",
       "reason": "Common Article 2 addresses conflict between two or more High Contracting Parties.",
       "verified": {
@@ -191,7 +191,7 @@
       "authority": "Tadić (ICTY Appeals Chamber, 1995); Common Articles 2 and 3",
       "front": "What effect does a pause in local fighting have on IHL’s territorial application during a continuing conflict?",
       "back": "IHL continues to apply throughout the relevant territory despite the pause.",
-      "reason": "It continues throughout the relevant territory until the conflict ends under the rule in the notes.",
+      "reason": "Under Tadić, IHL applies throughout the relevant territory until the conflict ends, whether or not fighting is taking place there.",
       "verified": {
         "at": "2026-10-28T22:35:25.734528+00:00",
         "rounds": 3,
@@ -496,7 +496,7 @@
             "The grave breaches regime applies to IACs.",
             "The grave breaches regime does not apply; other IHL rules still can."
           ],
-          "authority": "Tadić (1995), Day 18 Q3, paragraphs 65–71"
+          "authority": "Tadić (ICTY Appeals Chamber, 1995)"
         }
       ],
       "verified": {
@@ -529,7 +529,7 @@
         }
       ],
       "authority": "Tadić (ICTY Appeals Chamber, 1995); Common Articles 2 and 3",
-      "prompt": "Apply the Tadić classification in the Day 18 notes.",
+      "prompt": "Classify each situation under Tadić.",
       "categories": [
         "IAC",
         "NIAC",
@@ -907,7 +907,7 @@
       "id": "asy-flashcard-20261028-10",
       "course": "asy",
       "kind": "flashcard",
-      "title": "What kind of testimony do the M-E-V-G- notes identify as evidence that a PSG exists in its society?",
+      "title": "Under M-E-V-G-, what kind of testimony can show that a PSG exists in its society?",
       "topic": "Particular Social Group",
       "subtopic": "Visibility and particularity (C-A-)",
       "class_date": "2026-10-26",
@@ -926,7 +926,7 @@
         }
       ],
       "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014)",
-      "front": "What kind of testimony do the M-E-V-G- notes identify as evidence that a PSG exists in its society?",
+      "front": "Under M-E-V-G-, what kind of testimony can show that a PSG exists in its society?",
       "back": "Expert testimony.",
       "reason": "The evidence must establish the group in the relevant society, rather than assume it from the label.",
       "verified": {
@@ -1054,8 +1054,8 @@
           "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014)"
         },
         {
-          "heading": "Keep the framework attributed",
-          "text": "These are the BIA’s cumulative requirements. The Day 18 notes distinguish the UNHCR approach and the Seventh Circuit’s rejection of the visibility requirement; do not treat all approaches as identical.",
+          "heading": "Other approaches",
+          "text": "These are the BIA’s cumulative requirements. The UNHCR approach differs, and the Seventh Circuit rejected the visibility requirement.",
           "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014); Gatimi v. Holder (7th Cir. 2009)"
         }
       ],
@@ -1421,7 +1421,7 @@
       "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)",
       "front": "What knowledge limit does the text of Model Rule 3.8(d) impose?",
       "back": "The evidence or information must be known to the prosecutor.",
-      "reason": "The notes contrast that limit with Brady’s reach to evidence the police did not give the prosecutor.",
+      "reason": "Brady, by contrast, reaches evidence the police did not give the prosecutor.",
       "verified": {
         "at": "2026-10-28T22:35:25.734727+00:00",
         "rounds": 2,
@@ -1680,7 +1680,7 @@
         },
         {
           "heading": "State interpretations",
-          "text": "The notes identify a split: some courts discipline for withholding helpful evidence without a Brady violation, while others require a due process violation before imposing discipline. Attribute the Model Rule reading and check the state analogue.",
+          "text": "Courts are split: some discipline for withholding helpful evidence without a Brady violation, while others require a due process violation before imposing discipline.",
           "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)"
         }
       ],
@@ -1830,7 +1830,7 @@
         }
       ],
       "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)",
-      "facts": "Assume a jurisdiction follows the broader reading of Model Rule 3.8(d) described in the notes. A prosecutor knows of a witness statement tending to negate guilt and has time to disclose it for defense use. No protective order excuses disclosure. The prosecutor withholds it solely because it would not create a reasonable probability of a different verdict.",
+      "facts": "Assume a jurisdiction reads Model Rule 3.8(d) more broadly than Brady, with no materiality requirement. A prosecutor knows of a witness statement tending to negate guilt and has time to disclose it for defense use. No protective order excuses disclosure. The prosecutor withholds it solely because it would not create a reasonable probability of a different verdict.",
       "prompt": "Does the stated reason satisfy the ethical duty?",
       "answer": [
         {
@@ -1884,7 +1884,7 @@
         "fixedThenPassed": 15,
         "dropped": 0
       },
-      "note": "15 materials per course from the October 26 classes: conflict classification and military objectives; particular social groups; prosecutor disclosure and post-conviction duties. 30 passed without changes. Fifteen received source-cited corrections, including active-recall prompt revisions, and passed fresh independent checks. None were dropped. Quiz history showed no topics below 70% with two answers, sneaky misses, or guessed answers."
+      "note": "15 materials per course from the October 26 classes: conflict classification and military objectives; particular social groups; prosecutor disclosure and post-conviction duties."
     }
   ]
 }

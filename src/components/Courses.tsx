@@ -62,7 +62,6 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
     {!course ? <>
       <section className={styles.semester}>
         <div className={styles.semesterCopy}><p className={styles.overline}>UH Law Center · Fall 2026</p><h2>Five courses.<br /><em>One workspace.</em></h2>
-          <p className={styles.intro}>Rules, decision trees, and active recall.<br className={styles.desktopBreak} /> Your semester, organized by course.</p>
           <button className={styles.primary} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} flashcards` : "Flashcards up to date"}<ArrowRight size={18} /></button>
         </div>
         <div className={styles.sculpture} aria-hidden="true"><div className={styles.orbit} /><div className={styles.orbitTwo} /><div className={styles.sculptureCard}><Scale /><span>Learn.</span></div><div className={styles.sculptureCardTwo}><GitBranch /><span>Connect.</span></div><div className={styles.sculptureCardThree}><Layers3 /><span>Recall.</span></div><div className={styles.sphere} /></div>
@@ -75,7 +74,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           const due = cardQueue(list.filter((m): m is Flashcard => m.kind === "flashcard"), store.record, state).length;
           return <button data-reveal key={key} className={`${styles.courseCard} ${isStudyCourse(key) ? "" : styles.workspaceCard}`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
             <div className={styles.courseCardTop}><span className={styles.courseIcon}><Icon size={26} strokeWidth={1.6} /></span><ArrowRight size={22} /></div>
-            <h3>{c.name}</h3><p>{isStudyCourse(key) ? `${list.length} materials${due ? ` · ${due} cards ready` : ""}` : "Course workspace"}</p>
+            <h3>{c.name}</h3>{isStudyCourse(key) && <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>}
             {isStudyCourse(key) && <div className={styles.courseTools}><span><GitBranch size={18} />Flowcharts</span><span><Layers3 size={18} />Flashcards</span></div>}
           </button>;
         })}
@@ -86,14 +85,14 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           const Icon = TOOLS[kind]; return <div key={kind}><Icon size={25} strokeWidth={1.6} /><h3>{MATERIAL_LABELS[kind]}</h3><span>{store.materials.filter(m => m.kind === kind).length}</span></div>;
         })}</div>}
       </section>
-      {store.runs[0] && <section className={styles.runNote} data-reveal><div><p className={styles.overline}>Latest study update</p><h2>{store.runs[0].added} materials added</h2></div><p>{store.runs[0].note}</p></section>}
+      {store.runs[0] && <section className={styles.runNote} data-reveal><div><p className={styles.overline}>Latest study update</p><h2>{store.runs[0].added} materials added</h2></div><div className={styles.runChips}>{SCHOOL_ORDER.filter(k => store.runs[0].by_course[k]).map(k => <button key={k} style={{ "--course-color": SCHOOL_COURSES[k].color } as React.CSSProperties} onClick={() => go(k)}><i />{SCHOOL_COURSES[k].short}<small>{store.runs[0].by_course[k]}</small></button>)}</div></section>}
     </> : <>
       <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
       <section className={styles.courseHero} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
         <p className={styles.overline}>Fall 2026</p><h2>{SCHOOL_COURSES[course].name}</h2>
-        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : "Flashcards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : <p className={styles.intro}>{course === "clinic" ? "Clinic tasks will live here." : "Tutoring tasks will live here."}</p>}
+        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : "Flashcards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
       </section>
-      {!isStudyCourse(course) ? <section className={styles.reserved}><div className={styles.reservedIcon}>{course === "clinic" ? <ClipboardList size={40} strokeWidth={1.3} /> : <PenLine size={40} strokeWidth={1.3} />}</div><h3>{course === "clinic" ? "Civil Clinic workspace" : "Tutoring workspace"}</h3><p>Task lists are planned for a later update.</p></section> : <div className={styles.courseWorkspace}>
+      {!isStudyCourse(course) ? <section className={styles.reserved}><div className={styles.reservedIcon}>{course === "clinic" ? <ClipboardList size={40} strokeWidth={1.3} /> : <PenLine size={40} strokeWidth={1.3} />}</div><h3>{course === "clinic" ? "Civil Clinic workspace" : "Tutoring workspace"}</h3></section> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!route.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={route.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
         })}</nav><button className={styles.writingLink} onClick={onWrite}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
@@ -106,7 +105,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
         </div>
       </div>}
     </>}
-    <div className={styles.storageTools}><span role="status">{store.syncStatus === "offline" ? "Saved on this device. Sync will retry." : store.syncStatus === "pending" ? "Saving study progress…" : "Study progress synced."}</span><button onClick={() => {
+    <div className={styles.storageTools}><span role="status">{store.syncStatus === "offline" ? "Offline" : ""}</span><button onClick={() => {
       const blob = new Blob([JSON.stringify({ version: 1, exported_at: new Date().toISOString(), record: store.record }, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `lawstin-study-${dateKey.today()}.json`; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
     }}><Download size={18} />Export progress</button></div>
@@ -120,7 +119,7 @@ function SearchField({ value, onChange }: { value: string; onChange: (value: str
 }
 
 function MaterialGrid({ list, record, onOpen }: { list: StudyMaterial[]; record: StudyRecord; onOpen: (m: StudyMaterial) => void }) {
-  if (!list.length) return <div className={styles.empty}><Search size={30} strokeWidth={1.5} /><h3>No materials found</h3><p>Try a different topic or search.</p></div>;
+  if (!list.length) return <div className={styles.empty}><Search size={30} strokeWidth={1.5} /><h3>No materials found</h3></div>;
   return <div className={styles.materialGrid}>{list.map(m => {
     const Icon = TOOLS[m.kind]; return <button key={m.id} className={styles.materialCard} onClick={() => onOpen(m)}>
       <div className={styles.materialTop}><span><Icon size={19} />{MATERIAL_LABELS[m.kind]}</span>{record.starred[m.id] ? <Star size={19} fill="currentColor" /> : record.completed[m.id] ? <Check size={19} /> : <ChevronRight size={19} />}</div>
@@ -260,5 +259,5 @@ function SortingDrill({ material }: { material: Extract<StudyMaterial, { kind: "
 
 function HypotheticalView({ material, store }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; store: Store }) {
   const [revealed, setRevealed] = useState(false);
-  return <div className={styles.hypo}><p>{material.facts}</p><h3>{material.prompt}</h3><label>Your analysis<textarea value={store.record.notes[material.id] ?? ""} placeholder="Write your analysis before revealing the answer." onChange={e => { const value = e.target.value; store.update(p => ({ ...p, notes: { ...p.notes, [material.id]: value } })); }} /></label><button className={styles.primary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div>;
+  return <div className={styles.hypo}><p>{material.facts}</p><h3>{material.prompt}</h3><label>Your analysis<textarea value={store.record.notes[material.id] ?? ""} onChange={e => { const value = e.target.value; store.update(p => ({ ...p, notes: { ...p.notes, [material.id]: value } })); }} /></label><button className={styles.primary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div>;
 }

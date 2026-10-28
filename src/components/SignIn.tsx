@@ -22,7 +22,6 @@ export function SignIn() {
       <section className={styles.welcome}>
         <p>Lawstin</p>
         <h2>Your law school.<br /><em>In one place.</em></h2>
-        <span>Courses, rules, and daily practice.</span>
         <div className={styles.geometry} aria-hidden="true"><i /><i /><i /></div>
       </section>
       <form className={styles.card} onSubmit={submit}>
