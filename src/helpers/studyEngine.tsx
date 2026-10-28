@@ -180,20 +180,82 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
 }
 
 /** A greeting picked once per app open. Context lines only when the data supports them. */
-export function makeGreeting(state: State | undefined, name: string, last: string | null): string {
+export function makeGreeting(state: State | undefined, name: string, recent: string[]): string {
   const now = new Date();
   const h = now.getHours();
   const dow = now.getDay();
+  const month = now.getMonth();
+  const date = now.getDate();
   const tod = h < 5 ? "late" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 22 ? "evening" : "late";
   const time = {
-    morning: [`Good morning, ${name}`, `Morning, ${name}`],
-    afternoon: [`Good afternoon, ${name}`, `Afternoon, ${name}`],
-    evening: [`Good evening, ${name}`, `Evening, ${name}`],
-    late: [`Still up, ${name}?`, `Late session, ${name}?`],
+    morning: [
+      `Good morning, ${name}`, `Morning, ${name}`, `Morning, counselor`, `Rise and brief, ${name}`,
+      `Coffee, then case law, ${name}`, `Up before opposing counsel`, `The early bird gets the holding`,
+      `Good morning, future Esq.`, `Morning docket is open, ${name}`, `Court opens at 9. You’re early.`,
+    ],
+    afternoon: [
+      `Good afternoon, ${name}`, `Afternoon, ${name}`, `Afternoon, counselor`, `Lunch recess is over, ${name}`,
+      `The afternoon session is called to order`, `Post-lunch docket, ${name}`, `Afternoon arguments, ${name}?`,
+    ],
+    evening: [
+      `Good evening, ${name}`, `Evening, ${name}`, `Evening, counselor`, `Night court is in session`,
+      `Evening docket is open, ${name}`, `Overtime, ${name}?`, `After-hours session, ${name}`,
+    ],
+    late: [
+      `Still up, ${name}?`, `Late session, ${name}?`, `Late filing, ${name}?`, `Emergency motion at this hour?`,
+      `Burning the midnight oil, ${name}?`, `The night is young. The law is old.`, `Even judges sleep, ${name}`,
+      `Night court, ${name}?`, `Studying past curfew, ${name}?`,
+    ],
   }[tod];
-  const general = [`What should we work on, ${name}?`, `Ready when you are, ${name}`, `Let’s get a few in, ${name}`, `Where should we start, ${name}?`];
+  const general = [
+    `What should we work on, ${name}?`, `Ready when you are, ${name}`, `Let’s get a few in, ${name}`, `Where should we start, ${name}?`,
+    `Court is now in session, ${name}`, `All rise for ${name}`, `Oyez, oyez, ${name}`, `Order in the court, ${name}`,
+    `The Honorable ${name}, presiding`, `Counsel may approach, ${name}`, `The court recognizes ${name}`,
+    `May it please the court: ${name}`, `Counselor ${name}, the floor is yours`, `Ready for oral argument, ${name}?`,
+    `Let the record reflect: ${name} showed up`, `Appearance entered, ${name}`, `Habeas corpus, ${name}. Body produced.`,
+    `In re ${name}`, `${name} v. The Exam`, `${name} v. Procrastination`, `${name}, J.D. loading…`, `Esquire in training, ${name}`,
+    `Motion to study: granted`, `Motion to procrastinate: denied`, `Motion to snooze: denied`, `Leave to study: granted`,
+    `Cert granted, ${name}`, `Affirmed: ${name} is back`, `Reversed and remanded… to studying`, `Overruled. Keep going, ${name}`,
+    `Objection! To not studying.`, `Your excuse is hearsay, ${name}`, `Excuses inadmissible, ${name}`,
+    `Statute of limitations on excuses: expired`, `Laches won’t apply if you start now`, `Time is of the essence, ${name}`,
+    `No continuances today, ${name}`, `Questions presented: several`, `Brief answer: yes, you can`, `Holding: ${name} is ready`,
+    `Dicta aside, let’s study`, `Stare decisis: you keep showing up`, `Let’s make some precedent, ${name}`,
+    `Reasonable person standard: met`, `Beyond a reasonable doubt: you’ve got this`, `Preponderance of the evidence says go`,
+    `Clear and convincing: today’s the day`, `Notice and an opportunity to study`, `The burden of proof is on you, ${name}`,
+    `The jury’s in: you’ve got this`, `Hearsay says you’ll ace this`, `Prima facie ready, ${name}`, `Exhibit A: ${name}, studying`,
+    `Discovery is open, ${name}`, `Request for admission: you’re ready`, `Plead your case, ${name}`, `Time to make your case, ${name}`,
+    `Offer: ten questions. Accept?`, `Meeting of the minds, ${name}?`, `Docket’s open, ${name}`, `Raising the bar, ${name}`,
+    `The bar is waiting, ${name}`, `Sua sponte study session`, `Your witness, ${name}`, `No further questions? We have plenty.`,
+    `This greeting is not legal advice`, `Hi, ${name}. Not legal advice.`, `Legally obligated to say hi, ${name}`,
+    // International Law
+    `The Hague says hi, ${name}`, `No diplomatic immunity from studying`, `Pacta sunt servanda: the study pact holds`,
+    `Jus cogens: studying is non-derogable`, `Customary practice: ${name} studies daily`, `Opinio juris says it’s study time`,
+    `Reservations? None. Let’s study.`, `Ratified and ready, ${name}`, `The ICJ will see you now`,
+    // Asylum Law
+    `Well-founded fear of the exam? Fixable.`, `One-year deadline? You’re early, ${name}`, `Credible and ready, ${name}`,
+    `Nexus established: you + studying`,
+    // Professional Responsibility
+    `Rule 1.1 says be competent, ${name}`, `Rule 1.3 says promptness, ${name}`, `Conflict check cleared, ${name}`,
+    `Privileged and confidential: hi, ${name}`, `Candor to the tribunal: you’re ready`, `Model Rules, model student`,
+    `Zealous advocacy starts here, ${name}`, `The MPRE fears you, ${name}`, `Pro bono study hour, ${name}`,
+  ];
   const weekday = now.toLocaleDateString(undefined, { weekday: "long" });
-  const day = dow === 1 ? [`New week, ${name}`] : dow === 5 ? [`Happy Friday, ${name}`] : dow === 0 || dow === 6 ? [`Happy ${weekday}, ${name}`] : [];
+  const day = [
+    [`Happy Sunday, ${name}`, `Sunday scaries? Not here.`, `Sunday session, ${name}? Respect.`],
+    [`New week, ${name}`, `Monday: fresh docket`, `Monday motion practice, ${name}`, `New week, new holdings`],
+    [`Tuesday, ${name}. Let’s go.`, `Tuesday’s calendar is clear, ${name}`],
+    [`Midweek, ${name}`, `Midweek recess? Denied.`, `Halfway to the weekend, ${name}`],
+    [`Thursday, ${name}. Almost there.`, `Thursday: Friday’s opening argument`],
+    [`Happy Friday, ${name}`, `Friday: the weekend is in deliberation`, `TGIF: Thank God It’s Filed`],
+    [`Happy ${weekday}, ${name}`, `Saturday session? Respect.`, `Weekend warrior, ${name}`],
+  ][dow];
+  const season: string[] = [];
+  if (month === 9 && date === 31) season.push(`Happy Halloween, ${name}`, `Trick or tort?`, `Scarier than the MPRE? Doubtful.`, `Boo. Ten questions.`);
+  else if (month === 9 && date >= 24) season.push(`Spooky season, ${name}`, `Trick or tort?`);
+  if (month === 10 && dow === 4 && date >= 22 && date <= 28) season.push(`Happy Thanksgiving, ${name}`, `Thankful for spaced review`);
+  if (month === 11 && date <= 20) season.push(`Finals season, ${name}. Let’s go.`, `Exam mode: on`, `Finals? You’ve been ready.`);
+  if (month === 11 && (date === 24 || date === 25)) season.push(`Merry Christmas, ${name}`);
+  if (month === 0 && date === 1) season.push(`Happy New Year, ${name}`, `New year, new precedent`);
   const ctx: string[] = [];
   if (state) {
     const e = studyEngine(state);
@@ -201,19 +263,23 @@ export function makeGreeting(state: State | undefined, name: string, last: strin
     const run = state.runs[0];
     const st = e.streak();
     const done = e.todayCount?.answered ?? 0;
-    if (due.length) ctx.push(due.length === 1 ? "One review is waiting" : `${due.length} reviews are waiting`);
-    if (run && run.date === e.today && run.added) ctx.push(h < 12 ? `${run.added} new questions this morning` : `${run.added} new questions today`);
-    if (st >= 2) ctx.push(`Day ${st} in a row, ${name}`);
-    if (done > 0) ctx.push(`Back for more, ${name}?`);
+    if (due.length) ctx.push(...(due.length === 1 ? ["One review is waiting", "One review on the docket"] : [`${due.length} reviews are waiting`, `${due.length} reviews on the docket`]));
+    if (run && run.date === e.today && run.added) ctx.push(h < 12 ? `${run.added} new questions this morning` : `${run.added} new questions today`, `${run.added} fresh questions just filed`);
+    if (st >= 2) ctx.push(`Day ${st} in a row, ${name}`, `${st}-day streak. Precedent set.`);
+    if (done >= DAILY_GOAL) ctx.push(`Goal met. Extra credit, ${name}?`, `Daily goal: satisfied. Encore?`);
+    else if (done > 0) ctx.push(`Back for more, ${name}?`, `Round two, ${name}?`, `Back on the stand, ${name}`);
+    else if (h >= 17) ctx.push(`Today’s docket is still open`);
     const weak = e.weakTopics().sort((a, b) => a.c / (a.c + a.w) - b.c / (b.c + b.w))[0];
-    if (weak) ctx.push(`${weak.topic} could use a round`);
+    if (weak) ctx.push(`${weak.topic} could use a round`, `${weak.topic} wants a rematch`);
   }
+  const pools: [string[], number][] = [[season, 0.2], [ctx, 0.3], [day, 0.1], [time, 0.2], [general, 0.45]];
   const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
-  for (let i = 0; i < 6; i++) {
-    const r = Math.random();
-    const pool = ctx.length && r < 0.45 ? ctx : day.length && r < 0.6 ? day : r < 0.82 ? time : general;
-    const g = pick(pool);
-    if (g !== last || i === 5) return g;
+  for (let i = 0; i < 8; i++) {
+    const live = pools.filter(([p]) => p.length);
+    let r = Math.random() * live.reduce((t, [, w]) => t + w, 0);
+    const pool = (live.find(([, w]) => (r -= w) < 0) ?? live[live.length - 1])[0];
+    const fresh = pool.filter((g) => !recent.includes(g));
+    if (fresh.length) return pick(fresh);
   }
-  return pick(time);
+  return pick(general.filter((g) => !recent.includes(g)).concat(time));
 }

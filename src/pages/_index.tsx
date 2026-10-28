@@ -18,8 +18,12 @@ import styles from "./_index.module.css";
 type Tab = "progress" | "study" | "activity";
 const NAME = "Austin";
 
-const readLast = () => { try { return localStorage.getItem("lawstin-greeting"); } catch { return null; } };
-const saveLast = (g: string) => { try { localStorage.setItem("lawstin-greeting", g); } catch { /* storage unavailable */ } };
+const readRecent = (): string[] => {
+  try { const a = JSON.parse(localStorage.getItem("lawstin-greetings") ?? "[]"); return Array.isArray(a) ? a : []; } catch { return []; }
+};
+const saveRecent = (g: string) => {
+  try { localStorage.setItem("lawstin-greetings", JSON.stringify([g, ...readRecent().filter((x) => x !== g)].slice(0, 40))); } catch { /* storage unavailable */ }
+};
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
 export default function LawstinApp() {
@@ -54,8 +58,8 @@ export default function LawstinApp() {
   useEffect(() => {
     if (!state || greeted.current) return;
     greeted.current = true;
-    const g = makeGreeting(state, NAME, readLast());
-    setGreeting(g); saveLast(g);
+    const g = makeGreeting(state, NAME, readRecent());
+    setGreeting(g); saveRecent(g);
   }, [state]);
 
   useEffect(() => {
