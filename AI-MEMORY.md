@@ -19,6 +19,7 @@
 - Code (live source): GitHub repo `austintrv/LAWSTIN`, branch `main`. Pushing to `main` builds and publishes through GitHub Actions (`.github/workflows/deploy.yml`). React 18 + Vite + TypeScript, CSS modules; `npm run build` type-checks and builds.
 - `Desktop/LAWSTIN/app/` is a copy of the repo, not a git checkout. Make code changes in the repo, then refresh the copy.
 - `Desktop/LAWSTIN/floot-export/` is the original Floot export (code + data JSON). The original icon and launch-screen PNGs are in `Desktop/LAWSTIN/`.
+- `skills/`: copies of the content-writing skills (`skills/daily-law-quiz/SKILL.md`) and `skills/README.md`, which lists the standards every content task follows and maps Claude’s tool names for other AIs. Also in `Desktop/LAWSTIN/skills/`.
 - Lawstin claude.ai Project: `claude/lawstin-setup.md` (same facts) and `floot-features/` (the original Floot patches).
 
 ## Backend (Supabase)
@@ -40,6 +41,8 @@
 - If ChatGPT adds questions by hand, follow the same rules as the skill: question ids `{course}-{YYYYMMDD}-{nn}`, exactly four choices A–D with one of each role, `verified` set only after an independent check, then a `runs` row for the day. Do not change the schema, RLS, database functions, or `auth` schema, and never delete rows.
 
 ## Rules
+- Any scheduled or by-hand content task (questions, flashcards, flowcharts, rule summaries) follows the standards in `skills/README.md`: sourced from the Drive course materials, past classes only, existing topic strings, an independent verification pass before anything reaches the app, plain writing with curly quotes.
+- An AI without Supabase access doesn’t change the database. New tables or functions go in `supabase/migrations/` as a SQL file plus a Current work note; Claude applies them.
 - Floot is no longer used. Don't call Floot tools or write to the Floot project.
 - Keep everything free-tier: Supabase free, GitHub Pages, Gemini free tier, Resend free.
 - Never commit keys, passwords, or tokens to the repo.
@@ -52,3 +55,4 @@
 - 2026-10-28 (Claude): Ported the planned Floot features (review screen, deselect, score ring, Latest update card, streak flame, goal check, Settings, notifications, weekly email, AI tutor, Written practice, new icon and launch screens). Tested at iPhone size; test answers were mocked so nothing was written to Austin’s record.
 - 2026-10-28 (Claude): The first Gemini key belonged to a Google project with prepaid billing and no credits, which returns 402 on every model. The working key comes from an AI Studio project with no billing. Gemini 3.8 Flash was overloaded and timed out past Supabase’s 150-second function limit, so the tutor is pinned to 3.5 Flash with a Flash-Lite fallback.
 - 2026-10-28 (Claude): Test weekly email sent successfully. Push encryption verified by decrypting a test payload; a real notification still needs Austin to turn on notifications from the Home Screen app.
+- 2026-10-28 (Claude): Added `skills/` with the daily-law-quiz skill and a README of shared content standards so ChatGPT’s scheduled task for flashcards and flowcharts follows the same sourcing and verification as the questions.
