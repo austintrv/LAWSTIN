@@ -209,12 +209,6 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 .updHead span { font-size: 13px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .updGo { flex-shrink: 0; height: 32px; padding: 0 14px; border-radius: var(--radius-full); border: 0; background: var(--uh-red); color: #fff; font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s var(--ease-ios); }
 .updGo:active { transform: scale(0.94); }
-.updRows { display: flex; flex-direction: column; border-top: 0.5px solid var(--border); }
-.updRow { position: relative; display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 48px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; transition: background 0.15s; }
-.updRow:active { background: var(--fill); }
-.updRow + .updRow::before { content: ""; position: absolute; top: 0; left: 50px; right: 0; height: 0.5px; background: var(--border); }
-.updName { flex: 1; font-size: 15px; font-weight: 600; }
-.updCount { display: inline-flex; align-items: center; gap: 4px; font-size: 14px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 
 /* Updates feed: notification cards with topic bubbles */
 .feedToggle { border: 0; background: none; color: var(--uh-red); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; }
@@ -273,7 +267,7 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   .pane[data-pane="progress"] .shell, .pane[data-pane="activity"] .shell { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
   .pane[data-pane="progress"] .head, .pane[data-pane="progress"] .tiles, .pane[data-pane="activity"] .head, .pane[data-pane="activity"] section:first-of-type { grid-column: 1/-1; }
   .split b { font-size: 40px; }
-  .split span, .tile span, .rowSub, .secH small, .updHead span, .updCount, .ruleSub, .ruleItem small { font-size: 16px; }
+  .split span, .tile span, .rowSub, .secH small, .updHead span, .ruleSub, .ruleItem small { font-size: 16px; }
   .seg button { font-size: 16px; min-height: 44px; }
   .row { min-height: 76px; padding: 20px; }
   .rowTitle { font-size: 18px; }

@@ -2,18 +2,14 @@
 .courses button,.courses input,.courses select,.dialog button,.dialog textarea{font:inherit}
 .courses button:focus-visible,.dialog button:focus-visible,.courses select:focus-visible,.dialog a:focus-visible,.tableScroll:focus-visible{outline:3px solid var(--course-il);outline-offset:4px}
 .overline{font-size:16px;font-weight:600;color:var(--muted-foreground);line-height:1.5}
-.semester{position:relative;padding:30px 24px 32px;border-radius:28px;background:var(--card);overflow:hidden;isolation:isolate}
-.semesterCopy{position:relative;z-index:2}
-.semester h2{margin:18px 0;font-size:clamp(42px,7vw,80px);font-weight:650;line-height:1.02;letter-spacing:-.055em}
-.semester h2 em{font-family:var(--font-family-script);font-weight:400;letter-spacing:-.02em;color:var(--uh-red)}
-.intro{font-size:18px;line-height:1.6;color:var(--muted-foreground);margin:0 0 24px;text-wrap:pretty}
+
 .primary,.secondary{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:48px;padding:12px 19px;border-radius:14px;font-size:16px;font-weight:600;line-height:1.35;transition:transform .2s var(--ease-ios),background .2s;touch-action:manipulation}
 .primary{background:var(--uh-red);color:white}
 .primary:hover{background:var(--uh-red-hover)}
 .secondary{background:var(--fill);color:var(--foreground)}
 .primary:disabled,.secondary:disabled{opacity:.5;cursor:default}
 .primary:active:not(:disabled),.secondary:active:not(:disabled){transform:scale(.97)}
-.sculpture{display:none}
+
 .sectionHead{display:flex;justify-content:space-between;align-items:center;gap:16px}
 .sectionHead h2,.sectionHead h3{font-size:24px;font-weight:650;letter-spacing:-.025em}
 .sectionHead>span{font-size:16px;color:var(--muted-foreground)}
@@ -65,18 +61,17 @@
 .materialCard h4{font-size:21px;line-height:1.3;letter-spacing:-.02em;font-weight:600}
 .materialCard>p{font-size:16px;line-height:1.4;color:var(--muted-foreground);margin-top:12px}
 .materialCourse{font-size:16px;color:var(--uh-red);margin-top:auto;padding-top:24px}
-.empty,.reserved{padding:48px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px;background:var(--card);border-radius:24px}
-.empty h3,.reserved h3{font-size:24px;letter-spacing:-.02em}
-.empty p,.reserved p{font-size:17px;line-height:1.5;color:var(--muted-foreground)}
-.reservedIcon{display:grid;place-items:center;width:100px;height:100px;background:var(--fill);border-radius:30px;margin-bottom:12px;color:var(--uh-red)}
+.empty{padding:48px 24px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px;background:var(--card);border-radius:24px}
+.empty h3{font-size:24px;letter-spacing:-.02em}
+.empty p{font-size:17px;line-height:1.5;color:var(--muted-foreground)}
+
 .plan{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:0 18px;font-size:17px}
 .plan summary{cursor:pointer;padding:16px 0;font-weight:600}
 .plan summary>span{float:right;color:var(--muted-foreground)}
 .plan>button{display:flex;align-items:center;gap:16px;width:100%;text-align:left;padding:16px 0;border-top:1px solid var(--border)}
 .plan>button>span:first-child{flex:1}
 .plan>button>span+span{font-size:16px;color:var(--uh-red)}
-.storageTools{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid var(--border);padding-top:20px;margin-top:12px;font-size:16px;color:var(--muted-foreground)}
-.storageTools button{display:flex;align-items:center;gap:8px;min-height:44px;font-weight:600}
+
 .dialogBackdrop{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);display:flex;align-items:center;justify-content:center}
 .dialog{width:100%;height:100%;background:var(--background);color:var(--foreground);display:flex;flex-direction:column;overflow:hidden;outline:none;animation:dialogIn .3s var(--ease-ios)}
 .dialogHeader{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;background:var(--bar);border-bottom:1px solid var(--border);font-size:17px;font-weight:600;flex-shrink:0;z-index:2}
@@ -161,11 +156,11 @@
 .highlights>div{display:flex;align-items:center;gap:16px;padding:12px 0;font:18px/1.5 var(--font-family-reading)}
 .highlights>div>mark{flex:1}
 @keyframes dialogIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
-@media(min-width:650px){.courseGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.materialGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.semester{padding:44px}.methodGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.dialog{max-width:1000px;height:calc(100% - 64px);max-height:1000px;border-radius:28px;box-shadow:0 30px 100px rgba(0,0,0,.25)}.dialogHeader{padding:16px 28px}.reader{padding:36px 40px 40px}.recallCard{padding:40px;min-height:380px}.cardSession{padding:32px 40px}.recallCard h2{font-size:34px}}
+@media(min-width:650px){.courseGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.materialGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.methodGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.dialog{max-width:1000px;height:calc(100% - 64px);max-height:1000px;border-radius:28px;box-shadow:0 30px 100px rgba(0,0,0,.25)}.dialogHeader{padding:16px 28px}.reader{padding:36px 40px 40px}.recallCard{padding:40px;min-height:380px}.cardSession{padding:32px 40px}.recallCard h2{font-size:34px}}
 @media(min-width:1000px){
- .courses{gap:40px}.semester{min-height:480px;padding:60px;display:grid;grid-template-columns:1.3fr 1fr;align-items:center;background:radial-gradient(ellipse at 90% 90%,var(--uh-red-soft),transparent 55%),var(--card)}
- .sculpture{display:block;position:relative;min-height:340px;isolation:isolate}.orbit,.orbitTwo{position:absolute;width:310px;height:310px;border:1px solid color-mix(in srgb,var(--uh-red) 25%,transparent);border-radius:50%;top:0;left:5%;transform:rotate(-25deg) scaleY(.74)}.orbitTwo{transform:rotate(45deg) scaleY(.74);width:360px;height:360px;left:-2%;top:-25px}
- .sculptureCard,.sculptureCardTwo,.sculptureCardThree{position:absolute;display:flex;flex-direction:column;gap:20px;align-items:flex-start;width:190px;height:180px;padding:28px;border-radius:26px;border:1px solid var(--border);background:var(--card);box-shadow:0 24px 50px rgba(0,0,0,.09);font-size:30px;letter-spacing:-.04em;font-weight:600}.sculptureCard svg,.sculptureCardTwo svg,.sculptureCardThree svg{width:30px;height:30px;stroke-width:1.4}.sculptureCard{top:-4px;left:4%;transform:rotate(-14deg);color:var(--course-il)}.sculptureCardTwo{top:80px;right:-8px;transform:rotate(13deg);color:var(--course-asy);z-index:1}.sculptureCardThree{top:160px;left:15%;transform:rotate(-5deg);color:var(--uh-red);z-index:2}.sphere{width:74px;height:74px;position:absolute;top:24px;right:5%;border-radius:50%;background:radial-gradient(circle at 30% 25%,#ffb2ba,var(--uh-red) 65%,#74061a);box-shadow:0 15px 24px var(--uh-red-soft);z-index:3}
+ .courses{gap:40px}
+ 
+ 
  .courseGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:20px}.courseCard{grid-column:span 2;min-height:300px;padding:30px}.workspaceCard{grid-column:span 3;min-height:225px}.courseCard h3{font-size:28px}.workspaceCard h3{font-size:25px}.courseTools{margin-top:auto}.workspaceCard .courseCardTop{margin-bottom:20px}.courseCard::after{width:210px;height:210px;border-width:36px;right:-110px;top:-110px}
  .methodGrid{grid-template-columns:repeat(6,minmax(0,1fr))}.methodGrid>div{min-height:180px}.runNote{display:grid;grid-template-columns:1fr 1.4fr;padding:36px;align-items:center}.courseWorkspace{grid-template-columns:250px minmax(0,1fr);gap:48px}.sidebar{position:sticky;top:32px}.sidebar nav{display:flex;flex-direction:column;overflow:visible;padding:0;gap:6px}.sidebar nav button{background:none;border-color:transparent;white-space:normal;text-align:left}.writingLink{border-top:1px solid var(--border);padding-top:24px;margin-top:24px;width:100%}.courseHero{padding-bottom:28px}.courseHero::after{width:240px;height:240px;border-width:40px;top:-10px;right:5%}.searchSection{padding-top:40px}
  .courses [data-reveal]{animation:revealIn .65s var(--ease-ios) both;animation-delay:calc(var(--order,0)*55ms)}
@@ -173,7 +168,7 @@
 }
 @keyframes revealIn{from{opacity:.3;transform:translateY(24px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.courses *,.dialog *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.courseCard:hover,.materialCard:hover{transform:none}.dialog{animation:none}}
-@media print{.dialogBackdrop{position:absolute;background:white;display:block;backdrop-filter:none}.dialog{height:auto;max-height:none;max-width:none;overflow:visible;border-radius:0;box-shadow:none;animation:none}.reader{overflow:visible;padding:0}.dialogHeader,.readerToolbar,.readerFooter,.confidence,.sources,.flowControls,.highlights,.hypo textarea,.hypo>label,.hypo>button{display:none}.readerBody{font-size:12pt}.ruleSection,.flowNode,.modelAnswer,.drillItem{break-inside:avoid}.tableScroll{overflow:visible}.tableScroll table{min-width:0}.tableScroll td,.tableScroll th{padding:10px}.courses .storageTools,.courses .sidebar,.courses .semester,.courses .search{display:none}}
+@media print{.dialogBackdrop{position:absolute;background:white;display:block;backdrop-filter:none}.dialog{height:auto;max-height:none;max-width:none;overflow:visible;border-radius:0;box-shadow:none;animation:none}.reader{overflow:visible;padding:0}.dialogHeader,.readerToolbar,.readerFooter,.confidence,.sources,.flowControls,.highlights,.hypo textarea,.hypo>label,.hypo>button{display:none}.readerBody{font-size:12pt}.ruleSection,.flowNode,.modelAnswer,.drillItem{break-inside:avoid}.tableScroll{overflow:visible}.tableScroll table{min-width:0}.tableScroll td,.tableScroll th{padding:10px}.courses .sidebar,.courses .search{display:none}}
 .runChips{display:flex;flex-wrap:wrap;gap:8px}
 .runChips button{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 12px;border-radius:999px;background:color-mix(in srgb,var(--course-color) 13%,transparent);color:var(--course-color);font-size:15px;font-weight:600;transition:transform .2s var(--ease-ios)}
 .runChips button:active{transform:scale(.95)}

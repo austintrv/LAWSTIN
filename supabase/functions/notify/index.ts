@@ -1,6 +1,6 @@
 // Lawstin notifications and weekly email.
 // Called by: the hourly database scheduler ("tick"), the runs-table trigger ("newQuestions")
-// — both with the x-lawstin-key header — and by the app's Settings panel ("test", "weekly")
+// — both with the x-lawstin-key header — and by the app's Settings page ("test", "weekly", "evening", "nudge")
 // with Austin's sign-in token.
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { sendPush, type PushSubscription, type VapidKeys } from "../_shared/webpush.ts";
@@ -14,6 +14,9 @@ const TZ = "America/Chicago";
 const EVENING_HOUR = 18;
 const WEEKLY_DAY = "Sun";
 const WEEKLY_HOUR = 11;
+// Question nudges land at random hours inside this window (Chicago time), up to the daily limit in Settings.
+const NUDGE_FIRST_HOUR = 10;
+const NUDGE_LAST_HOUR = 21;
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
@@ -80,7 +83,7 @@ async function evening(ctx: Ctx, today: string, force: boolean) {
   const streak = e.streak();
   const parts = [due.length ? `${plural(due.length, "review")} due` : "", fresh.length ? `${fresh.length} new` : ""].filter(Boolean);
   const title = streak >= 2 ? `Keep your ${streak}-day streak` : due.length ? `${plural(due.length, "review")} due` : "Time for a round";
-  const body = parts.length ? `${parts.join(" · ")}. One round is 10 questions.` : "One round is 10 questions.";
+  const body = parts.length ? `${parts.join(" · ")}. Pick up where you left off.` : "Pick up where you left off.";
   const r = await pushToAll(db, { title, body, tag: `evening-${today}` });
   if (!force) await setSetting(db, "last_evening_push", today);
   return `Evening reminder sent to ${r.sent} of ${r.devices} devices`;
@@ -101,6 +104,36 @@ async function newQuestions(ctx: Ctx, today: string) {
   const r = await pushToAll(db, { title: plural(run.added, "new question"), body: body || String(run.note).slice(0, 120), tag: `run-${run.run_date}` });
   await setSetting(db, "last_run_push", stamp);
   return `New-question notification sent to ${r.sent} of ${r.devices} devices`;
+}
+
+/** One question to answer from the notification: a due review first, then a weak topic, then something new. */
+async function nudge(ctx: Ctx, today: string, hour: number, force: boolean) {
+  const { db, settings: s } = ctx;
+  if (!force && s.notify_nudges === "0") return "Question nudges are off";
+  const perDay = Math.max(0, Math.min(6, Number(s.nudges_per_day ?? "2") || 0));
+  const [day, sentRaw] = (s.nudge_log ?? "").split(":");
+  const sent = day === today ? Number(sentRaw) || 0 : 0;
+  if (!force) {
+    if (sent >= perDay) return "Nudge limit reached today";
+    if (hour < NUDGE_FIRST_HOUR || hour > NUDGE_LAST_HOUR || hour === EVENING_HOUR) return "Outside nudge hours";
+    // Spread the remaining nudges across the remaining eligible hours at random.
+    const hoursLeft = Array.from({ length: NUDGE_LAST_HOUR - hour + 1 }, (_, i) => hour + i).filter((h) => h !== EVENING_HOUR).length;
+    if (Math.random() >= (perDay - sent) / hoursLeft) return "No nudge this hour";
+  }
+  const state = await loadState(db, today);
+  const e = studyEngine(state, today);
+  // Skip when a question was answered in the last hour.
+  const last = Math.max(0, ...state.progress.map((p) => (p.lastAt ? Date.parse(p.lastAt) : 0)));
+  if (!force && Date.now() - last < 60 * 60 * 1000) return "Studied within the last hour";
+  const { due, fresh, ahead } = e.queues("all");
+  const weak = new Set(e.topicStats().filter((t) => t.c + t.w >= 2 && t.c / (t.c + t.w) < 0.7).map((t) => `${t.course}|${t.topic}`));
+  const pool = due.length ? due : fresh.filter((q) => weak.has(`${q.course}|${q.topic}`)).length ? fresh.filter((q) => weak.has(`${q.course}|${q.topic}`)) : fresh.length ? fresh : ahead;
+  if (!pool.length) return "No questions available";
+  const q = pool[Math.floor(Math.random() * pool.length)];
+  const prompt = q.prompt.length > 150 ? `${q.prompt.slice(0, 147).trimEnd()}…` : q.prompt;
+  const r = await pushToAll(db, { title: `Quick one · ${COURSES[q.course].short}`, body: prompt, url: `${APP_URL}#/q/${encodeURIComponent(q.id)}`, tag: `nudge-${q.id}` });
+  if (!force) await setSetting(db, "nudge_log", `${today}:${sent + 1}`);
+  return `Question nudge sent to ${r.sent} of ${r.devices} devices`;
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -234,6 +267,7 @@ Deno.serve(async (req) => {
       const out: string[] = [];
       if (hour === EVENING_HOUR) out.push(await evening(ctx, today, false));
       if (weekday === WEEKLY_DAY && hour === WEEKLY_HOUR) out.push(await weekly(ctx, today, false));
+      out.push(await nudge(ctx, today, hour, false));
       result = out.join("; ") || `Nothing scheduled at ${hour}:00`;
     } else if (scheduler && job === "newQuestions") {
       result = await newQuestions(ctx, today);
@@ -243,6 +277,8 @@ Deno.serve(async (req) => {
       result = r.sent ? `Sent to ${plural(r.sent, "device")}` : "The notification didn’t go through";
     } else if (!scheduler && job === "weekly") {
       result = await weekly(ctx, today, true);
+    } else if (!scheduler && job === "nudge") {
+      result = await nudge(ctx, today, chicagoNow().hour, true);
     } else if (!scheduler && job === "evening") {
       result = await evening(ctx, today, true);
     } else {

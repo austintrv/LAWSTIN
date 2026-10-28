@@ -18,8 +18,7 @@
 .x { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--fill); color: var(--muted-foreground); display: grid; place-items: center; flex-shrink: 0; cursor: pointer; }
 .prog { flex: 1; display: flex; gap: 4px; }
 .prog i { flex: 1; height: 5px; border-radius: 3px; background: var(--fill); transition: background 0.3s; }
-.prog i.ok { background: var(--success); }
-.prog i.bad { background: var(--error); }
+
 .prog i.cur { background: var(--faint-foreground); }
 .prog i.done { background: var(--foreground); opacity: 0.55; }
 .count { font-size: 13px; font-weight: 600; color: var(--muted-foreground); min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }

@@ -3,9 +3,12 @@ import { ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame
 const Courses = lazy(() => import("../components/Courses").then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
 import { Skeleton } from "../components/Skeleton";
-import { QuizSession, type QuizMode } from "../components/QuizSession";
-import { SettingsPanel } from "../components/SettingsPanel";
-import { WrittenPractice } from "../components/WrittenPractice";
+import type { QuizMode } from "../components/QuizSession";
+// Screens opened from the Study tab load on demand and are warmed in the background after first paint.
+const loadQuiz = () => import("../components/QuizSession");
+const QuizSession = lazy(() => loadQuiz().then((m) => ({ default: m.QuizSession })));
+const SettingsPanel = lazy(() => import("../components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })));
+const WrittenPractice = lazy(() => import("../components/WrittenPractice").then((m) => ({ default: m.WrittenPractice })));
 import { useLawstinData } from "../helpers/useLawstinData";
 import { useLawstinAi } from "../helpers/useLawstinAi";
 import { switchToAutoMode } from "../helpers/themeMode";
@@ -13,7 +16,8 @@ import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
-import { SCHOOL_COURSES } from "../helpers/studyMaterials";
+import { MATERIAL_LABELS, SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
+import { useStudyLibrary } from "../helpers/useStudyLibrary";
 import { dueLabel } from "../components/TaskList";
 import { COURSES, COURSE_KEYS, DAILY_GOAL, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
@@ -65,6 +69,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
   };
 
   useEffect(() => { switchToAutoMode(); }, []);
+  useEffect(() => { const t = setTimeout(() => { void loadQuiz(); }, 1500); return () => clearTimeout(t); }, []);
   useEffect(() => { if (tab === "courses") setCoursesVisited(true); }, [tab]);
   useEffect(() => {
     const sync = () => setTab(tabFromHash());
@@ -243,14 +248,14 @@ export default function LawstinApp({ userId }: { userId: string }) {
 
       {settingsOpen && (
         <BottomSheet onClose={() => setSettingsOpen(false)} title="Settings">
-          <SettingsPanel />
+          <Suspense fallback={null}><SettingsPanel /></Suspense>
         </BottomSheet>
       )}
 
-      {writing && <WrittenPractice onClose={() => setWriting(false)} />}
+      {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(false)} /></Suspense>}
 
       {session && (
-        <QuizSession
+        <Suspense fallback={null}><QuizSession
           key={session.key}
           items={session.items}
           mode={session.mode}
@@ -264,7 +269,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
           onAnother={() => { const items = session.source(engineFor()); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now() }); }}
           onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: session.source })}
           onClose={() => setSession(null)}
-        />
+        /></Suspense>
       )}
     </div>
   );
@@ -480,19 +485,6 @@ function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
             <button className={styles.updGo} onClick={() => onStudy(added, null)}>Study</button>
           )}
         </div>
-        <div className={styles.updRows}>
-          {rows.map((r) => {
-            const c = COURSES[r.k];
-            return (
-              <button key={r.k} className={styles.updRow} onClick={() => onStudy(r.qs, r.k)}>
-                <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
-                <span className={styles.updName}>{c.short}</span>
-                <span className={styles.updCount}>{r.left === 0 ? <><Check size={13} strokeWidth={3} /> Done</> : `${r.left} of ${r.n}`}</span>
-                <ChevronRight size={16} className={styles.chev} />
-              </button>
-            );
-          })}
-        </div>
         <div className={styles.updTopics}><TopicBubbles bubbles={topicBubbles(e, run, added)} onStudy={onStudy} /></div>
       </div>
     </section>
@@ -567,10 +559,12 @@ function ActivityView({ e, state, onStudy }: { e: Engine; state: NonNullable<Ret
   const max = Math.max(10, ...days.map((d) => d.answered));
   const studied = [...state.days].filter((d) => d.answered).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
   const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, o);
+  const library = useStudyLibrary();
+  const total = days.reduce((a, d) => a + d.answered, 0);
   return (
     <>
-      <section className={styles.sec}>
-        <div className={styles.secH}><h2>Last 14 days</h2><small>{days.reduce((a, d) => a + d.answered, 0)} answers</small></div>
+      {total > 0 && <section className={styles.sec}>
+        <div className={styles.secH}><h2>Last 14 days</h2><small>{total} answers</small></div>
         <div className={`${styles.card} ${styles.bars}`}>
           <div className={styles.barsRow}>
             {days.map((d) => (
@@ -583,10 +577,10 @@ function ActivityView({ e, state, onStudy }: { e: Engine; state: NonNullable<Ret
           <div className={styles.barsX}>{days.map((d, i) => <span key={d.date}>{i % 2 ? "" : Number(d.date.slice(8))}</span>)}</div>
           <div className={styles.legend}><span><i style={{ background: "var(--success)" }} />Correct</span><span><i style={{ background: "var(--error)", opacity: 0.75 }} />Missed</span></div>
         </div>
-      </section>
-      <section className={styles.sec}>
+      </section>}
+      {studied.length > 0 && <section className={styles.sec}>
         <div className={styles.secH}><h2>Days you studied</h2></div>
-        {studied.length ? (
+        {(
           <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
             {studied.map((d) => (
               <div key={d.date} className={styles.row}>
@@ -594,9 +588,9 @@ function ActivityView({ e, state, onStudy }: { e: Engine; state: NonNullable<Ret
               </div>
             ))}
           </div>
-        ) : <div className={`${styles.card} ${styles.empty}`}><p>Your study days show up here after your first round.</p></div>}
-      </section>
-      <UpdateFeed e={e} runs={state.runs.slice(0, 20)} onStudy={onStudy} />
+        )}
+      </section>}
+      <UpdateFeed e={e} runs={state.runs.slice(0, 20)} studyRuns={library.data?.runs.slice(0, 20) ?? []} materials={library.data?.materials ?? []} onStudy={onStudy} />
     </>
   );
 }
@@ -611,28 +605,36 @@ function whenLabel(date: string, today: string) {
 }
 
 /** Updates shown as a notification stack: the newest on top, earlier ones tucked behind until tapped. */
-function UpdateFeed({ e, runs, onStudy }: { e: Engine; runs: Run[]; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+type FeedEntry = { key: string; date: string; node: (e: Engine) => React.ReactNode };
+
+/** Question updates and study-material updates in one notification feed, newest first. */
+function UpdateFeed({ e, runs: qRuns, studyRuns, materials, onStudy }: { e: Engine; runs: Run[]; studyRuns: StudyRun[]; materials: StudyMaterial[]; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
   const [open, setOpen] = useState(false);
+  const runs: FeedEntry[] = [
+    ...qRuns.map((r) => ({ key: `q-${r.date}`, date: r.date, node: (en: Engine) => <UpdateNote e={en} run={r} onStudy={onStudy} /> })),
+    ...studyRuns.map((r) => ({ key: `s-${r.id}`, date: r.run_date, node: (en: Engine) => <StudyNote today={en.today} run={r} materials={materials} /> })),
+  ].sort((a, b) => b.date.localeCompare(a.date) || a.key.localeCompare(b.key));
   const earlier = runs.length - 1;
+  if (!runs.length) return null;
   return (
     <section className={styles.sec}>
       <div className={styles.secH}>
         <h2>Updates</h2>
         {earlier > 0 && <button className={styles.feedToggle} onClick={() => { haptic(); setOpen((v) => !v); }}>{open ? "Show less" : `${earlier} earlier`}</button>}
       </div>
-      {runs.length ? (
+      {(
         <div className={`${styles.feed} ${open ? styles.feedOpen : ""}`}>
-          <UpdateNote e={e} run={runs[0]} onStudy={onStudy} />
+          {runs[0].node(e)}
           {!open && earlier > 0 && (
             <button className={styles.feedPeek} aria-label={`Show ${earlier} earlier updates`} onClick={() => { haptic(); setOpen(true); }}>
               <i /><i />
             </button>
           )}
           {open && runs.slice(1).map((r, i) => (
-            <div key={r.date} className={styles.feedIn} style={{ animationDelay: `${i * 45}ms` }}><UpdateNote e={e} run={r} onStudy={onStudy} /></div>
+            <div key={r.key} className={styles.feedIn} style={{ animationDelay: `${i * 45}ms` }}>{r.node(e)}</div>
           ))}
         </div>
-      ) : <div className={`${styles.card} ${styles.empty}`}><p>New questions arrive Tuesday, Thursday, and Saturday mornings.</p></div>}
+      )}
     </section>
   );
 }
@@ -689,6 +691,41 @@ function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
         <span>{left === 0 ? "All studied" : left === run.added ? "Tap a topic to start" : `${left} left to study`}</span>
       </button>
       <TopicBubbles bubbles={bubbles} onStudy={onStudy} />
+    </div>
+  );
+}
+
+function StudyNote({ today, run, materials }: { today: string; run: StudyRun; materials: StudyMaterial[] }) {
+  const added = materials.filter((m) => m.batch === run.run_date);
+  const groups = new Map<string, { course: CourseCode; label: string; n: number }>();
+  for (const m of added) {
+    const key = `${m.course}|${m.topic}`;
+    const g = groups.get(key) ?? { course: m.course, label: m.topic, n: 0 };
+    g.n++; groups.set(key, g);
+  }
+  let bubbles = [...groups.values()].sort((a, b) => COURSE_KEYS.indexOf(a.course) - COURSE_KEYS.indexOf(b.course) || b.n - a.n);
+  if (!bubbles.length) bubbles = (Object.entries(run.by_course) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k]).map(([k, n]) => ({ course: k, label: COURSES[k].short, n }));
+  const kinds = Object.entries(run.by_kind).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => `${n} ${(MATERIAL_LABELS[k as keyof typeof MATERIAL_LABELS] ?? k).toLowerCase()}`).join(" · ");
+  const open = (course?: CourseCode) => { haptic(); window.location.hash = course ? `/courses/${course}` : "/courses"; };
+  return (
+    <div className={`${styles.card} ${styles.note}`}>
+      <div className={styles.noteTop}>
+        <img src="./icon-192.png" alt="" className={styles.noteIcon} />
+        <span className={styles.noteApp}>Lawstin</span>
+        <span className={styles.noteWhen}>{whenLabel(run.run_date, today)}</span>
+      </div>
+      <button className={styles.noteMain} onClick={() => open()}>
+        <b>{run.added} new study material{run.added === 1 ? "" : "s"}</b>
+        <span>{kinds}</span>
+      </button>
+      <div className={styles.bubbles}>
+        {bubbles.map((b) => (
+          <button key={`${b.course}|${b.label}`} className={styles.bubble} style={{ "--c": COURSES[b.course].color } as React.CSSProperties} onClick={() => open(b.course)}>
+            <i /><span>{b.label}</span><small>{b.n}</small>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -23,7 +23,8 @@ self.addEventListener("notificationclick", (event) => {
   const url = (event.notification.data && event.notification.data.url) || self.registration.scope;
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) if (c.url.startsWith(self.registration.scope) && "focus" in c) return c.focus();
+      // An open app gets the link (for example a question to answer) and comes to the front.
+      for (const c of list) if (c.url.startsWith(self.registration.scope) && "focus" in c) { c.postMessage({ type: "open", url }); return c.focus(); }
       return self.clients.openWindow(url);
     }),
   );
