@@ -1,0 +1,1817 @@
+{
+  "repository": "austintrv/fall-review",
+  "commit": "2b12a883dddd5fb6bc61cabd5235b0cb756bf4b5",
+  "status": "Source verification required before any item reaches Lawstin",
+  "features": [
+    "Structured rule review",
+    "Section checkoffs",
+    "Confidence ratings",
+    "Highlights",
+    "Reading size controls",
+    "Print",
+    "Flowcharts",
+    "Layered maps",
+    "Comparisons",
+    "Active recall flashcards",
+    "Spaced review",
+    "Mixed sessions",
+    "Sorting drills",
+    "Written hypotheticals",
+    "Cross-course search",
+    "Study plan",
+    "Progress export"
+  ],
+  "courses": [
+    {
+      "course": "il",
+      "source_file": "intl-law.js",
+      "counts": {
+        "units": 9,
+        "maps": 7,
+        "cards": 72,
+        "drills": 3,
+        "hypos": 2
+      },
+      "items": [
+        {
+          "kind": "units",
+          "index": 0,
+          "title": "Exam Architecture",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 1,
+          "title": "Intro & Theories",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 2,
+          "title": "Sources & the UN",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 3,
+          "title": "ICJ & Adjudication",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 4,
+          "title": "Law of Treaties",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 5,
+          "title": "Customary IL",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 6,
+          "title": "General Principles & Jus Cogens",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 7,
+          "title": "Legal Personality",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 8,
+          "title": "Nationality",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 0,
+          "title": "The Layer Cake",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 1,
+          "title": "Does This Rule Bind State X?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 2,
+          "title": "Contentious Jurisdiction",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 3,
+          "title": "Advisory Opinions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 4,
+          "title": "Treaty Life Cycle",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 5,
+          "title": "Binding or Not?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 6,
+          "title": "Jus Cogens vs. Custom",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 0,
+          "title": "Art. 38(1)(a)–(d)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 1,
+          "title": "ICJ Statute art. 59",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 2,
+          "title": "Lotus principle",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 3,
+          "title": "UNGA resolution: law-making indicia",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 4,
+          "title": "Why UNSC resolutions bind",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 5,
+          "title": "Five routes to contentious jurisdiction",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 6,
+          "title": "Art. 36(6) and art. 41",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 7,
+          "title": "Advisory opinion: two-part inquiry",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 8,
+          "title": "Finding the ICJ holding",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 9,
+          "title": "VCLT art. 2(1)(a)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 10,
+          "title": "Two screens for a treaty",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 11,
+          "title": "VCLT arts. 34–36",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 12,
+          "title": "VCLT art. 18",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 13,
+          "title": "Art. 19 reservation bars",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 14,
+          "title": "Material breach (art. 60(3))",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 15,
+          "title": "Rebus sic stantibus (art. 62)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 16,
+          "title": "Void vs. voidable",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 17,
+          "title": "VCLT art. 31(1)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 18,
+          "title": "VCLT art. 32 trigger",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 19,
+          "title": "CIL elements",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 20,
+          "title": "Persistent objector requirements",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 21,
+          "title": "Codification / crystallization / generation",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 22,
+          "title": "North Sea holding",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 23,
+          "title": "VCLT art. 53",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 24,
+          "title": "ILC Concl. 6",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 25,
+          "title": "Serious breach of jus cogens: third states",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 26,
+          "title": "Montevideo",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 27,
+          "title": "Declaratory vs. constitutive",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 28,
+          "title": "IO personality: four questions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 29,
+          "title": "Nottebohm",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 30,
+          "title": "Barcelona Traction",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 31,
+          "title": "Answer architecture",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 32,
+          "title": "The three blocks",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 33,
+          "title": "Four mindset shifts",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 34,
+          "title": "Wind the analysis back",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 35,
+          "title": "'Judicial relief' vs. 'obligations of other states'",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 36,
+          "title": "Natural law",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 37,
+          "title": "Legal positivism",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 38,
+          "title": "Is IL law? (Austin, Kelsen, Hart)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 39,
+          "title": "How IL is enforced",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 40,
+          "title": "TWAIL and the New Stream",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 41,
+          "title": "GA powers (Charter arts. 10, 14)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 42,
+          "title": "SC voting",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 43,
+          "title": "Art. 38(2): ex aequo et bono",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 44,
+          "title": "Optional clause (art. 36(2))",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 45,
+          "title": "WHO request refused",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 46,
+          "title": "Nuclear Weapons AO holding (para. 2 E)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 47,
+          "title": "ICJ and precedent",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 48,
+          "title": "Art. 27",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 49,
+          "title": "Withdrawal from a silent treaty (art. 56)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 50,
+          "title": "Registration (Charter art. 102)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 51,
+          "title": "Interpretive declaration vs. reservation",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 52,
+          "title": "Evolutive interpretation (Navigational Rights)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 53,
+          "title": "Usage",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 54,
+          "title": "ILC Concl. 8 (practice)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 55,
+          "title": "Particular (local) custom",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 56,
+          "title": "Silence as acceptance",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 57,
+          "title": "Concl. 4: two criteria",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 58,
+          "title": "Art. 53 vs. art. 64",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 59,
+          "title": "The ILC list of peremptory norms",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 60,
+          "title": "Peremptory norms: no defenses, no objectors",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 61,
+          "title": "Peremptory norms: limits",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 62,
+          "title": "Subject of IL: three elements",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 63,
+          "title": "Independence (Montevideo government criterion)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 64,
+          "title": "Implied recognition",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 65,
+          "title": "Tinoco Concessions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 66,
+          "title": "De jure vs. de facto recognition",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 67,
+          "title": "Why nationality matters",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 68,
+          "title": "Nationality baseline rule",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 69,
+          "title": "Jus soli and jus sanguinis",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 70,
+          "title": "Barcelona Traction exceptions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 71,
+          "title": "State-controlled corporation",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 0,
+          "title": "Binding or Not?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 1,
+          "title": "Void or Voidable?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 2,
+          "title": "Which CIL Route?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "hypos",
+          "index": 0,
+          "title": "The Fishing Treaty",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "hypos",
+          "index": 1,
+          "title": "The Declaration",
+          "status": "needs_source_verification"
+        }
+      ]
+    },
+    {
+      "course": "asy",
+      "source_file": "asylum.js",
+      "counts": {
+        "units": 8,
+        "maps": 7,
+        "cards": 76,
+        "drills": 4,
+        "hypos": 2
+      },
+      "items": [
+        {
+          "kind": "units",
+          "index": 0,
+          "title": "Origins of Refugee Law",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 1,
+          "title": "Intl Norms & U.S. Law",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 2,
+          "title": "Asylum vs. Withholding",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 3,
+          "title": "Burden & Presumptions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 4,
+          "title": "Process & Rights",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 5,
+          "title": "Defining Persecution",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 6,
+          "title": "The Nexus Requirement",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 7,
+          "title": "Convention Against Torture",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 0,
+          "title": "Standards of Proof Ladder",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 1,
+          "title": "Asylum vs. Withholding vs. CAT",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 2,
+          "title": "CAT Claim",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 3,
+          "title": "Building the Claim",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 4,
+          "title": "Relocation After Past Persecution",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 5,
+          "title": "Routes Into Protection",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 6,
+          "title": "Review Standards",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 0,
+          "title": "CAT torture definition",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 1,
+          "title": "CAT standard",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 2,
+          "title": "CAT withholding vs. deferral",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 3,
+          "title": "Willful acceptance vs. willful blindness",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 4,
+          "title": "Specific intent (CAT)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 5,
+          "title": "Kamalthas v. INS",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 6,
+          "title": "INA § 101(a)(42)(A)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 7,
+          "title": "Five protected grounds",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 8,
+          "title": "Asylum standard",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 9,
+          "title": "Withholding standard",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 10,
+          "title": "Credible fear",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 11,
+          "title": "Reasonable fear",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 12,
+          "title": "Article 33 (non-refoulement)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 13,
+          "title": "Last-in-time rule",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 14,
+          "title": "Charming Betsy canon",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 15,
+          "title": "Pattern or practice",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 16,
+          "title": "Past persecution rebuttal",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 17,
+          "title": "Humanitarian asylum",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 18,
+          "title": "Discretion standard (Matter of Pula)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 19,
+          "title": "USRAP priorities",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 20,
+          "title": "Mathews v. Eldridge factors",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 21,
+          "title": "Fifth Circuit due process",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 22,
+          "title": "Lozada requirements",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 23,
+          "title": "Substantial evidence",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 24,
+          "title": "Bond burden",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 25,
+          "title": "§ 236(c) vs. § 236(a)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 26,
+          "title": "Work authorization clock",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 27,
+          "title": "Elements of a persecution claim",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 28,
+          "title": "UNHCR Handbook ¶ 54",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 29,
+          "title": "Prosecution vs. persecution factors",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 30,
+          "title": "Punitive intent and persecution",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 31,
+          "title": "Matter of A-B- (reinstated 2025)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 32,
+          "title": "Economic persecution",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 33,
+          "title": "Asylum vs. non-refoulement",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 34,
+          "title": "Three bodies of international law",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 35,
+          "title": "Three perspectives on the refugee definition (Hathaway)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 36,
+          "title": "Durable solutions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 37,
+          "title": "Crystallization of the regime (1921 to 1951)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 38,
+          "title": "Right to seek vs. right to receive asylum",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 39,
+          "title": "1967 Protocol",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 40,
+          "title": "Article 34",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 41,
+          "title": "Sale v. Haitian Centers Council (1993)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 42,
+          "title": "ABC settlement rule",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 43,
+          "title": "Temporary Protected Status (INA § 244)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 44,
+          "title": "INS v. Stevic (1984)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 45,
+          "title": "INS v. Cardoza-Fonseca (1987)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 46,
+          "title": "Matter of Mogharrabi (BIA 1987)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 47,
+          "title": "Reasonable probability",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 48,
+          "title": "Asylum vs. withholding: what each gives",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 49,
+          "title": "Past persecution presumption",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 50,
+          "title": "Internal relocation",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 51,
+          "title": "Disfavored-group approach (Ninth Circuit)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 52,
+          "title": "Standard of proof vs. burden of persuasion",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 53,
+          "title": "DHS v. Thuraissigiam (2020)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 54,
+          "title": "Flores settlement order of release",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 55,
+          "title": "Arriving aliens and bond (Matter of M-S-)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 56,
+          "title": "Appointed counsel: who gets it",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 57,
+          "title": "BIA standards of review",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 58,
+          "title": "Kovac v. INS (9th Cir. 1969)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 59,
+          "title": "Matter of Chen (BIA 1989)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 60,
+          "title": "Korablina v. INS (9th Cir. 1998)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 61,
+          "title": "Unable or unwilling (UNHCR ¶ 65)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 62,
+          "title": "Denying vs. divesting citizenship",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 63,
+          "title": "Nexus",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 64,
+          "title": "Motive vs. causation readings",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 65,
+          "title": "INS v. Elias-Zacarias (1992)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 66,
+          "title": "Mixed motives (Matter of S-P-)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 67,
+          "title": "At least one central reason",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 68,
+          "title": "Nexus standard for withholding",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 69,
+          "title": "Animus",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 70,
+          "title": "Hernandez-Ortiz presumption",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 71,
+          "title": "Three elements of a CAT claim",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 72,
+          "title": "Lawful sanctions and the death penalty",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 73,
+          "title": "Prison conditions under CAT",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 74,
+          "title": "Rogue officer (Matter of O-F-A-S-)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 75,
+          "title": "Mental pain under 8 C.F.R. § 208.18",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 0,
+          "title": "Asylum, Withholding, or Both?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 1,
+          "title": "Persecution or Not?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 2,
+          "title": "Asylum, Withholding, or CAT?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 3,
+          "title": "Who Bears the Burden?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "hypos",
+          "index": 0,
+          "title": "The Shopkeeper",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "hypos",
+          "index": 1,
+          "title": "The Border Screen",
+          "status": "needs_source_verification"
+        }
+      ]
+    },
+    {
+      "course": "pr",
+      "source_file": "pro-res.js",
+      "counts": {
+        "units": 8,
+        "maps": 6,
+        "cards": 83,
+        "drills": 3,
+        "hypos": 2
+      },
+      "items": [
+        {
+          "kind": "units",
+          "index": 0,
+          "title": "Bar Admission & Sources",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 1,
+          "title": "UPL & Multijurisdictional Practice",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 2,
+          "title": "Forming & Ending Representation",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 3,
+          "title": "Competence & Liability",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 4,
+          "title": "Allocating Authority",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 5,
+          "title": "Advertising & Solicitation",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 6,
+          "title": "Fees & Client Property",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "units",
+          "index": 7,
+          "title": "Confidentiality & Privilege",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 0,
+          "title": "Rule 5.5: Can I Practice Here?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 1,
+          "title": "Can I Withdraw?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 2,
+          "title": "Is It Privileged?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 3,
+          "title": "Solicitation Check · Rule 7.3",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 4,
+          "title": "The Three Pillars",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "maps",
+          "index": 5,
+          "title": "Discipline vs. Malpractice vs. IAC",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 0,
+          "title": "Rule 8.1",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 1,
+          "title": "Rule 8.1 cmt. [1]",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 2,
+          "title": "Rule 8.1 cmt. [2]",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 3,
+          "title": "Fraud elements (5)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 4,
+          "title": "Binding vs. persuasive sources",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 5,
+          "title": "Inherent power (Restatement § 1)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 6,
+          "title": "Dominant conception (Luban)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 7,
+          "title": "Brumbaugh test",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 8,
+          "title": "Forms seller line (Brumbaugh)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 9,
+          "title": "Reliance (Brumbaugh)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 10,
+          "title": "Birbrower",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 11,
+          "title": "Rule 5.5(b)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 12,
+          "title": "Rule 5.5(c) (temporary practice)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 13,
+          "title": "Rule 5.5(d)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 14,
+          "title": "Rule 8.5(b) choice of law",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 15,
+          "title": "Rule 5.4(a) exceptions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 16,
+          "title": "Rule 5.7",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 17,
+          "title": "Tex. Gov't Code § 81.101",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 18,
+          "title": "Restatement § 14",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 19,
+          "title": "Morris v. Margulis",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 20,
+          "title": "Rule 6.2 good cause",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 21,
+          "title": "Rule 3.1",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 22,
+          "title": "Rule 1.16(a) mandatory withdrawal",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 23,
+          "title": "Rule 1.16(b)(5)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 24,
+          "title": "Rule 1.16(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 25,
+          "title": "Rule 1.16(d)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 26,
+          "title": "Whiting v. Lacara",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 27,
+          "title": "Rule 1.13(a)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 28,
+          "title": "Rule 1.1",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 29,
+          "title": "Rule 1.1 cmt. [3] (emergency)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 30,
+          "title": "Rule 1.3 and nonpayment",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 31,
+          "title": "Rule 5.1(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 32,
+          "title": "Malpractice elements (Restatement § 48)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 33,
+          "title": "Strickland",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 34,
+          "title": "Restatement § 53(d) vs. majority rule",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 35,
+          "title": "Rule 1.8(h)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 36,
+          "title": "Lerner v. Laufer",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 37,
+          "title": "Rompilla v. Beard",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 38,
+          "title": "Rule 1.2(a): client decides",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 39,
+          "title": "Rule 1.2 cmt. [2]: who defers",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 40,
+          "title": "McCoy v. Louisiana",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 41,
+          "title": "Florida v. Nixon",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 42,
+          "title": "Jones v. Barnes",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 43,
+          "title": "Boyd v. Brett-Major",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 44,
+          "title": "Rule 1.2(d)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 45,
+          "title": "Rule 2.1",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 46,
+          "title": "Rule 1.14(b)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 47,
+          "title": "Bates v. State Bar of Arizona",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 48,
+          "title": "Rule 7.1",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 49,
+          "title": "Rule 7.2(b)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 50,
+          "title": "Rule 7.2(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 51,
+          "title": "Rule 7.2(d)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 52,
+          "title": "Rule 7.3(b) exceptions",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 53,
+          "title": "Rule 7.3(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 54,
+          "title": "Ohralik vs. Primus",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 55,
+          "title": "Rule 1.5(a)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 56,
+          "title": "Rule 1.5(b)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 57,
+          "title": "Contingent fee writing (1.5(c))",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 58,
+          "title": "Rule 1.5(d)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 59,
+          "title": "Rule 1.5(e)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 60,
+          "title": "Rule 1.8(a)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 61,
+          "title": "Rule 1.8(e)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 62,
+          "title": "Rule 1.8(i)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 63,
+          "title": "Rule 1.15(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 64,
+          "title": "Rule 1.15(e)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 65,
+          "title": "Perdue v. Kenny A.",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 66,
+          "title": "Buckhannon (prevailing party)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 67,
+          "title": "Evans v. Jeff D.",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 68,
+          "title": "Rule 1.6(b)(1)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 69,
+          "title": "Privilege elements (Restatement § 68)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 70,
+          "title": "Upjohn",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 71,
+          "title": "Upjohn warning",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 72,
+          "title": "Kovel doctrine",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 73,
+          "title": "Westinghouse (no selective waiver)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 74,
+          "title": "FRE 502(b)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 75,
+          "title": "Rule 4.4(b)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 76,
+          "title": "Crime-fraud exception (§ 82)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 77,
+          "title": "Work product (Marten test)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 78,
+          "title": "Work product waiver (§ 91) vs. privilege waiver (§ 79)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 79,
+          "title": "Rule 1.6(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 80,
+          "title": "Rule 1.18(d)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 81,
+          "title": "Rule 1.9(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "cards",
+          "index": 82,
+          "title": "Rule 3.3(c)",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 0,
+          "title": "Mandatory or Permissive Withdrawal?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 1,
+          "title": "Privilege, Work Product, or 1.6 Only?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "drills",
+          "index": 2,
+          "title": "Solicitation: OK or Not?",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "hypos",
+          "index": 0,
+          "title": "The Leaked Memo",
+          "status": "needs_source_verification"
+        },
+        {
+          "kind": "hypos",
+          "index": 1,
+          "title": "Moving Money",
+          "status": "needs_source_verification"
+        }
+      ]
+    }
+  ]
+}

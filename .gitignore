@@ -1,3 +1,9 @@
 node_modules
 dist
 deno.lock
+
+# Private source extracts, question history, and unpublished study drafts
+.study-work/
+*.batch.json
+*.brief.json
+src/data/study-materials.json.tmp

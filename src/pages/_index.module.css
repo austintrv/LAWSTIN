@@ -159,7 +159,8 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   border-top: 0.5px solid var(--border);
   touch-action: manipulation;
 }
-.tabs { max-width: 440px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); }
+.tabs { max-width: 520px; margin: 0 auto; display: grid; grid-template-columns: repeat(4, 1fr); }
+.wordmark { display: none; }
 .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 58px; padding: 6px 0 4px; border: 0; background: none; font: inherit; color: var(--faint-foreground); cursor: pointer; touch-action: manipulation; transition: color 0.2s; }
 .tabIcon { display: grid; place-items: center; width: 60px; height: 32px; border-radius: var(--radius-full); transition: background 0.25s var(--ease-ios), transform 0.25s var(--ease-ios); }
 .tabLabel { font-size: 11.5px; font-weight: 600; letter-spacing: 0.01em; }
@@ -244,3 +245,42 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 .bubble small { font-size: 12px; font-weight: 700; opacity: 0.7; font-variant-numeric: tabular-nums; }
 .bubbleDone { opacity: 0.55; }
 @media (prefers-reduced-motion: reduce) { .note, .feedIn { animation: none; } .bubble:active { transform: none; } }
+
+@media (min-width: 1000px) {
+  .panes { top: 76px; }
+  .shell { max-width: 1240px; padding: 40px 48px 80px; gap: 36px; }
+  .head { padding: 0; }
+  .headRow { min-height: 44px; }
+  .eyebrow { font-size: 16px; letter-spacing: 0; text-transform: none; }
+  .title { font-size: 44px; letter-spacing: -.04em; }
+  .greet { font-size: 64px; }
+  .avatar { width: 44px; height: 44px; font-size: 18px; }
+  .navbar { display: none; }
+  .tabbar { top: 0; bottom: auto; height: 76px; padding: 0 max(48px,calc((100vw - 1144px)/2)); display: flex; align-items: center; justify-content: space-between; gap: 32px; border-top: 0; border-bottom: 1px solid var(--border); }
+  .wordmark { display: flex; align-items: center; gap: 18px; font-size: 27px; font-weight: 700; letter-spacing: -.05em; color: var(--uh-red); min-height: 48px; }
+  .wordmark span { font-size: 16px; font-weight: 400; color: var(--muted-foreground); letter-spacing: 0; border-left: 1px solid var(--border); padding-left: 18px; }
+  .tabs { display: flex; max-width: none; margin: 0; gap: 10px; }
+  .tab { flex-direction: row; gap: 9px; min-height: 44px; padding: 10px 16px; border-radius: 12px; color: var(--muted-foreground); }
+  .tabOn { color: var(--uh-red); background: var(--uh-red-soft); }
+  .tabIcon { width: auto; height: auto; }
+  .tabOn .tabIcon { background: none; }
+  .tabLabel { font-size: 16px; }
+  .pane[data-pane="study"] .shell { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); align-items: start; }
+  .pane[data-pane="study"] .head { grid-column: 1/-1; }
+  .pane[data-pane="study"] .hero { padding: 32px; min-height: 270px; justify-content: space-between; }
+  .pane[data-pane="study"] .tiles { height: 270px; grid-template-columns: 1fr; }
+  .pane[data-pane="study"] .tile { flex-direction: row; align-items: center; justify-content: space-between; padding: 16px 24px; }
+  .pane[data-pane="study"] .streakTop { min-width: 90px; }
+  .pane[data-pane="study"] .goalTile>div { flex-direction: row; align-items: center; gap: 16px; }
+  .pane[data-pane="progress"] .shell, .pane[data-pane="activity"] .shell { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
+  .pane[data-pane="progress"] .head, .pane[data-pane="progress"] .tiles, .pane[data-pane="activity"] .head, .pane[data-pane="activity"] section:first-of-type { grid-column: 1/-1; }
+  .split b { font-size: 40px; }
+  .split span, .tile span, .rowSub, .secH small, .updHead span, .updCount, .updNote, .ruleSub, .ruleItem small { font-size: 16px; }
+  .seg button { font-size: 16px; min-height: 44px; }
+  .row { min-height: 76px; padding: 20px; }
+  .rowTitle { font-size: 18px; }
+  .secH h2 { font-size: 24px; }
+  .scrim { align-items: center; backdrop-filter: blur(8px); }
+  .bsheet { border-radius: 24px; }
+}
+@media print { .tabbar,.navbar,.head { display: none; } .app,.panes,.paneOn { position: static; overflow: visible; } .pane:not(.paneOn) { display: none; } body:has([role="dialog"]) .app { display: none; } }

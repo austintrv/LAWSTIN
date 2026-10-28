@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles } from "lucide-react";
+import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
+const Courses = lazy(() => import("../components/Courses").then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
 import { Skeleton } from "../components/Skeleton";
 import { QuizSession, type QuizMode } from "../components/QuizSession";
@@ -15,7 +16,12 @@ import { COURSES, COURSE_KEYS, DAILY_GOAL, ROUND_SIZE, studyEngine, makeGreeting
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import styles from "./_index.module.css";
 
-type Tab = "progress" | "study" | "activity";
+type Tab = "progress" | "study" | "activity" | "courses";
+const TABS = ["study", "courses", "progress", "activity"] as const;
+const tabFromHash = (): Tab => {
+  const t = window.location.hash.split("/")[1];
+  return TABS.includes(t as Tab) ? t as Tab : "study";
+};
 const NAME = "Austin";
 
 const readRecent = (): string[] => {
@@ -26,12 +32,13 @@ const saveRecent = (g: string) => {
 };
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
-export default function LawstinApp() {
+export default function LawstinApp({ userId }: { userId: string }) {
   const { query, answer, mark } = useLawstinData();
   const { harder } = useLawstinAi();
   const state = query.data;
   const e = useMemo(() => studyEngine(state), [state]);
-  const [tab, setTab] = useState<Tab>("study");
+  const [tab, setTab] = useState<Tab>(tabFromHash);
+  const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>("all");
   const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: () => RoundItem[] } | null>(null);
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
@@ -44,16 +51,28 @@ export default function LawstinApp() {
     return h < 5 || h >= 22 ? `Still up, ${NAME}?` : h < 12 ? `Good morning, ${NAME}` : h < 17 ? `Good afternoon, ${NAME}` : `Good evening, ${NAME}`;
   });
   const greeted = useRef(false);
-  const paneRefs = useRef<Record<Tab, HTMLDivElement | null>>({ progress: null, study: null, activity: null });
+  const paneRefs = useRef<Record<Tab, HTMLDivElement | null>>({ progress: null, study: null, activity: null, courses: null });
   const hiddenAt = useRef(0);
   const prevToday = useRef<number | null>(null);
-  const [compact, setCompact] = useState<Record<Tab, boolean>>({ progress: false, study: false, activity: false });
+  const [compact, setCompact] = useState<Record<Tab, boolean>>({ progress: false, study: false, activity: false, courses: false });
   const onPaneScroll = (k: Tab, el: HTMLDivElement) => {
     const on = el.scrollTop > 52;
     setCompact((c) => (c[k] === on ? c : { ...c, [k]: on }));
   };
 
   useEffect(() => { switchToAutoMode(); }, []);
+  useEffect(() => { if (tab === "courses") setCoursesVisited(true); }, [tab]);
+  useEffect(() => {
+    const sync = () => setTab(tabFromHash());
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
+
+  const navigate = (next: Tab) => {
+    haptic();
+    if (tab === next) paneRefs.current[next]?.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    else { window.location.hash = `/${next}`; setTab(next); }
+  };
 
   useEffect(() => {
     if (!state || greeted.current) return;
@@ -123,12 +142,12 @@ export default function LawstinApp() {
 
   return (
     <div className={styles.app}>
-      <main className={styles.panes}>
-        {(["progress", "study", "activity"] as const).map((k) => (
-          <div key={k} ref={(el) => { paneRefs.current[k] = el; }} className={`${styles.pane} ${tab === k ? styles.paneOn : ""}`} aria-hidden={tab !== k}
+      <main className={styles.panes} data-app-panes>
+        {TABS.map((k) => (
+          <div key={k} data-pane={k} ref={(el) => { paneRefs.current[k] = el; }} className={`${styles.pane} ${tab === k ? styles.paneOn : ""}`} aria-hidden={tab !== k}
             onScroll={(ev) => onPaneScroll(k, ev.currentTarget)}>
             <div className={`${styles.navbar} ${compact[k] ? styles.navbarOn : ""}`} aria-hidden="true">
-              <span>{k === "study" ? "Study" : k === "progress" ? "Progress" : "Activity"}</span>
+              <span>{k === "study" ? "Study" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</span>
             </div>
             <div className={styles.shell}>
               <header className={styles.head}>
@@ -136,11 +155,11 @@ export default function LawstinApp() {
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
                   <button className={styles.avatar} onClick={() => { haptic(); setSettingsOpen(true); }} aria-label="Settings">{NAME[0]}</button>
                 </div>
-                <h1 className={k === "study" ? styles.greet : styles.title}>{k === "study" ? greeting : k === "progress" ? "Progress" : "Activity"}</h1>
+                <h1 className={k === "study" ? styles.greet : styles.title}>{k === "study" ? greeting : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
               </header>
 
-              {loading && <LoadingCard />}
-              {failed && (
+              {loading && k !== "courses" && <LoadingCard />}
+              {failed && k !== "courses" && (
                 <div className={`${styles.card} ${styles.empty}`}>
                   <h2>Couldn’t load your questions</h2>
                   <p>{(query.error as Error)?.message}</p>
@@ -172,16 +191,18 @@ export default function LawstinApp() {
                     return eng.listRound(left.length ? left : list);
                   })} />
               )}
+              {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses userId={userId} state={state} onWrite={() => setWriting(true)} onQuiz={(course, topic) => start(() => topic ? studyEngine(query.data).topicRound(course, topic) : studyEngine(query.data).buildRound(course))} /></Suspense>}
             </div>
           </div>
         ))}
       </main>
 
       <nav className={styles.tabbar} aria-label="Sections">
+        <button className={styles.wordmark} onClick={() => navigate("study")}>Lawstin<span>UH Law Center</span></button>
         <div className={styles.tabs}>
-          {([["progress", "Progress", BarChart3], ["study", "Study", BookCheck], ["activity", "Activity", CalendarDays]] as const).map(([k, label, Icon]) => (
+          {([["study", "Study", BookCheck], ["courses", "Courses", LibraryBig], ["progress", "Progress", BarChart3], ["activity", "Activity", CalendarDays]] as const).map(([k, label, Icon]) => (
             <button key={k} className={`${styles.tab} ${tab === k ? styles.tabOn : ""}`} aria-current={tab === k ? "page" : undefined}
-              onClick={() => { haptic(); if (tab === k) paneRefs.current[k]?.scrollTo({ top: 0, behavior: "smooth" }); else setTab(k); }}>
+              onClick={() => navigate(k)}>
               <span className={styles.tabIcon}><Icon size={23} strokeWidth={tab === k ? 2.3 : 1.8} /></span>
               <span className={styles.tabLabel}>{label}</span>
             </button>
