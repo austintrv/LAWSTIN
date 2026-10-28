@@ -1,0 +1,492 @@
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer } from "lucide-react";
+import { Button } from "../components/Button";
+import { Skeleton } from "../components/Skeleton";
+import { QuizSession, type QuizMode } from "../components/QuizSession";
+import { useLawstinData } from "../helpers/useLawstinData";
+import { switchToAutoMode } from "../helpers/themeMode";
+import { toast } from "../helpers/toast";
+import { dateKey } from "../helpers/dateKey";
+import { haptic } from "../helpers/haptics";
+import { COURSES, COURSE_KEYS, DAILY_GOAL, ROUND_SIZE, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
+import type { QuestionDTO } from "../endpoints/state_GET.schema";
+import styles from "./_index.module.css";
+
+type Tab = "progress" | "study" | "activity";
+const NAME = "Austin";
+
+const readLast = () => { try { return localStorage.getItem("lawstin-greeting"); } catch { return null; } };
+const saveLast = (g: string) => { try { localStorage.setItem("lawstin-greeting", g); } catch { /* storage unavailable */ } };
+const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
+
+export default function LawstinApp() {
+  const { query, answer, mark } = useLawstinData();
+  const state = query.data;
+  const e = useMemo(() => studyEngine(state), [state]);
+  const [tab, setTab] = useState<Tab>("study");
+  const [filter, setFilter] = useState<Filter>("all");
+  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: () => RoundItem[] } | null>(null);
+  const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
+  const [examSheet, setExamSheet] = useState(false);
+  const [greeting, setGreeting] = useState(() => {
+    const h = new Date().getHours();
+    return h < 5 || h >= 22 ? `Still up, ${NAME}?` : h < 12 ? `Good morning, ${NAME}` : h < 17 ? `Good afternoon, ${NAME}` : `Good evening, ${NAME}`;
+  });
+  const greeted = useRef(false);
+  const paneRefs = useRef<Record<Tab, HTMLDivElement | null>>({ progress: null, study: null, activity: null });
+  const hiddenAt = useRef(0);
+  const [compact, setCompact] = useState<Record<Tab, boolean>>({ progress: false, study: false, activity: false });
+  const onPaneScroll = (k: Tab, el: HTMLDivElement) => {
+    const on = el.scrollTop > 52;
+    setCompact((c) => (c[k] === on ? c : { ...c, [k]: on }));
+  };
+
+  useEffect(() => { switchToAutoMode(); }, []);
+
+  // Let the app draw edge to edge on iPhone so safe-area insets are real numbers;
+  // without this the tab bar sits inside the home-indicator swipe zone.
+  useEffect(() => {
+    const m = document.querySelector('meta[name="viewport"]');
+    const want = "width=device-width,initial-scale=1,viewport-fit=cover";
+    if (m) { if (!m.getAttribute("content")?.includes("viewport-fit=cover")) m.setAttribute("content", want); }
+    else { const n = document.createElement("meta"); n.name = "viewport"; n.content = want; document.head.appendChild(n); }
+  }, []);
+
+  useEffect(() => {
+    if (!state || greeted.current) return;
+    greeted.current = true;
+    const g = makeGreeting(state, NAME, readLast());
+    setGreeting(g); saveLast(g);
+  }, [state]);
+
+  useEffect(() => {
+    const onVis = () => {
+      if (document.hidden) { hiddenAt.current = Date.now(); return; }
+      if (hiddenAt.current && Date.now() - hiddenAt.current > 20 * 60 * 1000) {
+        greeted.current = false;
+        query.refetch();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [query]);
+
+  const start = (source: () => RoundItem[], mode: QuizMode = "practice") => {
+    const items = source();
+    if (!items.length) { toast("Nothing to study here yet"); return; }
+    haptic();
+    setExamSheet(false); setTopicSheet(null);
+    setSession({ items, mode, key: Date.now(), source });
+  };
+
+  const onAnswer = async (q: QuestionDTO, choice: string) => {
+    try {
+      const res = await answer.mutateAsync({ questionId: q.id, choice: choice as "A" | "B" | "C" | "D", localDate: dateKey.today() });
+      return res.correct;
+    } catch {
+      toast.error("Couldn’t save that answer");
+      return choice === q.answer;
+    }
+  };
+
+  const loading = !state && query.isFetching;
+  const failed = !state && query.isError;
+
+  return (
+    <div className={styles.app}>
+
+      <main className={styles.panes}>
+        {(["progress", "study", "activity"] as const).map((k) => (
+          <div key={k} ref={(el) => { paneRefs.current[k] = el; }} className={`${styles.pane} ${tab === k ? styles.paneOn : ""}`} aria-hidden={tab !== k}
+            onScroll={(ev) => onPaneScroll(k, ev.currentTarget)}>
+            <div className={`${styles.navbar} ${compact[k] ? styles.navbarOn : ""}`} aria-hidden="true">
+              <span>{k === "study" ? "Study" : k === "progress" ? "Progress" : "Activity"}</span>
+            </div>
+            <div className={styles.shell}>
+              <header className={styles.head}>
+                <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
+                <h1 className={k === "study" ? styles.greet : styles.title}>{k === "study" ? greeting : k === "progress" ? "Progress" : "Activity"}</h1>
+              </header>
+
+              {loading && <LoadingCard />}
+              {failed && (
+                <div className={`${styles.card} ${styles.empty}`}>
+                  <h2>Couldn’t load your questions</h2>
+                  <p>{(query.error as Error)?.message}</p>
+                  <Button variant="secondary" onClick={() => query.refetch()}>Try again</Button>
+                </div>
+              )}
+
+              {state && k === "study" && (
+                <StudyView e={e} state={state} filter={filter} setFilter={setFilter}
+                  onStart={() => start(() => studyEngine(query.data).buildRound(filter))}
+                  onCourse={(c) => start(() => studyEngine(query.data).buildRound(c))}
+                  onMissed={() => start(() => studyEngine(query.data).listRound(studyEngine(query.data).queues(filter).missed))}
+                  onStarred={() => start(() => studyEngine(query.data).listRound(studyEngine(query.data).queues(filter).starred))}
+                  onExam={() => setExamSheet(true)} />
+              )}
+              {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => setTopicSheet({ course, topic })} />}
+              {state && k === "activity" && <ActivityView e={e} state={state} />}
+            </div>
+          </div>
+        ))}
+      </main>
+
+      <nav className={styles.tabbar} aria-label="Sections">
+        <div className={styles.tabs}>
+          {([["progress", "Progress", BarChart3], ["study", "Study", BookCheck], ["activity", "Activity", CalendarDays]] as const).map(([k, label, Icon]) => (
+            <button key={k} className={`${styles.tab} ${tab === k ? styles.tabOn : ""}`} aria-current={tab === k ? "page" : undefined}
+              onClick={() => { haptic(); if (tab === k) paneRefs.current[k]?.scrollTo({ top: 0, behavior: "smooth" }); else setTab(k); }}>
+              <span className={styles.tabIcon}><Icon size={23} strokeWidth={tab === k ? 2.3 : 1.8} /></span>
+              <span className={styles.tabLabel}>{label}</span>
+            </button>
+          ))}
+        </div>
+      </nav>
+
+      {topicSheet && (
+        <BottomSheet onClose={() => setTopicSheet(null)} title={topicSheet.topic} eyebrow={COURSES[topicSheet.course].name}>
+          <div className={styles.rules}>
+            {e.topicRules(topicSheet.course, topicSheet.topic).map((r, k) => (
+              <div key={k} className={styles.ruleItem}>
+                <span className={styles.ruleSub}>{r.subtopic}</span>
+                <p>{r.rule}</p>
+                {r.authority && <small>{r.authority}</small>}
+              </div>
+            ))}
+          </div>
+          <Button className={styles.big} onClick={() => start(() => studyEngine(query.data).topicRound(topicSheet.course, topicSheet.topic))}>Drill this topic</Button>
+        </BottomSheet>
+      )}
+
+      {examSheet && (
+        <BottomSheet onClose={() => setExamSheet(false)} title="Practice exam">
+          <ExamPicker e={e} onStart={(f, n) => start(() => studyEngine(query.data).examRound(f, n), "exam")} />
+        </BottomSheet>
+      )}
+
+      {session && (
+        <QuizSession
+          key={session.key}
+          items={session.items}
+          mode={session.mode}
+          getProgress={(id) => studyEngine(query.data).prog(id)}
+          onAnswer={onAnswer}
+          onStar={(q, starred) => mark.mutate({ action: "star", questionId: q.id, starred })}
+          onGuess={(q) => mark.mutate({ action: "guess", questionId: q.id, localDate: dateKey.today() })}
+          onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
+          onAnother={() => { const items = session.source(); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now() }); }}
+          onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: session.source })}
+          onClose={() => setSession(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+type Engine = ReturnType<typeof studyEngine>;
+
+// Counts up from the previous value (0 on first show) with an ease-out curve.
+function Num({ v, suffix = "" }: { v: number; suffix?: string }) {
+  const [n, setN] = useState(0);
+  const prev = useRef(0);
+  useEffect(() => {
+    const from = prev.current;
+    prev.current = v;
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (from === v || reduce) { setN(v); return; }
+    let raf = 0;
+    const t0 = performance.now(), d = 650;
+    const step = (t: number) => {
+      const p = Math.min(1, (t - t0) / d);
+      setN(Math.round(from + (v - from) * (1 - Math.pow(1 - p, 3))));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [v]);
+  return <>{n}{suffix}</>;
+}
+
+function LoadingCard() {
+  return (
+    <div className={`${styles.card} ${styles.hero}`} aria-busy="true">
+      <Skeleton style={{ height: 36, borderRadius: 10 }} />
+      <Skeleton style={{ height: 48, width: "70%", borderRadius: 10 }} />
+      <Skeleton style={{ height: 52, borderRadius: 14 }} />
+    </div>
+  );
+}
+
+function StudyView({ e, state, filter, setFilter, onStart, onCourse, onMissed, onStarred, onExam }: {
+  e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void;
+  onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void;
+}) {
+  if (!e.questions.length) {
+    return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2><p>New questions arrive Tuesday, Thursday, and Saturday mornings.</p></div>;
+  }
+  const qs = e.queues(filter);
+  const today = e.todayCount?.answered ?? 0;
+  const week = e.lastNDays(7).reduce((a, d) => ({ a: a.a + d.answered, c: a.c + d.correct }), { a: 0, c: 0 });
+  const avail = qs.due.length + qs.fresh.length + qs.ahead.length;
+  const ready = qs.due.length + qs.fresh.length;
+  const roundN = Math.min(ROUND_SIZE, ready || qs.ahead.length);
+  const roundLabel = !avail ? "All caught up" : ready ? `Start ${roundN} question${roundN === 1 ? "" : "s"}` : `Review ${roundN} ahead`;
+  const run = state.runs[0];
+  const goalPct = Math.min(1, today / DAILY_GOAL);
+  const circ = 2 * Math.PI * 16;
+  return (
+    <>
+      <div className={`${styles.card} ${styles.hero}`}>
+        <div className={styles.seg} role="group" aria-label="Course filter">
+          {([["all", "All"], ["il", "Intl Law"], ["asy", "Asylum"], ["pr", "Pro Res"]] as const).map(([k, l]) => (
+            <button key={k} aria-pressed={filter === k} className={filter === k ? styles.segOn : ""} onClick={() => { if (filter !== k) haptic(); setFilter(k); }}>{l}</button>
+          ))}
+        </div>
+        <div className={styles.split}>
+          <div><b><Num v={qs.due.length} /></b><span>Reviews due</span></div>
+          <div><b><Num v={qs.fresh.length} /></b><span>New</span></div>
+          <div><b><Num v={qs.missed.length} /></b><span>Missed</span></div>
+        </div>
+        <Button className={`${styles.big} ${styles.cta}`} disabled={!avail} onClick={onStart}>
+          {roundLabel}
+        </Button>
+      </div>
+
+      <div className={styles.tiles}>
+        <div className={`${styles.card} ${styles.tile}`}><b><Num v={e.streak()} /></b><span>Day streak</span></div>
+        <div className={`${styles.card} ${styles.tile} ${styles.goalTile}`}>
+          <div><b><Num v={today} /></b><span>of {DAILY_GOAL} today</span></div>
+          <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
+            <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
+            <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct) }} />
+          </svg>
+        </div>
+        <div className={`${styles.card} ${styles.tile}`}><b>{week.a ? <Num v={pct(week.c, week.a)} suffix="%" /> : "—"}</b><span>Correct, 7 days</span></div>
+      </div>
+
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>Courses</h2></div>
+        <div className={`${styles.card} ${styles.list}`}>
+          {COURSE_KEYS.map((k) => {
+            const c = COURSES[k], s = e.courseStats(k), q = e.queues(k);
+            return (
+              <button key={k} className={styles.row} onClick={() => onCourse(k)}>
+                <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
+                <span className={styles.rowMain}>
+                  <span className={styles.rowTitle}>{c.name}</span>
+                  <span className={styles.rowSub}>{q.fresh.length} new · {q.due.length} due{s.seen ? ` · ${s.acc}% correct` : ""}</span>
+                  <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
+                </span>
+                <ChevronRight size={18} className={styles.chev} />
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className={styles.sec}>
+        <div className={`${styles.card} ${styles.list}`}>
+          <button className={styles.row} onClick={onExam}>
+            <span className={styles.dot} style={{ background: "var(--foreground)" }}><Timer size={13} color="var(--background)" /></span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+          <button className={styles.row} onClick={onMissed} disabled={!qs.missed.length}>
+            <span className={styles.dot} style={{ background: "var(--error)" }}>!</span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Missed questions</span></span>
+            <span className={styles.rowEnd}>{qs.missed.length}</span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+          <button className={styles.row} onClick={onStarred} disabled={!qs.starred.length}>
+            <span className={styles.dot} style={{ background: "#e0a100" }}><Star size={12} color="#fff" fill="#fff" /></span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Starred</span></span>
+            <span className={styles.rowEnd}>{qs.starred.length}</span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+        </div>
+      </section>
+
+      {run && (
+        <section className={styles.sec}>
+          <div className={styles.secH}><h2>Latest update</h2><small>{new Date(`${run.date}T12:00:00`).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}</small></div>
+          <div className={`${styles.card} ${styles.note}`}>
+            <div className={styles.pills}>
+              {Object.entries(run.byCourse).filter(([, n]) => n).map(([k, n]) => (
+                <span key={k} className={styles.pill}>+{n} {COURSES[k as CourseCode]?.short ?? k}</span>
+              ))}
+            </div>
+            <p>{run.note}</p>
+          </div>
+        </section>
+      )}
+    </>
+  );
+}
+
+function ProgressView({ e, onTopic }: { e: Engine; onTopic: (c: CourseCode, t: string) => void }) {
+  const m = e.missProfile();
+  const misses = m.sneaky + m.average + m.bad;
+  const ts = e.topicStats();
+  const roleRow = (label: string, n: number, color: string) => (
+    <div className={styles.row}>
+      <span className={styles.rowMain}>
+        <span className={styles.rowTitle}>{label}</span>
+        <span className={styles.meter}><i style={{ width: `${pct(n, misses)}%`, background: color }} /></span>
+      </span>
+      <span className={styles.rowEnd}><b>{n}</b></span>
+    </div>
+  );
+  return (
+    <>
+      <div className={styles.tiles}>
+        <div className={`${styles.card} ${styles.tile}`}><b>{m.correct + m.wrong ? `${pct(m.correct, m.correct + m.wrong)}%` : "—"}</b><span>Correct overall</span></div>
+        <div className={`${styles.card} ${styles.tile}`}><b>{m.correct + m.wrong}</b><span>Answers given</span></div>
+        <div className={`${styles.card} ${styles.tile}`}><b>{m.seen}</b><span>Questions seen</span></div>
+      </div>
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>Which wrong answers catch you</h2></div>
+        <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
+          {roleRow("Sneaky distractor", m.sneaky, "var(--course-pr)")}
+          {roleRow("Average distractor", m.average, "var(--course-il)")}
+          {roleRow("Really bad answer", m.bad, "var(--error)")}
+          {roleRow("Correct but guessed", m.guessed, "var(--faint-foreground)")}
+        </div>
+      </section>
+      {COURSE_KEYS.map((k) => {
+        const rows = ts.filter((t) => t.course === k).sort((a, b) => {
+          const aa = a.c + a.w ? a.c / (a.c + a.w) : 2, bb = b.c + b.w ? b.c / (b.c + b.w) : 2;
+          return aa - bb;
+        });
+        if (!rows.length) return null;
+        const s = e.courseStats(k), c = COURSES[k];
+        return (
+          <section key={k} className={styles.sec}>
+            <div className={styles.secH}><h2>{c.name}</h2><small>{s.seen ? `${s.acc}% correct` : "Not started"}</small></div>
+            <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
+              {rows.map((t) => {
+                const a = t.c + t.w, acc = pct(t.c, a);
+                const col = !a ? "var(--faint-foreground)" : acc >= 80 ? "var(--success)" : acc >= 60 ? c.color : "var(--error)";
+                return (
+                  <button key={t.topic} className={styles.row} onClick={() => onTopic(k, t.topic)}>
+                    <span className={styles.rowMain}>
+                      <span className={`${styles.rowTitle} ${styles.wrap}`}>{t.topic}</span>
+                      <span className={styles.rowSub}>{t.seen} of {t.n} seen</span>
+                      <span className={styles.meter}><i style={{ width: `${a ? acc : 0}%`, background: col }} /></span>
+                    </span>
+                    <span className={styles.rowEnd} style={{ color: col, fontWeight: 600 }}>{a ? `${acc}%` : "—"}</span>
+                    <ChevronRight size={18} className={styles.chev} />
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+    </>
+  );
+}
+
+function ActivityView({ e, state }: { e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]> }) {
+  const days = e.lastNDays(14);
+  const max = Math.max(10, ...days.map((d) => d.answered));
+  const studied = [...state.days].filter((d) => d.answered).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+  const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, o);
+  return (
+    <>
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>Last 14 days</h2><small>{days.reduce((a, d) => a + d.answered, 0)} answers</small></div>
+        <div className={`${styles.card} ${styles.bars}`}>
+          <div className={styles.barsRow}>
+            {days.map((d) => (
+              <div key={d.date} className={styles.bar} style={{ height: `${Math.max(3, (d.answered / max) * 100)}%` }} title={`${fmt(d.date, { month: "short", day: "numeric" })}: ${d.answered} answered`}>
+                <i style={{ height: `${d.answered ? (d.correct / d.answered) * 100 : 0}%`, background: "var(--success)" }} />
+                <i style={{ height: `${d.answered ? ((d.answered - d.correct) / d.answered) * 100 : 0}%`, background: "var(--error)", opacity: 0.75 }} />
+              </div>
+            ))}
+          </div>
+          <div className={styles.barsX}>{days.map((d, i) => <span key={d.date}>{i % 2 ? "" : Number(d.date.slice(8))}</span>)}</div>
+          <div className={styles.legend}><span><i style={{ background: "var(--success)" }} />Correct</span><span><i style={{ background: "var(--error)", opacity: 0.75 }} />Missed</span></div>
+        </div>
+      </section>
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>Days you studied</h2></div>
+        {studied.length ? (
+          <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
+            {studied.map((d) => (
+              <div key={d.date} className={styles.row}>
+                <span className={styles.rowMain}><span className={styles.rowTitle}>{fmt(d.date, { weekday: "long", month: "short", day: "numeric" })}</span><span className={styles.rowSub}>{d.answered} answered · {pct(d.correct, d.answered)}% correct</span></span>
+              </div>
+            ))}
+          </div>
+        ) : <div className={`${styles.card} ${styles.empty}`}><p>Your study days show up here after your first round.</p></div>}
+      </section>
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>Updates</h2></div>
+        {state.runs.length ? (
+          <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
+            {state.runs.slice(0, 20).map((r) => (
+              <div key={r.date} className={styles.row}>
+                <span className={styles.rowMain}><span className={styles.rowTitle}>{fmt(r.date, { weekday: "long", month: "short", day: "numeric" })}</span><span className={`${styles.rowSub} ${styles.wrap}`}>{r.note}</span></span>
+                <span className={styles.rowEnd}>+{r.added}</span>
+              </div>
+            ))}
+          </div>
+        ) : <div className={`${styles.card} ${styles.empty}`}><p>Each update lists what it added.</p></div>}
+      </section>
+    </>
+  );
+}
+
+function ExamPicker({ e, onStart }: { e: Engine; onStart: (f: Filter, n: number) => void }) {
+  const [f, setF] = useState<Filter>("pr");
+  const [n, setN] = useState(20);
+  const available = e.queues(f).total;
+  // Only offer lengths the bank can fill; the last option is always "every question" for this course.
+  const lengths = [10, 20, 30].filter((k) => k < available);
+  if (available > 0) lengths.push(available);
+  const size = lengths.includes(n) ? n : lengths[lengths.length - 1] ?? 0;
+  return (
+    <div className={styles.examPick}>
+      <div className={styles.seg} role="group" aria-label="Exam course">
+        {([["pr", "Pro Res"], ["il", "Intl Law"], ["asy", "Asylum"], ["all", "Mixed"]] as const).map(([k, l]) => (
+          <button key={k} aria-pressed={f === k} className={f === k ? styles.segOn : ""} onClick={() => setF(k)}>{l}</button>
+        ))}
+      </div>
+      {lengths.length > 1 && (
+        <div className={styles.seg} role="group" aria-label="Exam length">
+          {lengths.map((k) => (
+            <button key={k} aria-pressed={size === k} className={size === k ? styles.segOn : ""} onClick={() => setN(k)}>
+              {k === available ? `All ${k}` : k}
+            </button>
+          ))}
+        </div>
+      )}
+      <Button className={styles.big} disabled={!size} onClick={() => onStart(f, size)}>
+        {size ? `Start ${size}-question exam` : "No questions yet"}
+      </Button>
+    </div>
+  );
+}
+
+function BottomSheet({ title, eyebrow, onClose, children }: { title: string; eyebrow?: string; onClose: () => void; children: React.ReactNode }) {
+  const [closing, setClosing] = useState(false);
+  const close = () => { setClosing(true); setTimeout(onClose, 300); };
+  useEffect(() => {
+    const k = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  });
+  return (
+    <div className={`${styles.scrim} ${closing ? styles.scrimOut : ""}`} onClick={close}>
+      <div className={`${styles.bsheet} ${closing ? styles.bsheetOut : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(ev) => ev.stopPropagation()}>
+        <div className={styles.grab} />
+        <div className={styles.bsheetHead}>
+          <div>{eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}<h2>{title}</h2></div>
+          <button className={styles.x} onClick={close} aria-label="Close"><X size={15} strokeWidth={2.4} /></button>
+        </div>
+        <div className={styles.bsheetBody}>{children}</div>
+      </div>
+    </div>
+  );
+}
