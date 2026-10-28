@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
-const Courses = lazy(() => import("../components/Courses").then(module => ({ default: module.Courses })));
+const loadCourses = () => import("../components/Courses");
+const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
 import { Skeleton } from "../components/Skeleton";
 import type { QuizMode } from "../components/QuizSession";
@@ -76,7 +77,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   };
 
   useEffect(() => { applyPrefs(); }, []);
-  useEffect(() => { const t = setTimeout(() => { void loadQuiz(); }, 1500); return () => clearTimeout(t); }, []);
+  useEffect(() => { const t = setTimeout(() => { void loadQuiz(); void loadCourses(); }, 1500); return () => clearTimeout(t); }, []);
   useEffect(() => { if (tab === "courses") setCoursesVisited(true); }, [tab]);
   useEffect(() => {
     // Only tab routes switch tabs; #/settings and #/q/<id> open on top of the current one.
@@ -516,11 +517,11 @@ function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
       <div className={`${styles.card} ${styles.upd}`}>
         <div className={styles.updTop}>
           <span className={styles.updRing}>
-            <svg viewBox="0 0 36 36" aria-hidden="true">
+            <svg viewBox="0 0 36 36" className={styles.updRingSvg} aria-hidden="true">
               <circle cx="18" cy="18" r="15" className={styles.updTrack} />
               <circle cx="18" cy="18" r="15" className={styles.updVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - (total ? doneN / total : 0)) }} />
             </svg>
-            {left === 0 ? <Check size={14} strokeWidth={3} className={styles.updCheck} /> : <Sparkles size={14} className={styles.updSpark} />}
+            {left === 0 ? <Check size={16} strokeWidth={3} className={styles.updCheck} /> : <Sparkles size={16} className={styles.updSpark} />}
           </span>
           <div className={styles.updHead}>
             <b>{total} new question{total === 1 ? "" : "s"}</b>

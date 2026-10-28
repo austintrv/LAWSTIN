@@ -161,17 +161,23 @@ function TaskRow({ task: t, leaving, open, onToggle, onComplete, onPatch, onDele
   );
 }
 
+const workspaceCache = new Map<string, string>();
+
 /** Free-form workspace notes (contacts, meeting times, requirements), saved to the owner's settings row. */
 function WorkspaceNotes({ course }: { course: TaskCourse }) {
   const key = `workspace:notes:${course}`;
-  const [text, setText] = useState<string | null>(null);
-  const saved = useRef("");
+  const [text, setText] = useState<string | null>(() => workspaceCache.get(key) ?? null);
+  const saved = useRef(workspaceCache.get(key) ?? "");
   useEffect(() => {
     let live = true;
+    const before = workspaceCache.get(key) ?? "";
     supabase.from("app_settings").select("value").eq("key", key).maybeSingle().then(({ data }) => {
       if (!live) return;
-      saved.current = data?.value ?? "";
-      setText(saved.current);
+      const server = data?.value ?? "";
+      workspaceCache.set(key, server);
+      saved.current = server;
+      // Keep anything typed while the fresh copy loaded; the save effect then writes it.
+      setText((cur) => (cur === null || cur === before ? server : cur));
     });
     return () => { live = false; };
   }, [key]);
@@ -179,11 +185,11 @@ function WorkspaceNotes({ course }: { course: TaskCourse }) {
     if (text === null || text === saved.current) return;
     const t = setTimeout(async () => {
       const { error } = await supabase.from("app_settings").upsert({ key, value: text, updated_at: new Date().toISOString() }, { onConflict: "key" });
-      if (!error) saved.current = text;
+      if (!error) { saved.current = text; workspaceCache.set(key, text); }
     }, 700);
     return () => clearTimeout(t);
   }, [text, key]);
-  if (text === null) return null;
+  if (text === null) return <section className={`${styles.card} ${styles.notes} ${styles.placeholder}`} aria-hidden="true" />;
   return (
     <section className={`${styles.card} ${styles.notes}`}>
       <h3>Notes</h3>
@@ -197,21 +203,23 @@ type Hours = { logged: number; required: number; as_of: string };
 /** Clinic hour requirement: the official log lives in MyCase and the student's sheet; this keeps the running total in view. */
 function ClinicHours() {
   const key = "workspace:clinic:hours";
-  const [h, setH] = useState<Hours | null>(null);
+  const [h, setH] = useState<Hours | null>(() => { try { const v = workspaceCache.get(key); return v ? JSON.parse(v) : null; } catch { return null; } });
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   useEffect(() => {
     supabase.from("app_settings").select("value").eq("key", key).maybeSingle().then(({ data }) => {
+      if (data?.value) workspaceCache.set(key, data.value);
       try { setH(data?.value ? JSON.parse(data.value) : { logged: 0, required: 200, as_of: dateKey.today() }); } catch { setH({ logged: 0, required: 200, as_of: dateKey.today() }); }
     });
   }, []);
-  if (!h) return null;
+  if (!h) return <section className={`${styles.card} ${styles.hours} ${styles.placeholder}`} aria-hidden="true" />;
   const save = async () => {
     const n = Number(draft);
     setEditing(false);
     if (!Number.isFinite(n) || n < 0) return;
     const next = { ...h, logged: Math.round(n * 100) / 100, as_of: dateKey.today() };
     setH(next); haptic();
+    workspaceCache.set(key, JSON.stringify(next));
     await supabase.from("app_settings").upsert({ key, value: JSON.stringify(next), updated_at: new Date().toISOString() }, { onConflict: "key" });
   };
   const pct = Math.min(1, h.logged / h.required);

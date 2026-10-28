@@ -56,8 +56,9 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   useEffect(() => {
     if (route.item) setSelected(store.materials.find(m => m.id === route.item && m.course === route.course) ?? null);
     else setSelected(null);
-    root.current?.closest("[data-pane]")?.scrollTo({ top: 0 });
   }, [route.course, route.kind, route.item, store.materials]);
+  // Scroll to the top only when the route changes, never on a data refresh.
+  useEffect(() => { root.current?.closest("[data-pane]")?.scrollTo({ top: 0 }); }, [route.course, route.kind, route.item]);
 
   const offline = store.syncStatus === "offline";
   useEffect(() => { if (offline) toast("Offline. Study progress will sync later."); }, [offline]);
@@ -84,20 +85,20 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           const c = SCHOOL_COURSES[key], Icon = ICONS[key];
           const list = store.materials.filter(m => m.course === key);
           const due = cardQueue(list.filter((m): m is Flashcard => m.kind === "flashcard"), store.record, state).length;
-          return <button data-reveal key={key} className={`${styles.courseCard} ${isStudyCourse(key) ? "" : styles.workspaceCard}`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
+          return <button key={key} className={`${styles.courseCard} ${isStudyCourse(key) ? "" : styles.workspaceCard}`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
             <div className={styles.courseCardTop}><span className={styles.courseIcon}><Icon size={26} strokeWidth={1.6} /></span><ArrowRight size={22} /></div>
-            <h3>{c.name}</h3>{isStudyCourse(key) ? <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p> : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}
+            <h3>{c.name}</h3>{isStudyCourse(key) ? (store.loading ? <span className={styles.skel} /> : <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>) : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}
             {isStudyCourse(key) && <div className={styles.courseTools}><span><GitBranch size={18} />Flowcharts</span><span><Layers3 size={18} />Flashcards</span></div>}
           </button>;
         })}
       </div>
-      <section className={styles.searchSection} data-reveal><div className={styles.sectionHead}><h2>Across your courses</h2><BookOpen size={24} /></div>
+      <section className={styles.searchSection}><div className={styles.sectionHead}><h2>Across your courses</h2><BookOpen size={24} /></div>
         <SearchField value={search} onChange={setSearch} />
         {search.trim() ? <MaterialGrid list={filtered} record={store.record} onOpen={open} /> : <div className={styles.methodGrid}>{KINDS.map(kind => {
           const Icon = TOOLS[kind]; return <div key={kind}><Icon size={25} strokeWidth={1.6} /><h3>{MATERIAL_LABELS[kind]}</h3><span>{store.materials.filter(m => m.kind === kind).length}</span></div>;
         })}</div>}
       </section>
-      {store.runs[0] && <section className={styles.runNote} data-reveal><div><p className={styles.overline}>Latest study update</p><h2>{store.runs[0].added} materials added</h2></div><div className={styles.runChips}>{SCHOOL_ORDER.filter(k => store.runs[0].by_course[k]).map(k => <button key={k} style={{ "--course-color": SCHOOL_COURSES[k].color } as React.CSSProperties} onClick={() => go(k)}><i />{SCHOOL_COURSES[k].short}<small>{store.runs[0].by_course[k]}</small></button>)}</div></section>}
+      {store.runs[0] && <section className={styles.runNote}><div><p className={styles.overline}>Latest study update</p><h2>{store.runs[0].added} materials added</h2></div><div className={styles.runChips}>{SCHOOL_ORDER.filter(k => store.runs[0].by_course[k]).map(k => <button key={k} style={{ "--course-color": SCHOOL_COURSES[k].color } as React.CSSProperties} onClick={() => go(k)}><i />{SCHOOL_COURSES[k].short}<small>{store.runs[0].by_course[k]}</small></button>)}</div></section>}
     </> : <>
       <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
       <section className={styles.courseHero} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
@@ -113,7 +114,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           <SearchField value={search} onChange={setSearch} />
           <label className={styles.topicSelect}><span>Topic</span><select value={topic} onChange={e => setTopic(e.target.value)}><option value="all">All topics</option>{topics.map(t => <option key={t}>{t}</option>)}</select></label>
           <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} />
-          <MaterialGrid list={filtered} record={store.record} onOpen={open} />
+          {store.loading ? null : <MaterialGrid list={filtered} record={store.record} onOpen={open} />}
         </div>
       </div>}
     </>}

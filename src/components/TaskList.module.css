@@ -78,3 +78,5 @@
 .hoursEdit { flex: 1; display: flex; align-items: baseline; gap: 8px; }
 .hoursEdit input { width: 110px; font: inherit; font-size: 24px; font-weight: 700; border: 1px solid var(--border); border-radius: 12px; background: var(--fill); color: var(--foreground); padding: 4px 10px; outline: none; }
 .hoursEdit span { font-size: 16px; color: var(--muted-foreground); }
+.placeholder.notes { min-height: 220px; }
+.placeholder.hours { min-height: 96px; }

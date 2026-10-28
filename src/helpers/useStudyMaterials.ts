@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import type { StudyRecord } from "./studyMaterials";
+import type { StudyMaterial, StudyRecord, StudyRun } from "./studyMaterials";
 import { acknowledgeStudyRows, changeStudyRecord, emptyStudyCache, mergeStudyRows, restoreStudyCache, PROGRESS_PREFIX, type ProgressRow, type StudyCache } from "./studyProgressStore";
 import { supabase } from "./supabase";
 import { toast } from "./toast";
@@ -13,6 +13,10 @@ function loadCache(key: string): StudyCache {
   } catch { /* Start clean if browser storage is unavailable. */ }
   return emptyStudyCache();
 }
+
+// Stable empties so effects that depend on the lists do not rerun on every render while loading.
+const NONE: StudyMaterial[] = [];
+const NO_RUNS: StudyRun[] = [];
 
 export function useStudyMaterials(userId: string) {
   const key = `lawstin-study-materials-v1:${userId}`;
@@ -58,6 +62,6 @@ export function useStudyMaterials(userId: string) {
     return () => { window.removeEventListener("online", onOnline); document.removeEventListener("visibilitychange", onFocus); };
   }, [flush, remote.refetch]);
   const update = useCallback((fn: (prev: StudyRecord) => StudyRecord) => commit(changeStudyRecord(current.current, fn(current.current.record))), [commit]);
-  return { materials: library.data?.materials ?? [], runs: library.data?.runs ?? [], loading: library.isLoading, record: cache.record, update,
+  return { materials: library.data?.materials ?? NONE, runs: library.data?.runs ?? NO_RUNS, loading: library.isLoading, record: cache.record, update,
     syncStatus: syncError || remote.isError ? "offline" : Object.keys(cache.pending).length ? "pending" : "synced" };
 }

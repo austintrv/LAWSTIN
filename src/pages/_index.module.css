@@ -196,9 +196,9 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 /* Latest update card */
 .upd { overflow: hidden; }
 .updTop { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
-.updRing { position: relative; width: 36px; height: 36px; flex-shrink: 0; display: grid; place-items: center; }
-.updRing svg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
-.updRing circle { fill: none; stroke-width: 3.5; stroke-linecap: round; }
+.updRing { position: relative; width: 40px; height: 40px; flex-shrink: 0; display: grid; place-items: center; }
+.updRingSvg { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
+.updRingSvg circle { fill: none; stroke-width: 3.5; stroke-linecap: round; }
 .updTrack { stroke: var(--uh-red-soft); }
 .updVal { stroke: var(--uh-red); transition: stroke-dashoffset 0.8s var(--ease-ios); }
 .updSpark, .updCheck { color: var(--uh-red); }
