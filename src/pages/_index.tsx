@@ -7,11 +7,12 @@ import type { QuizMode } from "../components/QuizSession";
 // Screens opened from the Study tab load on demand and are warmed in the background after first paint.
 const loadQuiz = () => import("../components/QuizSession");
 const QuizSession = lazy(() => loadQuiz().then((m) => ({ default: m.QuizSession })));
-const SettingsPanel = lazy(() => import("../components/SettingsPanel").then((m) => ({ default: m.SettingsPanel })));
+const SettingsPage = lazy(() => import("../components/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const WrittenPractice = lazy(() => import("../components/WrittenPractice").then((m) => ({ default: m.WrittenPractice })));
 import { useLawstinData } from "../helpers/useLawstinData";
 import { useLawstinAi } from "../helpers/useLawstinAi";
-import { switchToAutoMode } from "../helpers/themeMode";
+import { useLawstinSettings } from "../helpers/useLawstinSettings";
+import { applyPrefs } from "../helpers/prefs";
 import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
@@ -40,9 +41,11 @@ const saveRecent = (g: string) => {
 };
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
-export default function LawstinApp({ userId }: { userId: string }) {
+export default function LawstinApp({ userId, email }: { userId: string; email: string | null }) {
   const { query, answer, mark } = useLawstinData();
   const { harder } = useLawstinAi();
+  const settings = useLawstinSettings();
+  const goal = settings.query.data?.settings.dailyGoal ?? DAILY_GOAL;
   const state = query.data;
   const e = useMemo(() => studyEngine(state), [state]);
   const [tab, setTab] = useState<Tab>(tabFromHash);
@@ -51,7 +54,13 @@ export default function LawstinApp({ userId }: { userId: string }) {
   const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source } | null>(null);
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
   const [examSheet, setExamSheet] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  // Settings is a full page at #/settings so the system back gesture and button close it.
+  const [settingsOpen, setSettingsOpen] = useState(() => window.location.hash === "#/settings");
+  useEffect(() => {
+    const sync = () => setSettingsOpen(window.location.hash === "#/settings");
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
   const [writing, setWriting] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   // Chosen once per open, after data loads, so the heading never swaps lines in front of you.
@@ -66,11 +75,12 @@ export default function LawstinApp({ userId }: { userId: string }) {
     setCompact((c) => (c[k] === on ? c : { ...c, [k]: on }));
   };
 
-  useEffect(() => { switchToAutoMode(); }, []);
+  useEffect(() => { applyPrefs(); }, []);
   useEffect(() => { const t = setTimeout(() => { void loadQuiz(); }, 1500); return () => clearTimeout(t); }, []);
   useEffect(() => { if (tab === "courses") setCoursesVisited(true); }, [tab]);
   useEffect(() => {
-    const sync = () => setTab(tabFromHash());
+    // Only tab routes switch tabs; #/settings and #/q/<id> open on top of the current one.
+    const sync = () => { const t = window.location.hash.split("/")[1]; if (TABS.includes(t as Tab)) setTab(t as Tab); };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
@@ -85,7 +95,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
     const pick = (s?: typeof state) => {
       if (greeted.current) return;
       greeted.current = true;
-      const g = makeGreeting(s, NAME, readRecent());
+      const g = makeGreeting(s, NAME, readRecent(), goal);
       setGreeting(g); saveRecent(g);
     };
     if (state) { pick(state); return; }
@@ -113,14 +123,14 @@ export default function LawstinApp({ userId }: { userId: string }) {
     if (!state) return;
     const prev = prevToday.current;
     prevToday.current = todayAnswered;
-    if (prev !== null && prev < DAILY_GOAL && todayAnswered >= DAILY_GOAL) {
+    if (prev !== null && prev < goal && todayAnswered >= goal) {
       setCelebrate(true);
       haptic();
       toast("Daily goal done");
       const t = setTimeout(() => setCelebrate(false), 2400);
       return () => clearTimeout(t);
     }
-  }, [todayAnswered, state]);
+  }, [todayAnswered, state, goal]);
 
   // Sources take an engine so a running session can ask for more while skipping what it already holds.
   const latest = useRef(state);
@@ -198,7 +208,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
               <header className={styles.head}>
                 <div className={styles.headRow}>
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
-                  <button className={styles.avatar} onClick={() => { haptic(); setSettingsOpen(true); }} aria-label="Settings">{NAME[0]}</button>
+                  <button className={styles.avatar} onClick={() => { haptic(); window.location.hash = "/settings"; }} aria-label="Settings">{NAME[0]}</button>
                 </div>
                 <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? greeting ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
               </header>
@@ -213,7 +223,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
               )}
 
               {state && k === "study" && (
-                <StudyView e={e} state={state} filter={filter} setFilter={setFilter} celebrate={celebrate}
+                <StudyView e={e} state={state} goal={goal} filter={filter} setFilter={setFilter} celebrate={celebrate}
                   onStart={() => start((eng) => eng.buildRound(filter))}
                   onCourse={(c) => start((eng) => eng.buildRound(c))}
                   onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed))}
@@ -275,11 +285,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
         </BottomSheet>
       )}
 
-      {settingsOpen && (
-        <BottomSheet onClose={() => setSettingsOpen(false)} title="Settings">
-          <Suspense fallback={null}><SettingsPanel /></Suspense>
-        </BottomSheet>
-      )}
+      {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={() => { window.location.hash = `/${tab}`; }} /></Suspense>}
 
       {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(false)} /></Suspense>}
 
@@ -365,7 +371,8 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+function StudyView({ e, state, goal, filter, setFilter, celebrate, onStart, onCourse, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+  goal: number;
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
   onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
@@ -379,8 +386,8 @@ function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, 
   const ready = qs.due.length + qs.fresh.length;
   const roundLabel = !avail ? "All caught up" : !ready ? "Review ahead" : today > 0 ? "Keep going" : "Start studying";
   const run = state.runs[0];
-  const goalPct = Math.min(1, today / DAILY_GOAL);
-  const goalDone = today >= DAILY_GOAL;
+  const goalPct = Math.min(1, today / goal);
+  const goalDone = today >= goal;
   const circ = 2 * Math.PI * 16;
   const streak = e.streak();
   const studiedToday = today > 0;
@@ -421,7 +428,7 @@ function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, 
               {goalDone && <Check size={12} strokeWidth={3.4} className={styles.goalCheck} />}
             </span>
           </div>
-          <span>of {DAILY_GOAL} today</span>
+          <span>of {goal} today</span>
         </div>
         <div className={`${styles.card} ${styles.tile}`}>
           <div className={styles.streakTop}>

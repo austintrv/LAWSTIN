@@ -180,7 +180,7 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
 }
 
 /** A greeting picked once per app open. Context lines only when the data supports them. */
-export function makeGreeting(state: State | undefined, name: string, recent: string[]): string {
+export function makeGreeting(state: State | undefined, name: string, recent: string[], goal = DAILY_GOAL): string {
   const now = new Date();
   const h = now.getHours();
   const dow = now.getDay();
@@ -266,7 +266,7 @@ export function makeGreeting(state: State | undefined, name: string, recent: str
     if (due.length) ctx.push(...(due.length === 1 ? ["One review is waiting", "One review on the docket"] : [`${due.length} reviews are waiting`, `${due.length} reviews on the docket`]));
     if (run && run.date === e.today && run.added) ctx.push(h < 12 ? `${run.added} new questions this morning` : `${run.added} new questions today`, `${run.added} fresh questions just filed`);
     if (st >= 2) ctx.push(`Day ${st} in a row, ${name}`, `${st}-day streak. Precedent set.`);
-    if (done >= DAILY_GOAL) ctx.push(`Goal met. Extra credit, ${name}?`, `Daily goal: satisfied. Encore?`);
+    if (done >= goal) ctx.push(`Goal met. Extra credit, ${name}?`, `Daily goal: satisfied. Encore?`);
     else if (done > 0) ctx.push(`Back for more, ${name}?`, `Round two, ${name}?`, `Back on the stand, ${name}`);
     else if (h >= 17) ctx.push(`Today’s docket is still open`);
     const weak = e.weakTopics().sort((a, b) => a.c / (a.c + a.w) - b.c / (b.c + b.w))[0];

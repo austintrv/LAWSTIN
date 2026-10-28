@@ -48,7 +48,7 @@ function Root() {
   }, []);
 
   if (session === undefined) return null;
-  return session ? <LawstinApp key={session.user.id} userId={session.user.id} /> : <SignIn />;
+  return session ? <LawstinApp key={session.user.id} userId={session.user.id} email={session.user.email ?? null} /> : <SignIn />;
 }
 
 createRoot(document.getElementById("root")!).render(

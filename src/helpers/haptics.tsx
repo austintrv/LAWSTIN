@@ -1,3 +1,4 @@
+import { readPrefs } from "./prefs";
 // Light tap feedback. Android uses the Vibration API; iOS 18+ Safari fires a system haptic
 // when a native switch input is toggled through its label, so we keep one hidden switch around.
 let label: HTMLLabelElement | null = null;
@@ -5,6 +6,7 @@ let label: HTMLLabelElement | null = null;
 export function haptic() {
   try {
     if (typeof document === "undefined") return;
+    if (!readPrefs().haptics) return;
     const ua = navigator.userAgent;
     const apple = /iPhone|iPad|iPod|Macintosh/.test(ua);
     if (!apple && "vibrate" in navigator) {

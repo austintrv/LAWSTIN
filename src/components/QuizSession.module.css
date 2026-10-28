@@ -37,14 +37,14 @@
 .pill { font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: var(--radius-full); background: var(--fill); color: var(--muted-foreground); }
 .aiPill { display: inline-flex; align-items: center; gap: 4px; background: var(--uh-red-soft); color: var(--uh-red); }
 .topic { font-size: 13px; color: var(--muted-foreground); font-weight: 500; }
-.stem { font-family: var(--font-family-reading); font-size: 18.5px; line-height: 1.56; display: flex; flex-direction: column; gap: 12px; }
+.stem { font-family: var(--font-family-reading); font-size: calc(18.5px * var(--reading-scale, 1)); line-height: 1.56; display: flex; flex-direction: column; gap: 12px; }
 .stem p { margin: 0; }
 .ask { font-size: 17px; font-weight: 650; line-height: 1.4; margin: 0; }
 .choices { display: flex; flex-direction: column; gap: 10px; }
 .choice {
   display: flex; gap: 14px; align-items: flex-start; text-align: left; width: 100%;
   padding: 15px 16px; border-radius: var(--radius-md); background: var(--card); color: var(--card-foreground);
-  border: 1.5px solid transparent; box-shadow: var(--shadow); font: inherit; font-size: 16px; line-height: 1.45; cursor: pointer;
+  border: 1.5px solid transparent; box-shadow: var(--shadow); font: inherit; font-size: calc(16px * var(--reading-scale, 1)); line-height: 1.45; cursor: pointer;
   transition: border-color 0.18s, background 0.18s, opacity 0.25s, transform 0.12s;
 }
 .choice:active:not(:disabled) { transform: scale(0.99); }
@@ -132,8 +132,8 @@
 .label i { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .labelOk { color: var(--success); }
 .labelBad { color: var(--error); }
-.strong { margin: 0; font-size: 16px; font-weight: 600; line-height: 1.45; color: var(--card-foreground); }
-.bodyText { margin: 0; font-size: 16px; font-weight: 400; line-height: 1.5; color: var(--card-foreground); }
+.strong { margin: 0; font-size: calc(16px * var(--reading-scale, 1)); font-weight: 600; line-height: 1.45; color: var(--card-foreground); }
+.bodyText { margin: 0; font-size: calc(16px * var(--reading-scale, 1)); font-weight: 400; line-height: 1.5; color: var(--card-foreground); }
 .authority { font-size: 13px; color: var(--muted-foreground); }
 .letterSm { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--fill); color: var(--muted-foreground); }
 .letterBad { background: var(--error); color: #fff; }
@@ -144,7 +144,7 @@
 .factToggle { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; font-weight: 600; color: var(--uh-red); }
 .factToggle svg { transition: transform 0.25s var(--ease-ios); }
 details[open] > .factHead .factToggle svg { transform: rotate(90deg); }
-.factStem { font-family: var(--font-family-reading); font-size: 17px; line-height: 1.55; display: flex; flex-direction: column; gap: 10px; margin: 0 16px; padding: 14px 0 16px; border-top: 0.5px solid var(--border); }
+.factStem { font-family: var(--font-family-reading); font-size: calc(17px * var(--reading-scale, 1)); line-height: 1.55; display: flex; flex-direction: column; gap: 10px; margin: 0 16px; padding: 14px 0 16px; border-top: 0.5px solid var(--border); }
 .factStem p { margin: 0; }
 
 .other + .other, .listRow + .listRow { border-top: 0.5px solid var(--border); }

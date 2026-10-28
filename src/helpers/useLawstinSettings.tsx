@@ -15,12 +15,9 @@ export function useLawstinSettings(enabled = true) {
   const action = useMutation({
     mutationFn: (input: Exclude<InputType, { action: "get" }>) => postSettings(input),
     onMutate: (input) => {
-      if (input.action !== "set") return;
-      qc.setQueryData<OutputType>(KEY, (old) => {
-        if (!old) return old;
-        const field = input.key === "notify_evening" ? "notifyEvening" : input.key === "notify_new" ? "notifyNew" : "weeklyEmail";
-        return { ...old, settings: { ...old.settings, [field]: input.value } };
-      });
+      if (input.action !== "set" && input.action !== "setNumber") return;
+      const field = ({ notify_evening: "notifyEvening", notify_new: "notifyNew", weekly_email: "weeklyEmail", notify_nudges: "notifyNudges", nudges_per_day: "nudgesPerDay", daily_goal: "dailyGoal" } as const)[input.key];
+      qc.setQueryData<OutputType>(KEY, (old) => (old ? { ...old, settings: { ...old.settings, [field]: input.value } } : old));
     },
     onSuccess: (res) => qc.setQueryData<OutputType>(KEY, res),
     onError: () => qc.invalidateQueries({ queryKey: KEY }),

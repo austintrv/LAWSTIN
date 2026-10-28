@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { BookOpen, Gavel, Globe, GraduationCap, Landmark, Scale, ScrollText } from "lucide-react";
 import { supabase } from "../helpers/supabase";
-import { switchToAutoMode } from "../helpers/themeMode";
+import { applyPrefs } from "../helpers/prefs";
 import styles from "./SignIn.module.css";
 
 // Decorative tiles that float around the card on wide screens; colors follow the course palette.
@@ -21,7 +21,7 @@ export function SignIn() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => { switchToAutoMode(); }, []);
+  useEffect(() => { applyPrefs(); }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
