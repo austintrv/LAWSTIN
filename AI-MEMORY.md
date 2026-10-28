@@ -45,7 +45,7 @@
 - Never commit keys, passwords, or tokens to the repo.
 
 ## Current work
-- (none recorded)
+- 2026-10-28: Austin plans to have ChatGPT add study features he liked from his Fall review site (https://austintrv.github.io/fall-review/, repo `austintrv/fall-review`) into Lawstin, keeping Lawstin’s design. ChatGPT: record what you add and anything left unfinished here and in the Log.
 
 ## Log
 - 2026-10-28 (Claude): Moved Lawstin off Floot to Supabase + GitHub Pages for autonomy and to avoid vendor usage caps. All 15 questions, 5 progress rows, 5 answers, and the Oct 27 run moved over and were checked against the Floot export.
