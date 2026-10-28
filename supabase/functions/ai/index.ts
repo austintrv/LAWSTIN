@@ -1,5 +1,5 @@
 // Lawstin AI tutor: "Ask about this", "Harder version", Written practice (issue-spotter + grading).
-// Uses the Gemini API with the GEMINI_API_KEY secret. Only Austin's signed-in account can call it.
+// Uses the Gemini API; the key is in server_secrets (row gemini_api_key). Only Austin's signed-in account can call it.
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { QuestionDTO } from "../_shared/types.ts";
 
@@ -23,7 +23,6 @@ const VOICE = `You are a law tutor for Austin, a 2L at the University of Houston
 const GROUNDING = `Ground every statement of law in the material provided. When something goes beyond that material, say so in one short clause and give the general rule cautiously. Never invent case names, rule numbers, statute sections, or quotations; cite an authority only if it appears in the material.`;
 
 // ---------- Gemini ----------
-let cachedModels: { main: string; lite: string | null } | null = null;
 let cachedKey: string | null = null;
 
 // The key lives in the server-only server_secrets table (row "gemini_api_key"); an Edge Function secret also works.
@@ -37,54 +36,46 @@ async function geminiKey(): Promise<string | null> {
   return cachedKey;
 }
 
-// Picks the newest Flash model for answers, and the newest Flash-Lite as a fallback when Flash hits its daily limit.
-async function pickModels(key: string): Promise<{ main: string; lite: string | null }> {
-  const fixed = Deno.env.get("GEMINI_MODEL");
-  if (fixed) return { main: fixed, lite: Deno.env.get("GEMINI_FALLBACK_MODEL") ?? null };
-  if (cachedModels) return cachedModels;
-  const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?pageSize=200&key=${key}`);
-  if (!res.ok) throw new AiError("The tutor’s API key was rejected", "BAD_KEY", 503);
-  const { models = [] } = (await res.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
-  const names = models
-    .filter((m) => m.supportedGenerationMethods?.includes("generateContent"))
-    .map((m) => m.name.replace(/^models\//, ""))
-    .filter((n) => /^gemini-[\d.]+-flash/.test(n) && !/(image|tts|audio|live|thinking|exp|preview|embedding|8b|transcribe|translate)/.test(n));
-  const version = (n: string) => Number((n.match(/gemini-(\d+(?:\.\d+)?)/) ?? [])[1] ?? 0);
-  const byNewest = (a: string, b: string) => version(b) - version(a) || a.length - b.length;
-  const flash = names.filter((n) => !/lite/.test(n)).sort(byNewest);
-  const lite = names.filter((n) => /lite/.test(n)).sort(byNewest);
-  cachedModels = { main: flash[0] ?? lite[0] ?? "gemini-flash-latest", lite: lite[0] ?? null };
-  return cachedModels;
-}
+// Flash 3.5 with light thinking answers in about 7 seconds; Flash-Lite in about 2. Newer Flash models were overloaded when tested.
+const MAIN_MODEL = Deno.env.get("GEMINI_MODEL") ?? "gemini-3.5-flash";
+const LITE_MODEL = Deno.env.get("GEMINI_FALLBACK_MODEL") ?? "gemini-3.5-flash-lite";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 async function gemini(system: string, messages: Msg[], schema?: Record<string, unknown>): Promise<string> {
   const key = await geminiKey();
   if (!key) throw new AiError("The tutor isn’t set up yet", "NO_KEY", 503);
-  const { main, lite } = await pickModels(key);
-  const body: Record<string, unknown> = {
+  const body = (model: string) => JSON.stringify({
     systemInstruction: { parts: [{ text: system }] },
     contents: messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] })),
-    generationConfig: schema ? { responseMimeType: "application/json", responseJsonSchema: schema, temperature: 0.7 } : { temperature: 0.5 },
-  };
-  const call = (model: string) => fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    generationConfig: {
+      ...(schema ? { responseMimeType: "application/json", responseJsonSchema: schema, temperature: 0.7 } : { temperature: 0.5 }),
+      ...(model === MAIN_MODEL ? { thinkingConfig: { thinkingLevel: "low" } } : {}),
+    },
   });
-  let res = await call(main);
-  if (res.status === 429 && lite && lite !== main) res = await call(lite);
+  const call = async (model: string, ms: number): Promise<Response | null> => {
+    try {
+      return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: body(model),
+        signal: AbortSignal.timeout(ms),
+      });
+    } catch (e) {
+      console.error("gemini timeout or network error", model, (e as Error).message);
+      return null;
+    }
+  };
+  // Try Flash first; on a limit, overload, or timeout, use Flash-Lite.
+  let res = await call(MAIN_MODEL, 55000);
+  if (!res || res.status === 429 || res.status >= 500 || res.status === 404) res = await call(LITE_MODEL, 45000);
+  if (!res) throw new AiError("The tutor took too long. Try again.", "TIMEOUT", 503);
   if (res.status === 429) throw new AiError("The tutor has hit its daily limit. Try again tomorrow.", "RATE_LIMIT", 503);
-  if (res.status === 400 || res.status === 403) {
-    const t = await res.text();
-    console.error("gemini error", res.status, t.slice(0, 500));
-    if (/API_KEY|api key/i.test(t)) { cachedKey = null; throw new AiError("The tutor’s API key was rejected", "BAD_KEY", 503); }
-    throw new AiError("The tutor isn’t available right now", "UPSTREAM", 503);
-  }
   if (!res.ok) {
     const t = await res.text();
     console.error("gemini error", res.status, t.slice(0, 500));
+    if (res.status === 402) throw new AiError("The tutor’s Google project has no credits", "NO_CREDITS", 503);
+    if ((res.status === 400 || res.status === 403) && /API_KEY|api key/i.test(t)) { cachedKey = null; throw new AiError("The tutor’s API key was rejected", "BAD_KEY", 503); }
     throw new AiError("The tutor isn’t available right now", "UPSTREAM", 503);
   }
   const data = (await res.json()) as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
