@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import libraryJson from "../data/study-materials.json";
-import { materialErrors, type MaterialLibrary, type StudyRecord } from "./studyMaterials";
+import type { StudyRecord } from "./studyMaterials";
 import { acknowledgeStudyRows, changeStudyRecord, emptyStudyCache, mergeStudyRows, restoreStudyCache, PROGRESS_PREFIX, type ProgressRow, type StudyCache } from "./studyProgressStore";
 import { supabase } from "./supabase";
 import { toast } from "./toast";
+import { useStudyLibrary } from "./useStudyLibrary";
 
-export const library = libraryJson as unknown as MaterialLibrary;
-export const verifiedMaterials = library.materials.filter(m => materialErrors(m).length === 0);
 function loadCache(key: string): StudyCache {
   try {
     const parsed = JSON.parse(localStorage.getItem(key) ?? "{}");
@@ -20,6 +18,7 @@ export function useStudyMaterials(userId: string) {
   const key = `lawstin-study-materials-v1:${userId}`;
   const [cache, setCache] = useState(() => loadCache(key));
   const [syncError, setSyncError] = useState(false);
+  const library = useStudyLibrary();
   const current = useRef(cache), syncing = useRef(false);
   const commit = useCallback((next: StudyCache) => {
     current.current = next; setCache(next);
@@ -59,6 +58,6 @@ export function useStudyMaterials(userId: string) {
     return () => { window.removeEventListener("online", onOnline); document.removeEventListener("visibilitychange", onFocus); };
   }, [flush, remote.refetch]);
   const update = useCallback((fn: (prev: StudyRecord) => StudyRecord) => commit(changeStudyRecord(current.current, fn(current.current.record))), [commit]);
-  return { materials: verifiedMaterials, runs: library.runs, record: cache.record, update,
+  return { materials: library.data?.materials ?? [], runs: library.data?.runs ?? [], loading: library.isLoading, record: cache.record, update,
     syncStatus: syncError || remote.isError ? "offline" : Object.keys(cache.pending).length ? "pending" : "synced" };
 }

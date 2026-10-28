@@ -5,24 +5,24 @@ description: Create and publish source-grounded Lawstin flashcards, flowcharts, 
 
 # Lawstin study materials
 
-Read `AI-MEMORY.md`, `skills/README.md`, and `skills/daily-law-quiz/SKILL.md` first. This task owns study materials. Claude owns the multiple-choice question task. Do not edit quiz questions, progress, answers, runs, flags, schema, RLS, database functions, or secrets. Do not call Floot.
+Read `AI-MEMORY.md`, `skills/README.md`, and `skills/daily-law-quiz/SKILL.md` first. This task owns study materials. Claude owns the multiple-choice question task. Do not edit quiz questions, progress, answers, runs, flags, schema, RLS, database functions, or secrets. Write to the database only by running the publisher’s SQL file. Do not call Floot.
 
 Repository: `austintrv/LAWSTIN`, production branch `main`. App: `https://austintrv.github.io/LAWSTIN/`. Supabase project: `vbqfmgsrxurdazujbbuk`. All dates and run decisions use **America/Chicago**, including daylight saving time. The scheduled task runs Tuesday, Thursday, and Saturday at **9:15 a.m.**, after Claude’s 7:45 a.m. update.
 
 ## Storage and scope
 
-- The app reads verified content from `src/data/study-materials.json`. Types and structural checks are in `src/helpers/studyMaterials.ts`. `src/data/study-taxonomy.json` holds the exact topic/subtopic pairs read from the questions. `content/study-checks/` records checker decisions by item.
+- The app reads verified content from the Supabase tables `public.study_materials` (one row per item; the full item is in `data`) and `public.study_runs` (one row per run, with the item-level `checks`). Types and structural checks are in `src/helpers/studyMaterials.ts`. The exact topic/subtopic pairs come from the brief’s `coverage`. Publication goes through `public.publish_study_batch`; content runs never commit to Git. `content/study-checks/` holds only the audit for the first run, published before the move.
 - Content is created for `il`, `asy`, and `pr`. The five-course directory also includes Civil Clinic and Civil Procedure Tutoring; their task features are deferred. Do not generate client work or clinic/tutoring tasks.
 - Private study progress is stored by the app in the existing protected `app_settings` table under `study:v1:cards:`, `study:v1:confidence:`, `study:v1:completed:`, `study:v1:notes:`, `study:v1:highlights:`, and `study:v1:starred:` keys. **Read only** from these rows. The app owns them. Do not alter notification settings.
-- Do not create a new table to run this task. If a future change needs one, save SQL under `supabase/migrations/` and explain it under Current work for Claude. No credentials, answer history, source extracts, or unpublished drafts belong in Git. Use an ignored `.study-work/` directory or a private execution directory.
+- Do not create a new table or edit `study_materials`/`study_runs` rows directly. If a future change needs one, save SQL under `supabase/migrations/` and explain it under Current work for Claude. No credentials, answer history, source extracts, or unpublished drafts belong in Git. Use an ignored `.study-work/` directory or a private execution directory.
 - `content/fall-review-inventory.json` is a migration inventory, not verified app content. Fall review’s own “complete” labels are not independent verification. Recover its features and selected study items, then verify the legal substance against Drive before publishing. Do not bulk copy its old quiz questions into Claude’s bank.
 
 ## 1. Decide whether to run before opening Drive files
 
-Fetch the latest production repository. Read the manifest and the latest successful study run. Use that run’s **created_at** as `since` below; use `1970-01-01T00:00:00Z` for the first run. Do not substitute Claude’s quiz-run date for the study-run timestamp. Make the read-only summary query below through the authenticated Supabase connector, always passing the project ID. Replace the `since` literal with the observed timestamp, using a safely quoted SQL value. Never fetch secrets or whole answer tables.
+Fetch the latest production repository for the scripts and skills. Make the read-only summary query below through the authenticated Supabase connector, always passing the project ID. It finds the latest study run itself and returns the published library summary. Never fetch secrets or whole answer tables.
 
 ```sql
-WITH cutoff AS (SELECT '1970-01-01T00:00:00Z'::timestamptz AS since)
+WITH cutoff AS (SELECT coalesce((SELECT max(created_at) FROM public.study_runs), '1970-01-01T00:00:00Z'::timestamptz) AS since)
 SELECT jsonb_build_object(
   'captured_at', now(),
   'coverage', (SELECT coalesce(jsonb_agg(x), '[]'::jsonb) FROM (
@@ -51,7 +51,13 @@ SELECT jsonb_build_object(
     WHERE flag_note IS NOT NULL AND flag_at>cutoff.since
   ) x),
   'answers_since_last_study_run', (SELECT count(*) FROM public.answers,cutoff
-    WHERE answered_at>cutoff.since)
+    WHERE answered_at>cutoff.since),
+  'library', jsonb_build_object(
+    'materials', (SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'course',course,'kind',kind,
+      'topic',data->>'topic','subtopic',data->>'subtopic','class_date',data->>'class_date')), '[]'::jsonb)
+      FROM public.study_materials WHERE NOT retired),
+    'last_run_date', (SELECT max(run_date)::text FROM public.study_runs),
+    'run_ids', (SELECT coalesce(jsonb_agg(id), '[]'::jsonb) FROM public.study_runs))
 ) AS brief;
 ```
 
@@ -72,9 +78,9 @@ If there are no uncovered taught classes/subtopics, no new answer evidence requi
 - Routine target: at most **24 items**, roughly eight per study course. Typically four to six atomic flashcards, one decision tree if the rule needs one, and one rule review, comparison, sorting drill, or hypothetical. Never create a diagram merely to fill an allotment.
 - A course with at least 20 unseen flashcards receives at most two weak-rule items. At 35 unseen cards, add nothing unless new answer evidence identifies a weak rule, then at most one. If there have been no answers since the last successful study update, cap the entire batch at six. An explicit one-time library setup or requested backfill may use the user’s scope instead of the routine cap.
 - Allocate about 60% to classes taught since the last covered class, newest first; about 30% to weak and half-known rules, prioritizing the exact subtopics with sneaky misses or guesses; about 10% to thin older coverage. Saturday and weeks without new classes shift the recent-class share to weak rules and thin older material. Do not manufacture percentages for topics with no answers.
-- Compare front/prompt/rule meaning against the manifest; a changed title or new ID is not new content. Avoid repeating a subtopic in one run unless it is weak. A source correction should retire/replace an item explicitly with a new verified revision and a preserved audit trail; do not silently overwrite a published item.
+- Compare front/prompt/rule meaning against the published library; a changed title or new ID is not new content. Avoid repeating a subtopic in one run unless it is weak. A source correction should retire/replace an item explicitly with a new verified revision and a preserved audit trail; do not silently overwrite a published item.
 - Draft about **20% extra** (round up) for the selected target. Spare drafts must pass the same checks as the intended items. Drops never justify skipping verification or reading broad additional sources.
-- Reuse the exact current question `topic` and `subtopic` strings. Refresh the taxonomy file from the query’s coverage pairs, without answer statistics. Choose the closest existing applicable pair. If no pair fits a newly taught doctrine, wait for Claude’s question taxonomy or record a specific taxonomy gap under Current work; do not invent a conflicting label.
+- Reuse the exact current question `topic` and `subtopic` strings. The brief’s `coverage` pairs are the taxonomy; the publisher checks against them. Choose the closest existing applicable pair. If no pair fits a newly taught doctrine, wait for Claude’s question taxonomy or record a specific taxonomy gap under Current work; do not invent a conflicting label.
 
 ## 3. Read only the selected source sections
 
@@ -107,7 +113,7 @@ All six formats use the discriminated union in `src/helpers/studyMaterials.ts`.
 
 Plain, literal language. Curly quotes and apostrophes. No filler, encouragement, jokes, or unsupported claims. Match Lawstin’s Apple-style UI, red accent, readable text, and existing screen conventions; no small helper captions. Item text states the rule and cites legal authority; it never refers to the source documents or the drafting process (no “the notes,” “Day 18 notes,” question numbers, paragraph numbers, or instructions such as “check the state analogue”). Do not change UI during a routine content run.
 
-IDs: `{course}-{kind}-{YYYYMMDD}-{nn}`. Check all IDs against the existing manifest before drafting. Keep IDs stable after publication. `class_day`, `class_date`, `batch`, `topic`, `subtopic`, and authority are required. Never add `verified` during drafting.
+IDs: `{course}-{kind}-{YYYYMMDD}-{nn}`. Check all IDs against the published library before drafting. Keep IDs stable after publication. `class_day`, `class_date`, `batch`, `topic`, `subtopic`, and authority are required. Never add `verified` during drafting.
 
 ## 5. Independent verification is mandatory
 
@@ -135,16 +141,14 @@ Prepare a private batch JSON with `materials`, `run`, and `checks`. `checks` has
 Run fields: `id`, `run_date`, `created_at` (actual successful preparation timestamp), `added`, `by_course`, `by_kind`, `classes`, `weak_topics`, `history_available`, `check_counts: {drafted, passed, fixedThenPassed, dropped}`, and `note`. The counts must reconcile. The note says what was added per course and which classes and weak/half-known topics were covered. Check outcomes go only in `check_counts`, never in the note. Do not imply the app was updated until the actual publication succeeds.
 
 ```text
-npm run study:publish -- /private/path/verified.batch.json
-npm test
-npm run build
+npm run study:publish -- /private/path/verified.batch.json /private/path/history.brief.json
 ```
 
-The publisher rejects unchecked items, duplicate IDs, taxonomy mismatches, unsupported dates, broken trees, reused run IDs, missing checker evidence, and count mismatches. It appends verified items and an item-level checker audit; never overwrites existing published items. The app has a second structural gate. A verification stamp records a real check; the validator cannot prove legal correctness by itself.
+The publisher rejects unchecked items, duplicate IDs, taxonomy mismatches, unsupported dates, broken trees, reused run IDs, missing checker evidence, and count mismatches, then writes one SQL file to `.study-work/<run id>.publish.sql`. Execute that file’s single statement once through the Supabase connector. `public.publish_study_batch` inserts the items, the run, and the item-level checks in one transaction and refuses overwrites and reused run IDs. The app has a second structural gate. A verification stamp records a real check; the validator cannot prove legal correctness by itself.
 
-Commit only the manifest, taxonomy changes, checker audit, and required memory update. Inspect the staged diff for credentials, private progress, source passages, and unrelated changes. Pull current `main` before pushing. Do not overwrite Claude’s concurrent changes or force-push. Routine verified content updates may be committed and pushed to `main` through the existing GitHub Pages workflow; use an isolated branch if there is a conflict, and report it. Confirm the commit and deployment result before calling it live. Never alter Claude’s question schedule or write a quiz `runs` row.
+The app reads the new items on its next load; no build, commit, or deployment is involved. Confirm the publication by selecting the new run row. Never alter Claude’s question schedule or write a quiz `runs` row.
 
-If a write, build, push, or deployment fails: preserve the last working publication, report the failed stage, and do not claim a completed run. Keep an unpublished candidate privately for a later retry. A failed/no-op run must not change the app’s latest-update date. If no items survive, write no app manifest/run, and report the verification outcome only in the task result.
+If the publication statement fails: nothing is written, report the failed stage, and do not claim a completed run. Keep an unpublished candidate privately for a later retry. A failed/no-op run must not change the app’s latest-update date. If no items survive, publish nothing, and report the verification outcome only in the task result.
 
 ## 7. Finish and handoff
 

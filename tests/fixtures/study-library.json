@@ -28,10 +28,10 @@
       "back": "A resort to armed force between states.",
       "reason": "Common Article 2 addresses conflict between two or more High Contracting Parties.",
       "verified": {
-        "at": "2026-10-28T22:35:25.734492+00:00",
-        "rounds": 2,
-        "checker": "independent-cold-check-20261028-round1",
-        "notes": "Passed independent check against selected Drive DAY-note passages."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 3,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. No change."
       }
     },
     {
@@ -188,15 +188,15 @@
           "url": "https://docs.google.com/document/d/1JobU_3FlA3_dG-GcWeV86FfcY4AuQ5XX/edit?usp=drivesdk&ouid=100691317202909008590&rtpof=true&sd=true"
         }
       ],
-      "authority": "Tadić (ICTY Appeals Chamber, 1995); Common Articles 2 and 3",
+      "authority": "Tadić (ICTY Appeals Chamber, 1995)",
       "front": "What effect does a pause in local fighting have on IHL’s territorial application during a continuing conflict?",
       "back": "IHL continues to apply throughout the relevant territory despite the pause.",
-      "reason": "Under Tadić, IHL applies throughout the relevant territory until the conflict ends, whether or not fighting is taking place there.",
+      "reason": "Under Tadić, IHL applies in the whole territory of the warring states (or, in an internal conflict, the whole territory under a party’s control) until a general conclusion of peace or a peaceful settlement, whether or not actual combat takes place there.",
       "verified": {
-        "at": "2026-10-28T22:35:25.734528+00:00",
-        "rounds": 3,
-        "checker": "independent-recall-recheck-20261028",
-        "notes": "Applied the checker’s source-cited correction; passed a fresh independent check."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 5,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. Reason and authority corrected to Tadić’s territorial and temporal scope; passed a fresh check."
       }
     },
     {
@@ -488,7 +488,7 @@
             "The full Geneva Conventions apply.",
             "Common Article 3 supplies minimum humane-treatment protections."
           ],
-          "authority": "Tadić (ICTY Appeals Chamber, 1995); Common Articles 2 and 3"
+          "authority": "Common Articles 2 and 3"
         },
         {
           "label": "Grave breaches",
@@ -500,10 +500,10 @@
         }
       ],
       "verified": {
-        "at": "2026-10-28T22:35:25.734553+00:00",
-        "rounds": 1,
-        "checker": "independent-cold-check-20261028-round1",
-        "notes": "Passed independent check against selected Drive DAY-note passages."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 2,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. Row authority corrected to Common Articles 2 and 3."
       }
     },
     {
@@ -556,10 +556,10 @@
         }
       ],
       "verified": {
-        "at": "2026-10-28T22:35:25.734555+00:00",
-        "rounds": 1,
-        "checker": "independent-cold-check-20261028-round1",
-        "notes": "Passed independent check against selected Drive DAY-note passages."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 2,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. No change."
       }
     },
     {
@@ -925,15 +925,15 @@
           "url": "https://docs.google.com/document/d/1Ett516fGiTWsW57KvUwPWiNepwrwt5eZ/edit?usp=drivesdk&ouid=100691317202909008590&rtpof=true&sd=true"
         }
       ],
-      "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014)",
+      "authority": "Matter of M-E-V-G- (BIA 2014)",
       "front": "Under M-E-V-G-, what kind of testimony can show that a PSG exists in its society?",
       "back": "Expert testimony.",
-      "reason": "The evidence must establish the group in the relevant society, rather than assume it from the label.",
+      "reason": "M-E-V-G- requires PSG applicants to show that their group exists, using evidence such as country reports, expert testimony, and press accounts of discriminatory laws, policies, and historical animosities.",
       "verified": {
-        "at": "2026-10-28T22:35:25.734685+00:00",
-        "rounds": 3,
-        "checker": "independent-cold-check-20261028-round2",
-        "notes": "Applied the checker’s source-cited correction; passed a fresh independent check."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 5,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. Reason and authority corrected to M-E-V-G-’s evidentiary burden; passed a fresh check. Subtopic kept; the question taxonomy has no M-E-V-G- entry."
       }
     },
     {
@@ -1036,7 +1036,7 @@
           "url": "https://docs.google.com/document/d/1Ett516fGiTWsW57KvUwPWiNepwrwt5eZ/edit?usp=drivesdk&ouid=100691317202909008590&rtpof=true&sd=true"
         }
       ],
-      "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014)",
+      "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014); Gatimi v. Holder (7th Cir. 2009)",
       "sections": [
         {
           "heading": "Protected characteristic",
@@ -1046,24 +1046,24 @@
         {
           "heading": "Particularity",
           "text": "M-E-V-G- asks whether the group has clear boundaries, using terms with commonly accepted meanings in the relevant society.",
-          "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014)"
+          "authority": "Matter of M-E-V-G- (BIA 2014)"
         },
         {
           "heading": "Social distinction",
           "text": "The society must perceive the group as distinct. Members do not need to be recognizable on sight. The persecutor’s perspective can be evidence, but societal perception controls.",
-          "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014)"
+          "authority": "Matter of M-E-V-G- (BIA 2014)"
         },
         {
           "heading": "Other approaches",
           "text": "These are the BIA’s cumulative requirements. The UNHCR approach differs, and the Seventh Circuit rejected the visibility requirement.",
-          "authority": "Matter of Acosta (BIA 1985); Matter of M-E-V-G- (BIA 2014); Gatimi v. Holder (7th Cir. 2009)"
+          "authority": "Matter of M-E-V-G- (BIA 2014); Gatimi v. Holder (7th Cir. 2009)"
         }
       ],
       "verified": {
-        "at": "2026-10-28T22:35:25.734691+00:00",
-        "rounds": 2,
-        "checker": "independent-cold-check-20261028-round2",
-        "notes": "Applied the checker’s source-cited correction; passed a fresh independent check."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 3,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. Section authorities narrowed to M-E-V-G- and Gatimi."
       }
     },
     {
@@ -1418,15 +1418,15 @@
           "url": "https://docs.google.com/document/d/1ccuwCu46yS-zyRir2Lw1SDO9bsBiXTXf/edit?usp=drivesdk&ouid=100691317202909008590&rtpof=true&sd=true"
         }
       ],
-      "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)",
+      "authority": "Model Rule 3.8(d); Brady v. Maryland, 373 U.S. 83 (1963)",
       "front": "What knowledge limit does the text of Model Rule 3.8(d) impose?",
       "back": "The evidence or information must be known to the prosecutor.",
       "reason": "Brady, by contrast, reaches evidence the police did not give the prosecutor.",
       "verified": {
-        "at": "2026-10-28T22:35:25.734727+00:00",
-        "rounds": 2,
-        "checker": "independent-cold-check-20261028-round1",
-        "notes": "Passed independent check against selected Drive DAY-note passages."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 3,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. Authority narrowed to Rule 3.8(d) and Brady."
       }
     },
     {
@@ -1652,43 +1652,43 @@
       "source_files": [
         "1ccuwCu46yS-zyRir2Lw1SDO9bsBiXTXf"
       ],
-      "source_section": "Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100",
+      "source_section": "Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77",
       "sources": [
         {
           "file_id": "1ccuwCu46yS-zyRir2Lw1SDO9bsBiXTXf",
           "title": "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx",
-          "section": "Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100",
+          "section": "Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77",
           "url": "https://docs.google.com/document/d/1ccuwCu46yS-zyRir2Lw1SDO9bsBiXTXf/edit?usp=drivesdk&ouid=100691317202909008590&rtpof=true&sd=true"
         }
       ],
-      "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)",
+      "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d)",
       "sections": [
         {
           "heading": "Brady",
-          "text": "Suppression of favorable evidence material to guilt or punishment violates due process irrespective of prosecutorial good faith.",
-          "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)"
+          "text": "Suppression by the prosecution of evidence favorable to the accused, upon request, violates due process where the evidence is material to guilt or punishment, irrespective of the prosecution’s good or bad faith.",
+          "authority": "Brady v. Maryland, 373 U.S. 83 (1963)"
         },
         {
           "heading": "Bagley materiality",
-          "text": "Evidence is material if there is a reasonable probability that disclosure would have changed the result, sufficient to undermine confidence in the outcome. This standard applies whether the defense made no request, a general request, or a specific request.",
-          "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)"
+          "text": "Evidence is material only if there is a reasonable probability that, had it been disclosed to the defense, the result of the proceeding would have been different; a reasonable probability is a probability sufficient to undermine confidence in the outcome. This single standard applies whether the defense made no request, a general request, or a specific request.",
+          "authority": "United States v. Bagley, 473 U.S. 667 (1985)"
         },
         {
           "heading": "Model Rule 3.8(d)",
-          "text": "The text requires timely disclosure of known information tending to negate guilt or mitigate the offense, without Brady’s materiality limit. In connection with sentencing, it also requires disclosure of known unprivileged mitigating information to the defense and tribunal, unless a protective order relieves the responsibility.",
-          "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)"
+          "text": "The text requires timely disclosure to the defense of all evidence or information known to the prosecutor that tends to negate guilt or mitigates the offense, with no materiality limit like Brady’s. In connection with sentencing, it also requires disclosure to the defense and the tribunal of all unprivileged mitigating information known to the prosecutor. A protective order of the tribunal can relieve the prosecutor of these responsibilities.",
+          "authority": "Model Rule 3.8(d); Brady v. Maryland, 373 U.S. 83 (1963)"
         },
         {
           "heading": "State interpretations",
-          "text": "Courts are split: some discipline for withholding helpful evidence without a Brady violation, while others require a due process violation before imposing discipline.",
-          "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)"
+          "text": "Courts are split: some discipline for withholding helpful evidence without a Brady violation, while others require a due process violation before imposing discipline. Most state courts have not decided the question.",
+          "authority": "Model Rule 3.8(d); In re Kline (D.C. 2015); In re Feland (N.D. 2012); Oklahoma Bar Ass’n v. Ward (Okla. 2015); In re Petition (Tenn. 2019)"
         }
       ],
       "verified": {
-        "at": "2026-10-28T22:35:25.734751+00:00",
-        "rounds": 1,
-        "checker": "independent-cold-check-20261028-round1",
-        "notes": "Passed independent check against selected Drive DAY-note passages."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 4,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. Brady “upon request,” Bagley “only if,” the 3.8(d) protective-order exception, the split’s cases and “most state courts have not decided” corrected; source range narrowed; passed two fresh checks."
       }
     },
     {
@@ -1829,26 +1829,26 @@
           "url": "https://docs.google.com/document/d/1ccuwCu46yS-zyRir2Lw1SDO9bsBiXTXf/edit?usp=drivesdk&ouid=100691317202909008590&rtpof=true&sd=true"
         }
       ],
-      "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)",
+      "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d)",
       "facts": "Assume a jurisdiction reads Model Rule 3.8(d) more broadly than Brady, with no materiality requirement. A prosecutor knows of a witness statement tending to negate guilt and has time to disclose it for defense use. No protective order excuses disclosure. The prosecutor withholds it solely because it would not create a reasonable probability of a different verdict.",
       "prompt": "Does the stated reason satisfy the ethical duty?",
       "answer": [
         {
           "issue": "Ethical duty",
           "analysis": "No. On the assumed interpretation, Rule 3.8(d) reaches known information tending to negate guilt without Brady-level materiality. The prosecutor must make timely disclosure.",
-          "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)"
+          "authority": "Model Rule 3.8(d); ABA Formal Op. 09-454 (2009)"
         },
         {
           "issue": "Separate constitutional analysis",
           "analysis": "A Brady claim still requires materiality under Bagley. That separate constitutional limit does not answer the ethical question on the stated assumption.",
-          "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985); Model Rule 3.8(d), (g), (h)"
+          "authority": "Brady v. Maryland, 373 U.S. 83 (1963); United States v. Bagley, 473 U.S. 667 (1985)"
         }
       ],
       "verified": {
-        "at": "2026-10-28T22:35:25.734906+00:00",
-        "rounds": 1,
-        "checker": "independent-cold-check-20261028-round1",
-        "notes": "Passed independent check against selected Drive DAY-note passages."
+        "at": "2026-10-28T23:05:15+00:00",
+        "rounds": 2,
+        "checker": "claude-independent-recheck-20261028",
+        "notes": "Reworded to remove source references, then rechecked against the Drive DAY 18 notes. Authorities narrowed per answer, adding ABA Formal Op. 09-454."
       }
     }
   ],

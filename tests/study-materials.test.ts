@@ -8,7 +8,9 @@ import { cardQueue, emptyStudyRecord, libraryErrors, materialErrors, reviewCard,
 import { acknowledgeStudyRows, changeStudyRecord, emptyStudyCache, mergeStudyRows, restoreStudyCache } from "../src/helpers/studyProgressStore";
 import type { OutputType as State } from "../src/endpoints/state_GET.schema";
 
-const library = JSON.parse(fs.readFileSync("src/data/study-materials.json", "utf8")) as MaterialLibrary;
+const library = JSON.parse(fs.readFileSync("tests/fixtures/study-library.json", "utf8")) as MaterialLibrary;
+const taxonomy = JSON.parse(fs.readFileSync("tests/fixtures/study-taxonomy.json", "utf8")) as { topics: { course: string; topic: string; subtopic: string }[] };
+const publishedSummary = { materials: library.materials.map(m => ({ id: m.id, course: m.course, kind: m.kind, topic: m.topic, subtopic: m.subtopic, class_date: m.class_date })), last_run_date: library.runs[0].run_date, run_ids: library.runs.map(r => r.id) };
 const today = "2026-10-28";
 const card = library.materials.find((m): m is Flashcard => m.kind === "flashcard")!;
 const flow = library.materials.find((m): m is Flowchart => m.kind === "flowchart")!;
@@ -97,28 +99,39 @@ test("restoring a corrupt cache cannot enqueue unrelated settings writes", () =>
 test("scheduled preflight writes nothing when the taught coverage already exists", () => {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lawstin-preflight-"));
   try {
-    fs.mkdirSync(path.join(dir, "src/data"), { recursive: true });
-    fs.writeFileSync(path.join(dir, "src/data/study-materials.json"), JSON.stringify(library));
-    const brief = { captured_at: new Date().toISOString(), coverage: [{ course: card.course, topic: card.topic, subtopic: card.subtopic, latest: card.class_date, n: 1 }], topics: [], half_known: [], card_progress: {}, answers_since_last_study_run: 1, flags: [] };
+    const brief = { captured_at: new Date().toISOString(), coverage: [{ course: card.course, topic: card.topic, subtopic: card.subtopic, latest: card.class_date, n: 1 }], topics: [], half_known: [], card_progress: {}, answers_since_last_study_run: 1, flags: [], library: publishedSummary };
     const input = path.join(dir, "history.brief.json"); fs.writeFileSync(input, JSON.stringify(brief));
-    const before = fs.readFileSync(path.join(dir, "src/data/study-materials.json"), "utf8");
     const result = spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"), path.resolve("scripts/study-preflight.ts"), input], { cwd: dir, encoding: "utf8" });
     assert.equal(result.status, 0, result.stderr); assert.equal(JSON.parse(result.stdout).should_run, false);
-    assert.equal(fs.readFileSync(path.join(dir, "src/data/study-materials.json"), "utf8"), before);
-    assert.deepEqual(fs.readdirSync(dir).sort(), ["history.brief.json", "src"]);
+    assert.deepEqual(fs.readdirSync(dir).sort(), ["history.brief.json"]);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });
 
-test("the publisher rejects missing checker evidence without changing the library", () => {
+function runPublisher(batch: unknown) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lawstin-publish-"));
+  const brief = { coverage: taxonomy.topics, library: { materials: [], run_ids: [] } };
+  fs.writeFileSync(path.join(dir, "batch.json"), JSON.stringify(batch)); fs.writeFileSync(path.join(dir, "brief.json"), JSON.stringify(brief));
+  const result = spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"), path.resolve("scripts/publish-study-batch.ts"), "batch.json", "brief.json"], { cwd: dir, encoding: "utf8" });
+  return { dir, result };
+}
+
+test("the publisher rejects missing checker evidence and writes no SQL", () => {
+  const { dir, result } = runPublisher({ materials: [card], run: library.runs[0], checks: [] });
   try {
-    fs.mkdirSync(path.join(dir, "src/data"), { recursive: true });
-    const original = JSON.stringify({ schema_version: 1, materials: [], runs: [] });
-    fs.writeFileSync(path.join(dir, "src/data/study-materials.json"), original);
-    fs.copyFileSync("src/data/study-taxonomy.json", path.join(dir, "src/data/study-taxonomy.json"));
-    const input = path.join(dir, "bad.batch.json"); fs.writeFileSync(input, JSON.stringify({ materials: [card], run: library.runs[0], checks: [] }));
-    const result = spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"), path.resolve("scripts/publish-study-batch.ts"), input], { cwd: dir, encoding: "utf8" });
     assert.notEqual(result.status, 0); assert.match(result.stderr, /Missing independent checker evidence/);
-    assert.equal(fs.readFileSync(path.join(dir, "src/data/study-materials.json"), "utf8"), original);
+    assert.equal(fs.existsSync(path.join(dir, ".study-work")), false);
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});
+
+test("the publisher writes one SQL statement for a fully checked batch", () => {
+  const recheck = JSON.parse(fs.readFileSync("content/study-checks/study-20261028-recheck.json", "utf8")).checks as { id: string; checker: string }[];
+  const checks = (JSON.parse(fs.readFileSync("content/study-checks/study-20261028-initial.json", "utf8")).checks as { id: string; checker: string }[])
+    .map(c => ({ ...c, checker: recheck.find(r => r.id === c.id)?.checker ?? c.checker }));
+  const { dir, result } = runPublisher({ materials: library.materials, run: library.runs[0], checks });
+  try {
+    assert.equal(result.status, 0, result.stderr);
+    const sql = fs.readFileSync(path.join(dir, ".study-work", `${library.runs[0].id}.publish.sql`), "utf8");
+    assert.match(sql, /^select public\.publish_study_batch\(\$lawstin\$/);
+    assert.equal(JSON.parse(sql.slice(sql.indexOf("$lawstin$") + 9, sql.lastIndexOf("$lawstin$"))).materials.length, library.materials.length);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

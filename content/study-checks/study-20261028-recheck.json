@@ -1,0 +1,97 @@
+{
+  "recheck_of": "study-20261028-initial",
+  "at": "2026-10-28T23:05:15+00:00",
+  "reason": "Item text referred to the source notes; reworded and independently rechecked.",
+  "checks": [
+    {
+      "id": "il-flashcard-20261028-01",
+      "result": "PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "No change.",
+      "fresh_checks": 1
+    },
+    {
+      "id": "il-drill-20261028-14",
+      "result": "PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "No change.",
+      "fresh_checks": 1
+    },
+    {
+      "id": "il-flashcard-20261028-06",
+      "result": "FIXED_PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Reason and authority corrected to Tadić’s territorial and temporal scope; passed a fresh check.",
+      "fresh_checks": 2
+    },
+    {
+      "id": "il-comparison-20261028-13",
+      "result": "FIXED_PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Row authority corrected to Common Articles 2 and 3.",
+      "fresh_checks": 1
+    },
+    {
+      "id": "asy-flashcard-20261028-10",
+      "result": "FIXED_PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Reason and authority corrected to M-E-V-G-’s evidentiary burden; passed a fresh check. Subtopic kept; the question taxonomy has no M-E-V-G- entry.",
+      "fresh_checks": 2
+    },
+    {
+      "id": "asy-outline-20261028-12",
+      "result": "FIXED_PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Matter of Acosta, Reasoning, paragraphs 55–66; Gatimi v. Holder, paragraphs 227–243; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Section authorities narrowed to M-E-V-G- and Gatimi.",
+      "fresh_checks": 1
+    },
+    {
+      "id": "pr-flashcard-20261028-06",
+      "result": "FIXED_PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Authority narrowed to Rule 3.8(d) and Brady.",
+      "fresh_checks": 1
+    },
+    {
+      "id": "pr-outline-20261028-12",
+      "result": "FIXED_PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77"
+      ],
+      "note": "Brady “upon request,” Bagley “only if,” the 3.8(d) protective-order exception, the split’s cases and “most state courts have not decided” corrected; source range narrowed; passed two fresh checks.",
+      "fresh_checks": 3
+    },
+    {
+      "id": "pr-hypothetical-20261028-15",
+      "result": "FIXED_PASS",
+      "checker": "claude-independent-recheck-20261028",
+      "source_locations": [
+        "Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Authorities narrowed per answer, adding ABA Formal Op. 09-454.",
+      "fresh_checks": 1
+    }
+  ]
+}
