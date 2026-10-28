@@ -12,6 +12,7 @@ These are the instructions the AI follows when it writes study content for Lawst
   - **Weighting:** weight toward recent classes, weak topics, and rules Austin half-knows (sneaky misses and “I guessed”).
   - **Verification:** an independent check, by a separate pass that sees only the drafts and the source passages and none of the drafting notes, before anything reaches the app. Drop what fails. A missing item costs less than a wrong one.
   - **Writing:** plain, literal writing with curly quotes, and a short run note saying what was added.
+  - **Balanced choices:** in multiple-choice items and sorting drills, no answer may stand out by length, detail, or wording; wrong options are as specific and lawyerly as the right one.
   - **Usage:** decide whether to run before reading any files, and read only the sections needed.
 
 ## lawstin-study-materials
