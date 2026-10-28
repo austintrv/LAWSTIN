@@ -12,11 +12,12 @@ import { switchToAutoMode } from "../helpers/themeMode";
 import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
-import { COURSES, COURSE_KEYS, DAILY_GOAL, ROUND_SIZE, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
+import { COURSES, COURSE_KEYS, DAILY_GOAL, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import styles from "./_index.module.css";
 
 type Tab = "progress" | "study" | "activity" | "courses";
+type Source = (eng: ReturnType<typeof studyEngine>) => RoundItem[];
 const TABS = ["study", "courses", "progress", "activity"] as const;
 const tabFromHash = (): Tab => {
   const t = window.location.hash.split("/")[1];
@@ -40,7 +41,7 @@ export default function LawstinApp({ userId }: { userId: string }) {
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>("all");
-  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: () => RoundItem[] } | null>(null);
+  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source } | null>(null);
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
   const [examSheet, setExamSheet] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -108,8 +109,15 @@ export default function LawstinApp({ userId }: { userId: string }) {
     }
   }, [todayAnswered, state]);
 
-  const start = (source: () => RoundItem[], mode: QuizMode = "practice") => {
-    const items = source();
+  // Sources take an engine so a running session can ask for more while skipping what it already holds.
+  const latest = useRef(state);
+  latest.current = state;
+  const engineFor = (exclude?: Set<string>) => {
+    const s = latest.current;
+    return studyEngine(s && exclude ? { ...s, questions: s.questions.filter((q) => !exclude.has(q.id)) } : s);
+  };
+  const start = (source: Source, mode: QuizMode = "practice") => {
+    const items = source(engineFor());
     if (!items.length) { toast("Nothing to study here yet"); return; }
     haptic();
     setExamSheet(false); setTopicSheet(null);
@@ -169,30 +177,28 @@ export default function LawstinApp({ userId }: { userId: string }) {
 
               {state && k === "study" && (
                 <StudyView e={e} state={state} filter={filter} setFilter={setFilter} celebrate={celebrate}
-                  onStart={() => start(() => studyEngine(query.data).buildRound(filter))}
-                  onCourse={(c) => start(() => studyEngine(query.data).buildRound(c))}
-                  onMissed={() => start(() => studyEngine(query.data).listRound(studyEngine(query.data).queues(filter).missed))}
-                  onStarred={() => start(() => studyEngine(query.data).listRound(studyEngine(query.data).queues(filter).starred))}
+                  onStart={() => start((eng) => eng.buildRound(filter))}
+                  onCourse={(c) => start((eng) => eng.buildRound(c))}
+                  onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed))}
+                  onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred))}
                   onExam={() => { haptic(); setExamSheet(true); }}
                   onWrite={() => { haptic(); setWriting(true); }}
-                  onUpdate={(list, c) => start(() => {
-                    const eng = studyEngine(query.data);
-                    if (!list.length) return eng.buildRound(c ?? "all");
-                    const left = list.filter((q) => !(eng.prog(q.id)?.seen));
-                    return eng.listRound(left.length ? left : list);
+                  onUpdate={(list, c) => start((eng) => {
+                    const ids = new Set(eng.questions.map((q) => q.id));
+                    const left = list.filter((q) => ids.has(q.id) && !eng.prog(q.id)?.seen);
+                    return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
                   })} />
               )}
               {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
               {state && k === "activity" && (
                 <ActivityView e={e} state={state}
-                  onStudy={(list, c) => start(() => {
-                    const eng = studyEngine(query.data);
-                    if (!list.length) return eng.buildRound(c ?? "all");
-                    const left = list.filter((q) => !(eng.prog(q.id)?.seen));
-                    return eng.listRound(left.length ? left : list);
+                  onStudy={(list, c) => start((eng) => {
+                    const ids = new Set(eng.questions.map((q) => q.id));
+                    const left = list.filter((q) => ids.has(q.id) && !eng.prog(q.id)?.seen);
+                    return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
                   })} />
               )}
-              {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses userId={userId} state={state} onWrite={() => setWriting(true)} onQuiz={(course, topic) => start(() => topic ? studyEngine(query.data).topicRound(course, topic) : studyEngine(query.data).buildRound(course))} /></Suspense>}
+              {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses userId={userId} state={state} onWrite={() => setWriting(true)} onQuiz={(course, topic) => start((eng) => topic ? eng.topicRound(course, topic) : eng.buildRound(course))} /></Suspense>}
             </div>
           </div>
         ))}
@@ -222,13 +228,13 @@ export default function LawstinApp({ userId }: { userId: string }) {
               </div>
             ))}
           </div>
-          <Button className={`${styles.big} ${styles.cta}`} onClick={() => start(() => studyEngine(query.data).topicRound(topicSheet.course, topicSheet.topic))}>Drill this topic</Button>
+          <Button className={`${styles.big} ${styles.cta}`} onClick={() => start((eng) => eng.topicRound(topicSheet.course, topicSheet.topic))}>Drill this topic</Button>
         </BottomSheet>
       )}
 
       {examSheet && (
         <BottomSheet onClose={() => setExamSheet(false)} title="Practice exam">
-          <ExamPicker e={e} onStart={(f, n) => start(() => studyEngine(query.data).examRound(f, n), "exam")} />
+          <ExamPicker e={e} onStart={(f, n) => start((eng) => eng.examRound(f, n), "exam")} />
         </BottomSheet>
       )}
 
@@ -245,13 +251,14 @@ export default function LawstinApp({ userId }: { userId: string }) {
           key={session.key}
           items={session.items}
           mode={session.mode}
-          getProgress={(id) => studyEngine(query.data).prog(id)}
+          getProgress={(id) => e.prog(id)}
           onAnswer={onAnswer}
           onHarder={session.mode === "practice" ? onHarder : undefined}
           onStar={(q, starred) => mark.mutate({ action: "star", questionId: q.id, starred })}
           onGuess={(q) => mark.mutate({ action: "guess", questionId: q.id, localDate: dateKey.today() })}
           onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
-          onAnother={() => { const items = session.source(); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now() }); }}
+          onMore={(exclude) => session.source(engineFor(exclude))}
+          onAnother={() => { const items = session.source(engineFor()); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now() }); }}
           onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: session.source })}
           onClose={() => setSession(null)}
         />
@@ -306,8 +313,7 @@ function StudyView({ e, state, filter, setFilter, celebrate, onStart, onCourse, 
   const week = e.lastNDays(7).reduce((a, d) => ({ a: a.a + d.answered, c: a.c + d.correct }), { a: 0, c: 0 });
   const avail = qs.due.length + qs.fresh.length + qs.ahead.length;
   const ready = qs.due.length + qs.fresh.length;
-  const roundN = Math.min(ROUND_SIZE, ready || qs.ahead.length);
-  const roundLabel = !avail ? "All caught up" : ready ? `Start ${roundN} question${roundN === 1 ? "" : "s"}` : `Review ${roundN} ahead`;
+  const roundLabel = !avail ? "All caught up" : !ready ? "Review ahead" : today > 0 ? "Keep going" : "Start studying";
   const run = state.runs[0];
   const goalPct = Math.min(1, today / DAILY_GOAL);
   const goalDone = today >= DAILY_GOAL;

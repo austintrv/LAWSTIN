@@ -10,6 +10,11 @@ import { SignIn } from "./components/SignIn";
 import { supabase } from "./helpers/supabase";
 import LawstinApp from "./pages/_index";
 
+// Safari ignores user-scalable=no; block pinch zoom so the installed app behaves like a native one.
+// Double-tap zoom is already off through touch-action: manipulation in base.css.
+document.addEventListener("gesturestart", (e) => e.preventDefault(), { passive: false });
+document.addEventListener("touchmove", (e) => { if ((e as TouchEvent & { scale?: number }).scale !== undefined && (e as TouchEvent & { scale: number }).scale !== 1) e.preventDefault(); }, { passive: false });
+
 const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: 60 * 1000 } } });
 
 function Root() {
