@@ -5,8 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "build": "npm run study:check && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "tsx --test tests/*.test.ts",
+    "study:check": "tsx scripts/validate-study-materials.ts",
+    "study:preflight": "tsx scripts/study-preflight.ts",
+    "study:publish": "tsx scripts/publish-study-batch.ts",
+    "sync:desktop": "node scripts/sync-desktop.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",
@@ -19,9 +24,11 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
+    "@types/node": "^26.6.6",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.2",
+    "tsx": "^4.23.15",
     "typescript": "^5.6.3",
     "vite": "^5.4.8"
   }

@@ -1,0 +1,538 @@
+{
+  "run": {
+    "id": "study-20261028-initial",
+    "run_date": "2026-10-28",
+    "created_at": "2026-10-28T22:35:25.734908+00:00",
+    "added": 45,
+    "by_course": {
+      "il": 15,
+      "asy": 15,
+      "pr": 15
+    },
+    "by_kind": {
+      "comparison": 3,
+      "drill": 3,
+      "flashcard": 30,
+      "flowchart": 3,
+      "hypothetical": 3,
+      "outline": 3
+    },
+    "classes": [
+      "International Law, Day 18, October 26: conflict classification and military objectives.",
+      "Asylum Law, Day 18, October 26: protected characteristics, particularity, and social distinction.",
+      "Professional Responsibility, Day 18, October 26: Brady, Rule 3.8(d), and post-conviction duties."
+    ],
+    "weak_topics": [],
+    "history_available": true,
+    "check_counts": {
+      "drafted": 45,
+      "passed": 30,
+      "fixedThenPassed": 15,
+      "dropped": 0
+    },
+    "note": "15 materials per course from the October 26 classes: conflict classification and military objectives; particular social groups; prosecutor disclosure and post-conviction duties. 30 passed without changes. Fifteen received source-cited corrections, including active-recall prompt revisions, and passed fresh independent checks. None were dropped. Quiz history showed no topics below 70% with two answers, sneaky misses, or guessed answers."
+  },
+  "checks": [
+    {
+      "id": "il-flashcard-20261028-01",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flashcard-20261028-02",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flashcard-20261028-03",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flashcard-20261028-04",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flashcard-20261028-05",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flashcard-20261028-06",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "What effect does a pause in local fighting have on IHL’s territorial application during a continuing conflict?",
+        "front": "What effect does a pause in local fighting have on IHL’s territorial application during a continuing conflict?",
+        "back": "IHL continues to apply throughout the relevant territory despite the pause."
+      }
+    },
+    {
+      "id": "il-flashcard-20261028-07",
+      "result": "FIXED_PASS",
+      "checker": "independent-cold-check-20261028-round2",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "authority": "Hamdan v. Rumsfeld (U.S. 2006); Common Article 3"
+      }
+    },
+    {
+      "id": "il-flashcard-20261028-08",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q8. Military objectives; paragraphs 105–118"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flashcard-20261028-09",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q8. Military objectives; paragraphs 105–118"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flashcard-20261028-10",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q8. Military objectives; paragraphs 105–118"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-flowchart-20261028-11",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-outline-20261028-12",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75; Q8. Military objectives; paragraphs 105–118"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-comparison-20261028-13",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-drill-20261028-14",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q3. IAC and NIAC; paragraphs 55–75"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "il-hypothetical-20261028-15",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Laws of War Pt I.docx — Q8. Military objectives; paragraphs 105–118"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "asy-flashcard-20261028-01",
+      "result": "FIXED_PASS",
+      "checker": "independent-cold-check-20261028-round2",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "front": "Under Acosta, what does the inability-to-change branch of the protected-characteristic test require?",
+        "title": "Under Acosta, what does the inability-to-change branch of the protected-characteristic test require?"
+      }
+    },
+    {
+      "id": "asy-flashcard-20261028-02",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "asy-flashcard-20261028-03",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "asy-flashcard-20261028-04",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "asy-flashcard-20261028-05",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "asy-flashcard-20261028-06",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "What visibility requirement applies to individual members of a socially distinct group under M-E-V-G-?",
+        "front": "What visibility requirement applies to individual members of a socially distinct group under M-E-V-G-?",
+        "back": "Members need not be identifiable on sight."
+      }
+    },
+    {
+      "id": "asy-flashcard-20261028-07",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "What effect does hiding group membership to avoid persecution have on social distinction under M-E-V-G-?",
+        "front": "What effect does hiding group membership to avoid persecution have on social distinction under M-E-V-G-?",
+        "back": "Hiding membership to avoid persecution does not defeat social distinction."
+      }
+    },
+    {
+      "id": "asy-flashcard-20261028-08",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "What is the limit of immutability alone in establishing a particular social group under M-E-V-G-?",
+        "front": "What is the limit of immutability alone in establishing a particular social group under M-E-V-G-?",
+        "back": "Immutability alone is insufficient to establish a particular social group."
+      }
+    },
+    {
+      "id": "asy-flashcard-20261028-09",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "What limitation applies to defining a group by the persecutor’s view under M-E-V-G-?",
+        "front": "What limitation applies to defining a group by the persecutor’s view under M-E-V-G-?",
+        "back": "The persecutor’s view alone cannot define the group."
+      }
+    },
+    {
+      "id": "asy-flashcard-20261028-10",
+      "result": "FIXED_PASS",
+      "checker": "independent-cold-check-20261028-round2",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "front": "What kind of testimony do the M-E-V-G- notes identify as evidence that a PSG exists in its society?",
+        "title": "What kind of testimony do the M-E-V-G- notes identify as evidence that a PSG exists in its society?",
+        "back": "Expert testimony."
+      }
+    },
+    {
+      "id": "asy-flowchart-20261028-11",
+      "result": "FIXED_PASS",
+      "checker": "independent-cold-check-20261028-round2",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "nodes[0].question": "Do members share a characteristic they cannot change, or should not be required to change because it is fundamental to their individual identities or consciences?"
+      }
+    },
+    {
+      "id": "asy-outline-20261028-12",
+      "result": "FIXED_PASS",
+      "checker": "independent-cold-check-20261028-round2",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Gatimi v. Holder, paragraphs 227–243; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "source_section": "Matter of Acosta, Reasoning, paragraphs 55–66; Gatimi v. Holder, paragraphs 227–243; Matter of M-E-V-G-, paragraphs 261–291",
+        "sources[0].section": "Matter of Acosta, Reasoning, paragraphs 55–66; Gatimi v. Holder, paragraphs 227–243; Matter of M-E-V-G-, paragraphs 261–291"
+      }
+    },
+    {
+      "id": "asy-comparison-20261028-13",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "asy-drill-20261028-14",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "asy-hypothetical-20261028-15",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 PSG Pt I.docx — Matter of Acosta, Reasoning, paragraphs 55–66; Matter of M-E-V-G-, paragraphs 261–291"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-flashcard-20261028-01",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "What effect does prosecutorial good faith have on Brady liability for suppression of material favorable evidence?",
+        "front": "What effect does prosecutorial good faith have on Brady liability for suppression of material favorable evidence?",
+        "back": "Good faith does not excuse the suppression."
+      }
+    },
+    {
+      "id": "pr-flashcard-20261028-02",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-flashcard-20261028-03",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "How does a specific defense request affect Bagley’s materiality standard?",
+        "front": "How does a specific defense request affect Bagley’s materiality standard?",
+        "back": "It does not change the materiality standard."
+      }
+    },
+    {
+      "id": "pr-flashcard-20261028-04",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-flashcard-20261028-05",
+      "result": "FIXED_PASS",
+      "checker": "independent-recall-recheck-20261028",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "What materiality threshold applies under the text of Model Rule 3.8(d)?",
+        "front": "What materiality threshold applies under the text of Model Rule 3.8(d)?",
+        "back": "No materiality threshold applies."
+      }
+    },
+    {
+      "id": "pr-flashcard-20261028-06",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-flashcard-20261028-07",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-flashcard-20261028-08",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-flashcard-20261028-09",
+      "result": "FIXED_PASS",
+      "checker": "independent-cold-check-20261028-round2",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "front": "After Rule 3.8(g)’s evidence trigger is met, what jurisdictional condition triggers prompt disclosure to the defendant unless a court authorizes delay?",
+        "title": "After Rule 3.8(g)’s evidence trigger is met, what jurisdictional condition triggers prompt disclosure to the defendant unless a court authorizes delay?"
+      }
+    },
+    {
+      "id": "pr-flashcard-20261028-10",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-flowchart-20261028-11",
+      "result": "FIXED_PASS",
+      "checker": "independent-cold-check-20261028-round2",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Applied the checker’s source-cited correction; passed a fresh independent check.",
+      "corrections": {
+        "title": "Apply Model Rule 3.8(d) to evidence negating guilt or mitigating the offense"
+      }
+    },
+    {
+      "id": "pr-outline-20261028-12",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-comparison-20261028-13",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-drill-20261028-14",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    },
+    {
+      "id": "pr-hypothetical-20261028-15",
+      "result": "PASS",
+      "checker": "independent-cold-check-20261028-round1",
+      "source_locations": [
+        "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx — Brady and Bagley, paragraphs 10–37; Rule 3.8(d), paragraphs 51–77; Rules 3.8(g) and (h), paragraphs 92–100"
+      ],
+      "note": "Passed independent check against selected Drive DAY-note passages.",
+      "corrections": {}
+    }
+  ]
+}

@@ -14,6 +14,11 @@ These are the instructions the AI follows when it writes study content for Lawst
   - **Writing:** plain, literal writing with curly quotes, and a short run note saying what was added.
   - **Usage:** decide whether to run before reading any files, and read only the sections needed.
 
+## lawstin-study-materials
+- `lawstin-study-materials/SKILL.md` controls ChatGPT’s study-material update on Tuesday, Thursday, and Saturday at 9:15 a.m. America/Chicago, after Claude’s question update.
+- It adds independently checked flashcards, flowcharts, rule review, comparisons, sorting drills, and hypotheticals to the repository library. It reads quiz history for recent classes, weak topics, sneaky misses, and guessed answers, and reuses the exact question taxonomy.
+- `npm run study:preflight`, `npm run study:publish`, and `npm run study:check` enforce the publication workflow. No-op runs write nothing. Item-level check records live in `content/study-checks/`.
+
 ## Tool names
 The skill names Claude’s tools. When another AI runs it, use the equivalent:
 - `mcp__Google_Drive__read_file_content` / `search_files`: your Google Drive access.
