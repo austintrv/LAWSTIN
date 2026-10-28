@@ -163,7 +163,15 @@ export default function LawstinApp() {
                   })} />
               )}
               {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
-              {state && k === "activity" && <ActivityView e={e} state={state} />}
+              {state && k === "activity" && (
+                <ActivityView e={e} state={state}
+                  onStudy={(list, c) => start(() => {
+                    const eng = studyEngine(query.data);
+                    if (!list.length) return eng.buildRound(c ?? "all");
+                    const left = list.filter((q) => !(eng.prog(q.id)?.seen));
+                    return eng.listRound(left.length ? left : list);
+                  })} />
+              )}
             </div>
           </div>
         ))}
@@ -499,7 +507,7 @@ function ProgressView({ e, onTopic }: { e: Engine; onTopic: (c: CourseCode, t: s
   );
 }
 
-function ActivityView({ e, state }: { e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]> }) {
+function ActivityView({ e, state, onStudy }: { e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
   const days = e.lastNDays(14);
   const max = Math.max(10, ...days.map((d) => d.answered));
   const studied = [...state.days].filter((d) => d.answered).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
@@ -533,20 +541,86 @@ function ActivityView({ e, state }: { e: Engine; state: NonNullable<ReturnType<t
           </div>
         ) : <div className={`${styles.card} ${styles.empty}`}><p>Your study days show up here after your first round.</p></div>}
       </section>
-      <section className={styles.sec}>
-        <div className={styles.secH}><h2>Updates</h2></div>
-        {state.runs.length ? (
-          <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
-            {state.runs.slice(0, 20).map((r) => (
-              <div key={r.date} className={styles.row}>
-                <span className={styles.rowMain}><span className={styles.rowTitle}>{fmt(r.date, { weekday: "long", month: "short", day: "numeric" })}</span><span className={`${styles.rowSub} ${styles.wrap}`}>{r.note}</span></span>
-                <span className={styles.rowEnd}>+{r.added}</span>
-              </div>
-            ))}
-          </div>
-        ) : <div className={`${styles.card} ${styles.empty}`}><p>Each update lists what it added.</p></div>}
-      </section>
+      <UpdateFeed e={e} runs={state.runs.slice(0, 20)} onStudy={onStudy} />
     </>
+  );
+}
+
+function whenLabel(date: string, today: string) {
+  const days = Math.round((new Date(`${today}T12:00:00`).getTime() - new Date(`${date}T12:00:00`).getTime()) / 86400000);
+  const d = new Date(`${date}T12:00:00`);
+  if (days <= 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return d.toLocaleDateString(undefined, { weekday: "long" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+/** Updates shown as a notification stack: the newest on top, earlier ones tucked behind until tapped. */
+function UpdateFeed({ e, runs, onStudy }: { e: Engine; runs: Run[]; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+  const [open, setOpen] = useState(false);
+  const earlier = runs.length - 1;
+  return (
+    <section className={styles.sec}>
+      <div className={styles.secH}>
+        <h2>Updates</h2>
+        {earlier > 0 && <button className={styles.feedToggle} onClick={() => { haptic(); setOpen((v) => !v); }}>{open ? "Show less" : `${earlier} earlier`}</button>}
+      </div>
+      {runs.length ? (
+        <div className={`${styles.feed} ${open ? styles.feedOpen : ""}`}>
+          <UpdateNote e={e} run={runs[0]} onStudy={onStudy} />
+          {!open && earlier > 0 && (
+            <button className={styles.feedPeek} aria-label={`Show ${earlier} earlier updates`} onClick={() => { haptic(); setOpen(true); }}>
+              <i /><i />
+            </button>
+          )}
+          {open && runs.slice(1).map((r, i) => (
+            <div key={r.date} className={styles.feedIn} style={{ animationDelay: `${i * 45}ms` }}><UpdateNote e={e} run={r} onStudy={onStudy} /></div>
+          ))}
+        </div>
+      ) : <div className={`${styles.card} ${styles.empty}`}><p>New questions arrive Tuesday, Thursday, and Saturday mornings.</p></div>}
+    </section>
+  );
+}
+
+function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+  const added = e.questions.filter((q) => q.batch?.includes(run.date));
+  const groups = new Map<string, { course: CourseCode; label: string; qs: QuestionDTO[] }>();
+  for (const q of added) {
+    if (!COURSES[q.course]) continue;
+    const key = `${q.course}|${q.topic}`;
+    const g = groups.get(key) ?? { course: q.course, label: q.topic, qs: [] };
+    g.qs.push(q);
+    groups.set(key, g);
+  }
+  let bubbles = [...groups.values()].sort((a, b) => COURSE_KEYS.indexOf(a.course) - COURSE_KEYS.indexOf(b.course) || b.qs.length - a.qs.length)
+    .map((g) => ({ ...g, n: g.qs.length, left: g.qs.filter((q) => !e.prog(q.id)?.seen).length }));
+  if (!bubbles.length) {
+    bubbles = (Object.entries(run.byCourse) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k])
+      .map(([k, n]) => ({ course: k, label: COURSES[k].short, qs: [], n, left: n }));
+  }
+  const left = bubbles.reduce((a, b) => a + b.left, 0);
+  return (
+    <div className={`${styles.card} ${styles.note}`}>
+      <div className={styles.noteTop}>
+        <img src="./icon-192.png" alt="" className={styles.noteIcon} />
+        <span className={styles.noteApp}>Lawstin</span>
+        <span className={styles.noteWhen}>{whenLabel(run.date, e.today)}</span>
+      </div>
+      <button className={styles.noteMain} onClick={() => onStudy(added, null)}>
+        <b>{run.added} new question{run.added === 1 ? "" : "s"}</b>
+        <span>{left === 0 ? "All studied" : left === run.added ? "Tap a topic to start" : `${left} left to study`}</span>
+      </button>
+      <div className={styles.bubbles}>
+        {bubbles.map((b) => (
+          <button key={`${b.course}|${b.label}`} className={`${styles.bubble} ${b.left === 0 ? styles.bubbleDone : ""}`}
+            style={{ "--c": COURSES[b.course].color } as React.CSSProperties} onClick={() => onStudy(b.qs, b.course)}>
+            {b.left === 0 ? <Check size={12} strokeWidth={3} /> : <i />}
+            <span>{b.label}</span>
+            <small>{b.n}</small>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
