@@ -1,0 +1,509 @@
+{
+ "revision": "20261028-balanced-choices",
+ "reason": "The correct choice was the longest and most detailed in 14 of 15 questions; choices rebalanced so length and detail do not give the answer away.",
+ "checks": {
+  "first": "independent Sonnet check: 13 PASS, 2 FIX (pr-20261027-01 choice C removed a fact not in the stem; pr-20261027-02 choice A trimmed)",
+  "second": "fresh Sonnet check of pr-20261027-02: PASS"
+ },
+ "questions": [
+  {
+   "id": "asy-20261027-01",
+   "answer": "C",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Yes. Their refusal is a shared past experience, like former military leadership, and a past experience is immutable because members cannot undo it.",
+     "why": "Acosta says a shared past experience such as former military leadership or land ownership can be immutable “in some circumstances.” But this group is defined by a current job and an ongoing refusal, and members could change jobs or cooperate with the stoppages. C-A- later added that not every shared past experience defines a social group."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "Yes. The insurgents singled out the drivers for violence, and the shared experience of being targeted supplies the common characteristic Acosta requires.",
+     "why": "Persecution cannot by itself supply the shared trait. As C-A- put it, citing the UNHCR Guidelines, a group cannot be defined only by its persecution, though persecutory action may help show the group is visible. Under Acosta the common characteristic has to exist apart from the harm."
+    },
+    {
+     "id": "C",
+     "role": "correct",
+     "text": "No. Members could change jobs or agree to the stoppages, and refugee law does not guarantee a right to work in the job of one’s choice.",
+     "why": "This tracks Matter of Acosta. The BIA held that being a taxi driver and refusing to join work stoppages are not immutable because members could change jobs or cooperate, and that the refugee concept “does not guarantee an individual a right to work in the job of his choice.”"
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "No. Membership in a social group is not a freestanding ground, and the group must be tied to its members’ race, religion, or nationality.",
+     "why": "Particular social group is its own protected ground. Acosta read it alongside the other four grounds (ejusdem generis) and recognized innate traits like sex, color, and kinship ties, and some shared past experiences, without tying the group to race, religion, or nationality."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 PSG Pt I.docx (Asylum Class 18 notes) — Matter of Acosta (BIA 1985): Reasoning (immutable-characteristic rule; “right to work in the job of his choice”); Ch. 9(D) In re C-A- reasoning (past experience; UNHCR Guidelines on persecution and visibility)"
+   ]
+  },
+  {
+   "id": "asy-20261027-02",
+   "answer": "A",
+   "choices": [
+    {
+     "id": "A",
+     "role": "correct",
+     "text": "Not a PSG. “Noncriminal informants” is too loosely defined, and informants act out of public view, so the group lacks social visibility.",
+     "why": "This tracks In re C-A-. The BIA found “noncriminal informants” too loosely defined, since it could cover anyone informing on any faction or cartel to anyone, and said informant conduct is “generally out of the public view.” The casebook argues the BIA misread the UNHCR Guidelines, but this is how the BIA ruled."
+    },
+    {
+     "id": "B",
+     "role": "sneaky",
+     "text": "A PSG. Having informed is a past experience the members cannot undo, and under Acosta an immutable past experience defines a group.",
+     "why": "The BIA agreed that a past experience is immutable but held that not every shared past experience defines a social group. Immutability became a threshold, with visibility and particularity on top, and this group failed both."
+    },
+    {
+     "id": "C",
+     "role": "average",
+     "text": "A PSG. Acting from civic duty rather than for pay sets Elian’s group apart from paid informants, who accept the risk for compensation.",
+     "why": "The BIA rejected this line. Many paid informants also act partly from civic duty, so civic duty does not define a distinct subgroup, and whether an informant was paid is not visible to the cartel or to society."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "Not a PSG. A cartel is a private actor, and persecution must come from the government or from forces acting under its direction.",
+     "why": "Persecution can come from non-state actors the government is unable or unwilling to control; the casebook lists that as an element a PSG claimant must still prove. C-A- turned on how the group was defined, not on who the persecutor was."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 PSG Pt I.docx (Asylum Class 18 notes) — Ch. 9(D), In re C-A- (BIA 2006): Reasoning (particularity; immutability of past experience; civic duty vs. pay; visibility)",
+    "DAY 18 10.26 PSG Pt I.docx (Asylum Class 18 notes) — Ch. 9(A) Introduction (elements incl. government unable or unwilling to protect)"
+   ]
+  },
+  {
+   "id": "asy-20261027-03",
+   "answer": "D",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "It accepts it. Persecution for specific sexual conduct is not persecution for group membership, as the Eighth Circuit held in denying a gay applicant.",
+     "why": "Kimumwe (8th Cir.) turned on a finding that that applicant’s harm was for specific sexual misconduct rather than orientation. Karouni saw “no appreciable difference” between persecution for being gay and for homosexual acts, and Samir has already been named to his persecutors."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "It accepts it. A well-founded fear requires proof that persecution is more likely than not, and abstaining from the acts keeps his risk below that.",
+     "why": "A well-founded fear does not require more likely than not; Karouni applied a ten percent standard and found it easily met. The court also refused to make an applicant avoid harm by giving up intimate conduct."
+    },
+    {
+     "id": "C",
+     "role": "bad",
+     "text": "It accepts it. Sexual orientation is a chosen trait rather than an innate one, so an applicant may be required to change it to avoid harm.",
+     "why": "Toboso-Alfonso treated homosexuality as immutable, and Hernandez-Montiel held that sexual orientation and identity are so fundamental that no one should be required to abandon them. Karouni carried that test over to sexual expression."
+    },
+    {
+     "id": "D",
+     "role": "correct",
+     "text": "It rejects it. Persecution for homosexual acts is persecution for being gay, and the INA does not force a choice between harm and a life of celibacy.",
+     "why": "This tracks Karouni v. Gonzales. The court said the government’s position forces a “Hobson’s choice” between persecution and “a life of celibacy,” relied on Lawrence v. Texas, and held the INA does not require changing so fundamental a characteristic. The evidence compelled a well-founded fear."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 PSG Pt I.docx (Asylum Class 18 notes) — Ch. 9(C), Karouni v. Gonzales (9th Cir. 2005): Reasoning (status vs. acts; Hobson’s choice; ten percent standard) and Notes (Kimumwe; Hernandez-Montiel)",
+    "DAY 18 10.26 PSG Pt I.docx (Asylum Class 18 notes) — Ch. 9(C), Matter of Toboso-Alfonso (BIA 1990)"
+   ]
+  },
+  {
+   "id": "asy-20261027-04",
+   "answer": "B",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Both. Withholding incorporates the refugee definition, so an applicant with a well-founded fear of persecution also meets its standard.",
+     "why": "The withholding provision did not incorporate the refugee definition, and refugee status does not by itself establish entitlement to withholding. Withholding has its own higher standard, a clear probability (more likely than not), which a one-in-three chance does not meet."
+    },
+    {
+     "id": "B",
+     "role": "correct",
+     "text": "Asylum but not withholding. One in three can be a well-founded fear, but withholding needs a clear probability, more likely than not.",
+     "why": "Asylum’s well-founded-fear standard is more generous than clear probability, so she need not show persecution is more likely than not. Withholding requires a clear probability, greater than 50%, which one in three does not reach. Asylum remains discretionary; withholding is mandatory when its standard is met."
+    },
+    {
+     "id": "C",
+     "role": "average",
+     "text": "Neither. Asylum and withholding both require a clear probability of persecution, and a one-in-three chance falls well short of that.",
+     "why": "Clear probability (more likely than not) is the withholding standard. The Supreme Court held that asylum’s well-founded-fear standard is more generous, so an asylum applicant need not show persecution is more likely than not."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "Withholding but not asylum. Withholding is the discretionary form of relief and uses the lower of the two standards of proof.",
+     "why": "This reverses the two. Asylum is the discretionary grant with the lower, well-founded-fear standard; withholding is mandatory and requires a clear probability, which a one-in-three chance does not meet."
+    }
+   ],
+   "source_locations": [
+    "ASYLUM LAW OUTLINE.docx — III.B.1 The Standard of Proof for Withholding; III.B.2 The Standard of Proof for Refugee Status"
+   ]
+  },
+  {
+   "id": "asy-20261027-05",
+   "answer": "C",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Yes. The guerrillas recruited to advance their political goals, and under a two-sided analysis the persecutor’s own political motive supplies the nexus.",
+     "why": "This is the Ninth Circuit’s pre-Zacarias “two-sided” approach. The Supreme Court rejected it: the protected ground must be the victim’s political opinion, and the persecutor’s own political motive is irrelevant."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "Yes. Under the REAL ID Act, nexus exists if politics was at least one central reason for the guerrillas’ conduct toward the applicant.",
+     "why": "“One central reason” governs mixed-motive cases and refers to the applicant’s protected ground, his actual or imputed political opinion. It does not let the persecutor’s general political aims stand in for that ground."
+    },
+    {
+     "id": "C",
+     "role": "correct",
+     "text": "No. Refusing recruitment out of fear is not necessarily political, and he must show some evidence they targeted him for an actual or imputed opinion.",
+     "why": "This tracks INS v. Elias-Zacarias. Refusing forced recruitment is not necessarily a political opinion, and a group may punish refusal for other reasons, such as controlling the population. The applicant must give some evidence, direct or circumstantial, that the persecutor targeted him for his own actual or imputed opinion."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "No. Guerrillas are not state agents, and harm by a nongovernmental group is not persecution unless the government directed or approved it.",
+     "why": "Elias-Zacarias asked what motivated the guerrillas, which assumes a non-state group can be a persecutor; the case turned on nexus, not on who inflicted the harm. Non-state actors qualify when the government is unable or unwilling to control them."
+    }
+   ],
+   "source_locations": [
+    "ASYLUM LAW OUTLINE.docx — VI.B.1 The Period Preceding Zacarias (two-sided persecutor equation); VI.B.2 The Supreme Court’s Intent Requirement; VI.B.3 Mixed Motives and the “One Central Reason” Requirement"
+   ]
+  },
+  {
+   "id": "il-20261027-01",
+   "answer": "B",
+   "choices": [
+    {
+     "id": "A",
+     "role": "average",
+     "text": "Yes. Arming rebels is a use of force under Article 2(4), and an unlawful use of force against a state permits collective self-defense on request.",
+     "why": "This treats every use of force as an armed attack. Article 51 is triggered only by an armed attack, the gravest form of force. A use of force that falls short of that is unlawful but gives neither the victim nor a state helping it a right of self-defense."
+    },
+    {
+     "id": "B",
+     "role": "correct",
+     "text": "No. Arming and funding rebels may be an unlawful use of force or intervention, but it is not an armed attack, so Article 51 is not triggered.",
+     "why": "This tracks Nicaragua. The ICJ held that supplying arms and other support to rebels is not an armed attack, though it may be a threat or use of force or unlawful intervention. Collective self-defense needs an armed attack first, then the victim’s declaration and request; the first condition fails here."
+    },
+    {
+     "id": "C",
+     "role": "sneaky",
+     "text": "Yes. Montaro declared itself the victim of an armed attack and formally requested Belmar’s help, which satisfies the Nicaragua conditions.",
+     "why": "These are two of the three Nicaragua conditions. The first, an actual armed attack, is missing, and a victim state’s declaration does not create one. The declaration and request matter only once an armed attack has occurred."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "Yes. Article 51 permits a state to use force to protect its security interests until the Security Council has taken measures to restore peace.",
+     "why": "Article 51 justifies force only within its strict confines and not to protect “perceived security interests” (Armed Activities). The Security Council clause ends the right once the Council acts; it does not create a right to use force."
+    }
+   ],
+   "source_locations": [
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q2 (armed attack vs. use of force; Nicaragua on arming rebels) and Q3 (collective self-defense; the three Nicaragua conditions)",
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q4 (Armed Activities, “strict confines”)"
+   ]
+  },
+  {
+   "id": "il-20261027-02",
+   "answer": "D",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Lawful. Article 51 calls self-defense an “inherent” right, preserving the customary right of anticipatory self-defense recognized in the Caroline.",
+     "why": "This is the proponents’ argument, and it fails twice here. The Caroline test requires a necessity “instant, overwhelming, leaving no choice of means, and no moment for deliberation,” and a threat years away is not that. Brownlie also says the custom that matters is the position in 1945, not the 1838–42 correspondence."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "Lawful. Striking an unfinished reactor before it operates is a necessary and proportionate measure that keeps harm to civilians low.",
+     "why": "Necessity and proportionality limit a self-defense response that is otherwise allowed; they do not supply the trigger. With no armed attack and no imminent one, there is no right of self-defense for the strike to be necessary or proportionate to."
+    },
+    {
+     "id": "C",
+     "role": "bad",
+     "text": "Lawful. A state may act in self-defense until the Security Council has taken measures, and the Council had taken none regarding Orvell.",
+     "why": "The phrase “until the Security Council has taken measures” ends a self-defense right that already exists. It does not authorize force while the Council is silent, and there was no armed attack here."
+    },
+    {
+     "id": "D",
+     "role": "correct",
+     "text": "Unlawful. A threat years away is not imminent, so this is preventive self-defense, which lacks any legal basis and is not generally accepted.",
+     "why": "This tracks Israel’s 1981 strike on an Iraqi reactor, which the Security Council unanimously condemned as a “clear violation of the Charter” (S.C. Res. 487). Removing imminence turns pre-emptive into preventive self-defense, which Brownlie says “lacks any legal basis and is not generally accepted.”"
+    }
+   ],
+   "source_locations": [
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q4 (anticipatory self-defense; proponents’ arguments; S.C. Res. 487) and Q5 (Caroline test; preventive self-defense “lacks any legal basis”)",
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q1 (Art. 51 text; necessity and proportionality)"
+   ]
+  },
+  {
+   "id": "il-20261027-03",
+   "answer": "A",
+   "choices": [
+    {
+     "id": "A",
+     "role": "correct",
+     "text": "Yes. “Purpose” in AP I art. 52(2) covers future intended use, and destroying a plant built to power a port and naval base offers a definite military advantage.",
+     "why": "This tracks the Eritrea-Ethiopia Claims Commission’s Hirgigo Power Station award. Power stations usually qualify as military objectives; the majority read “purpose” as future intended use, so a state need not wait until a plant is running, and destroying a large new plant built to power a port and naval facility offered a definite military advantage."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "No. Under art. 52(2), an object’s contribution must come from its current use, and a plant not yet producing power makes no effective contribution.",
+     "why": "This reads “purpose” out of art. 52(2), which lists nature, location, purpose, or use. The majority held that purpose means future intended use, so an unfinished plant can make an effective contribution before it operates."
+    },
+    {
+     "id": "C",
+     "role": "sneaky",
+     "text": "No. Tessaly bore the burden of specifying how Kalo contributed to military action, and bombing it without a prior proportionality assessment was itself unlawful.",
+     "why": "This is President van Houtte’s separate opinion, not the majority. He put the burden on the attacking state and found the bombing disproportionate (“International law does not permit bombing first and justification later”). The majority dismissed the claim."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "No. Power stations are civilian infrastructure protected by Geneva law, which bars attacking them in the same way it protects hospitals.",
+     "why": "The never-attacked list (Geneva law) covers zones for the wounded and sick, medical and religious personnel, hospitals, hospital ships, and lifeboats. Power stations are not on it, and the majority said they usually qualify as military objectives."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Laws of War Pt I.docx (IL Class 18 notes) — Focus On Q8 (AP I art. 52(2); never-attacked list; purpose includes future intended use) and Q9 (Eritrea-Ethiopia Claims Commission, Hirgigo: majority and van Houtte separate opinion)"
+   ]
+  },
+  {
+   "id": "il-20261027-04",
+   "answer": "C",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "None. The conflict is not between two states under Common Article 2, and its transnational reach takes it outside Common Article 3.",
+     "why": "This is the U.S. government’s argument in Hamdan v. Rumsfeld, which the Court rejected. The Court read “not of an international character” to mean not between nations, so there is no gap between Common Articles 2 and 3."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "The full Geneva Conventions, including the grave breaches regime, because the fighting crosses international borders.",
+     "why": "Crossing borders does not make a conflict international. An IAC is a resort to armed force between states (Common Article 2), and the grave breaches regime applies only in IACs (Tadić)."
+    },
+    {
+     "id": "C",
+     "role": "correct",
+     "text": "Common Article 3’s baseline protections, because a conflict that is not between two states is “not of an international character.”",
+     "why": "This tracks Hamdan. The Court held the conflict with a transnational group is “not of an international character” because it is not between nations, so Common Article 3 applies: humane treatment and no murder, torture, hostage-taking, or non-judicial punishment."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "None. The Geneva Conventions are triggered by a formal declaration of war, which cannot exist between a state and an armed group.",
+     "why": "Post-1945 treaties apply whenever an armed conflict exists; no declaration is needed. Tadić: an armed conflict exists whenever states resort to armed force or there is protracted armed violence involving organized armed groups."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Laws of War Pt I.docx (IL Class 18 notes) — Focus On Q3 (IAC vs. NIAC; Tadić definition of armed conflict; grave breaches IAC-only; Hamdan v. Rumsfeld argument and holding)"
+   ]
+  },
+  {
+   "id": "il-20261027-05",
+   "answer": "B",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Olvera is immune. The contract served a sovereign diplomatic purpose, and a transaction’s purpose determines whether it is commercial.",
+     "why": "This applies a purpose test. FSIA § 1603(d) says commercial character turns on the nature of the transaction, not its purpose. The outline’s example: a phone-service contract is commercial even if the lines are used for diplomatic activity."
+    },
+    {
+     "id": "B",
+     "role": "correct",
+     "text": "Olvera is not immune. Buying phone service is commercial by its nature, so the commercial activity exception applies despite the diplomatic use.",
+     "why": "Under § 1603(d) a contract for phone service is commercial by its nature, whatever its purpose, and the activity was carried on in the United States, so § 1605(a)(2) removes immunity. The outline uses this exact example."
+    },
+    {
+     "id": "C",
+     "role": "average",
+     "text": "Olvera is not immune under the tort exception, because nonpayment caused the company a loss of property in the United States.",
+     "why": "This is a contract claim based on commercial activity. The tort exception covers personal injury, death, or property damage caused by an official acting in an official capacity, and it excludes claims such as misrepresentation and interference with contract; unpaid bills are not that kind of injury."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "Olvera is immune. The FSIA exceptions reach a state’s agencies and instrumentalities, but a ministry is the state itself and keeps full immunity.",
+     "why": "Under § 1603(a), a “foreign state” includes the state itself, its political subdivisions, and its agencies or instrumentalities, and the § 1605 exceptions apply to all of them. A ministry is the state, so it gets no special immunity."
+    }
+   ],
+   "source_locations": [
+    "IL OUTLINE.docx — X.D Foreign Sovereign Immunities Act (§ 1604 presumption; § 1603(a)–(b) definition; § 1603(d) nature-not-purpose with the AT&T phone-contract example; § 1605 commercial activity and tort exceptions)"
+   ]
+  },
+  {
+   "id": "pr-20261027-01",
+   "answer": "D",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Yes. Rule 3.8(d) required disclosure of all evidence tending to negate guilt, without regard to materiality, and the prosecutor breached that duty.",
+     "why": "Rule 3.8(d) does reach evidence regardless of materiality, but it is a disciplinary rule. A new trial is a constitutional remedy and requires Brady materiality, so a 3.8(d) violation can support discipline without supporting a new trial."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "Yes. A request for “all Brady material” gave notice, and when a request goes unanswered, nondisclosure is seldom, if ever, excusable.",
+     "why": "Agurs treated a general request for “all Brady material” like no request at all, since it gives no better notice. Only a specific and relevant request makes nonresponse “seldom, if ever, excusable.”"
+    },
+    {
+     "id": "C",
+     "role": "bad",
+     "text": "No. Brady requires a new trial when favorable evidence is suppressed in bad faith, and nothing suggests the prosecutor acted deliberately.",
+     "why": "Brady applies “irrespective of the good faith or bad faith of the prosecution.” Agurs: constitutional error comes from the character of the evidence, not the character of the prosecutor, so the prosecutor’s intent does not decide the motion."
+    },
+    {
+     "id": "D",
+     "role": "correct",
+     "text": "No. A new trial requires a reasonable probability that disclosure would have changed the result, and these records were largely cumulative.",
+     "why": "This tracks United States v. Agurs: the record was not specifically requested, suggested no perjury, was largely cumulative of evidence that the victim carried knives, and the judge remained convinced of guilt. Bagley later set one standard for all cases: a reasonable probability of a different result."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx (Pro Res Class 18 notes) — Brady v. Maryland (pp. 541–43); United States v. Agurs (pp. 543–47): three situations, reasoning, holding; Bagley materiality (p. 548); Rule 3.8(d) compared with Brady (pp. 550–51)"
+   ]
+  },
+  {
+   "id": "pr-20261027-02",
+   "answer": "A",
+   "choices": [
+    {
+     "id": "A",
+     "role": "correct",
+     "text": "Kim violated the rule. Disclosure was due as soon as practicable, and an admission made after a witness exposed the photo does not suffice.",
+     "why": "This tracks Matter of Larsen (Utah 2016), which upheld a six-month suspension. Timeliness means disclosure as soon as practicable so the defense can prepare. An after-the-fact admission may mitigate the sanction, but counting it as disclosure would make the rule “practically toothless.”"
+    },
+    {
+     "id": "B",
+     "role": "sneaky",
+     "text": "No violation. The defense learned of the photo in time to use it at trial, which satisfies Brady, so the disclosure was timely under Rule 3.8(d) as well.",
+     "why": "This was Larsen’s own argument, and the court rejected it. Brady asks whether nondisclosure undermined the verdict; Rule 3.8(d) sets an ethical duty meant to avoid the problem in the first place, so disclosure in time for use at trial does not satisfy it."
+    },
+    {
+     "id": "C",
+     "role": "average",
+     "text": "No violation. Rule 3.8(d) reaches evidence that is material, meaning a reasonable probability that disclosing it would have changed the verdict.",
+     "why": "Rule 3.8(d) has no materiality limit. It covers evidence that “tends to negate” guilt even if it is not important enough to put a guilty verdict in doubt (ABA Formal Op. 09-454; NYC Bar Op. 2016-3)."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "No violation. Prosecutors have absolute immunity for conduct in criminal prosecutions, which shields them from bar discipline as well as damages suits.",
+     "why": "Absolute immunity under federal civil rights law bars damages suits against prosecutors. It does not protect them from bar discipline; Larsen and Hudson were both suspended."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx (Pro Res Class 18 notes) — Rule 3.8(d) (pp. 550–51: compared with Brady; NYC Bar Op. 2016-3; ABA Op. 09-454); Matter of Larsen, 2016 UT 26 (pp. 552–53); limits on enforcement, Hudson and absolute immunity (pp. 554–55)"
+   ]
+  },
+  {
+   "id": "pr-20261027-03",
+   "answer": "C",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Promptly disclose the recording to Pell and undertake, or make reasonable efforts to cause, an investigation into his conviction.",
+     "why": "Those are the Rule 3.8(g)(2) duties, and they apply only when the conviction was obtained in the prosecutor’s own jurisdiction. Pell was convicted in State B, not State A."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "Seek to remedy Pell’s conviction, because the recording creates a reasonable likelihood that he did not commit the murder.",
+     "why": "Rule 3.8(h) requires clear and convincing evidence of innocence and a conviction in the prosecutor’s jurisdiction. A reasonable likelihood is the lower 3.8(g) trigger, and Pell was convicted in another state."
+    },
+    {
+     "id": "C",
+     "role": "correct",
+     "text": "Promptly disclose the recording to an appropriate court or authority, such as the prosecutor’s office in State B.",
+     "why": "Rule 3.8(g)(1) applies whenever a prosecutor knows of new, credible, and material evidence creating a reasonable likelihood that a convicted defendant is innocent, wherever the conviction occurred. The added duties in (g)(2) attach only to convictions in her own jurisdiction."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "Nothing. The conviction is final and was obtained in another state, so it falls outside her duties as a prosecutor.",
+     "why": "Rule 3.8(g)(1) has no jurisdiction limit, and Rules 3.8(g) and (h) exist precisely for the period after conviction. NYC Bar Op. 2018-2 describes the duty to seek justice as continuing after the case ends."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx (Pro Res Class 18 notes) — Post-conviction evidence of innocence, Rules 3.8(g) and (h) (pp. 555–57); NYC Bar Formal Op. 2018-2 (pp. 557–60); Question 7-6"
+   ]
+  },
+  {
+   "id": "pr-20261027-04",
+   "answer": "B",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "No. Before considering a one-sided contact, the judge had to give defense counsel advance notice of it and a reasonable opportunity to object and respond.",
+     "why": "Advance notice and a chance to object is the condition for a different exception: written advice from a disinterested legal expert, Rule 2.9(A)(2). The scheduling and emergency exception requires prompt notice afterward and a chance to respond."
+    },
+    {
+     "id": "B",
+     "role": "correct",
+     "text": "Yes. A scheduling or emergency call that avoids the merits is allowed if the judge reasonably believes no one gains an edge and promptly lets others respond.",
+     "why": "This fits Rule 2.9(A)(1): a scheduling and emergency purpose, no substance discussed, a reasonable belief that no party gains an advantage, and prompt notice of the substance to the other side with an opportunity to respond."
+    },
+    {
+     "id": "C",
+     "role": "average",
+     "text": "Yes. A purely administrative call falls outside Rule 2.9, so the judge’s later notice to defense counsel was a courtesy rather than a duty.",
+     "why": "Administrative contacts are one of Rule 2.9’s exceptions, not outside the rule. Rule 2.9(A)(1)(b) requires the judge to promptly notify all other parties of the substance of the contact and give them an opportunity to respond."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "No. Rule 2.9 bars a judge from discussing a pending matter with one side’s lawyer outside the other side’s presence, whatever the reason for the communication.",
+     "why": "Rule 2.9(A) lists five exceptions: scheduling, administrative, and emergency contacts; written expert advice; consulting court staff; separate settlement conferences with consent; and contacts expressly authorized by law."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx (Pro Res Class 18 notes) — Performing the duties of the judicial office (pp. 564–68): CJC Rule 2.9(A)(1)–(5) and 2.9(B); Questions 7-7 and 7-8"
+   ]
+  },
+  {
+   "id": "pr-20261027-05",
+   "answer": "D",
+   "choices": [
+    {
+     "id": "A",
+     "role": "average",
+     "text": "Yes. Wren did not retain Park, so Rule 1.18 creates no conflict for the firm, and it may take the supplier’s case without conditions.",
+     "why": "Rule 1.18 protects prospective clients even when no relationship forms. Park received significantly harmful information in the same matter, so she is disqualified, and the firm is too unless Rule 1.18(d) is satisfied."
+    },
+    {
+     "id": "B",
+     "role": "sneaky",
+     "text": "No. Because Park received significantly harmful information, the firm needs informed consent, confirmed in writing, from both Wren and the supplier.",
+     "why": "Consent is one route, Rule 1.18(d)(1). Rule 1.18(d)(2) offers a second route without the prospective client’s consent: reasonable measures to limit the information, a timely screen with no share of the fee, and prompt written notice."
+    },
+    {
+     "id": "C",
+     "role": "bad",
+     "text": "Yes, and Park may use what she learned at the meeting, because duties of confidentiality attach once the client has paid a fee.",
+     "why": "Rule 1.18(b) bars using or revealing a prospective client’s information even when no relationship ensues, except as Rule 1.9 would allow for a former client. Payment of a fee is not the trigger."
+    },
+    {
+     "id": "D",
+     "role": "correct",
+     "text": "Yes, if Park took reasonable measures to limit what she learned, is timely screened with no share of the fee, and Wren gets prompt written notice.",
+     "why": "Rule 1.18(d)(2) lets the firm proceed without Wren’s consent if Park took reasonable measures to avoid exposure to more information than needed to decide whether to take the case, is timely screened with no part of the fee, and Wren promptly gets written notice. Asking in advance only for conflict-check information supports reasonable measures. Park herself still cannot work on the case."
+    }
+   ],
+   "source_locations": [
+    "PRO RES OUTLINE.docx — VIII.L Prospective and Former Clients — Rules 1.18 and 1.9(c) (Rule 1.18(a)–(d))"
+   ]
+  }
+ ]
+}
