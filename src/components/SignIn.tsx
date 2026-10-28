@@ -37,7 +37,7 @@ export function SignIn() {
       <div className={styles.scene} aria-hidden="true">
         <i className={styles.glow} /><i className={styles.glow} /><i className={styles.glow} />
         {TILES.map(({ Icon, color }, i) => (
-          <span key={i} className={styles.tile} style={{ "--c": color, "--i": i } as React.CSSProperties}><Icon size={30} strokeWidth={1.6} /></span>
+          <span key={i} className={styles.tile} style={{ "--c": color, "--i": i } as React.CSSProperties}><Icon strokeWidth={1.6} /></span>
         ))}
       </div>
       <form className={styles.card} onSubmit={submit}>
