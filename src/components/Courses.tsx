@@ -3,6 +3,7 @@ import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, Clipbo
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
+import { useBackClose } from "../helpers/useBackClose";
 import { toast } from "../helpers/toast";
 import { useStudyMaterials } from "../helpers/useStudyMaterials";
 import { useLogStudy } from "../helpers/useLogStudy";
@@ -190,6 +191,7 @@ function FlashcardSession({ cards, store, onClose }: { cards: Flashcard[]; store
   const log = useLogStudy();
   const [index, setIndex] = useState(0), [flipped, setFlipped] = useState(false), [known, setKnown] = useState(0);
   const card = cards[index];
+  useBackClose(onClose);
   const grade = (correct: boolean) => {
     if (!flipped || !card) return;
     haptic(); store.update(prev => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));

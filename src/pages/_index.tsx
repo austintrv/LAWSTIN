@@ -17,6 +17,7 @@ import { applyPrefs } from "../helpers/prefs";
 import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
+import { useBackClose } from "../helpers/useBackClose";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
 import { SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
@@ -60,10 +61,20 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   // Settings is a full page at #/settings so the system back gesture and button close it.
   const [settingsOpen, setSettingsOpen] = useState(() => window.location.hash === "#/settings");
   useEffect(() => {
-    const sync = () => setSettingsOpen(window.location.hash === "#/settings");
+    const sync = () => {
+      const on = window.location.hash === "#/settings";
+      if (!on) settingsFromApp.current = false;
+      setSettingsOpen(on);
+    };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
+  // Opened from the avatar: closing steps back so Back afterwards doesn't reopen Settings.
+  const settingsFromApp = useRef(false);
+  const closeSettings = () => {
+    if (settingsFromApp.current) { settingsFromApp.current = false; history.back(); }
+    else window.location.hash = `/${tab}`;
+  };
   const [writing, setWriting] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   // Chosen once per open, after data loads, so the heading never swaps lines in front of you.
@@ -211,7 +222,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               <header className={styles.head}>
                 <div className={styles.headRow}>
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
-                  <button className={styles.avatar} onClick={() => { haptic(); window.location.hash = "/settings"; }} aria-label="Settings">{NAME[0]}</button>
+                  <button className={styles.avatar} onClick={() => { haptic(); settingsFromApp.current = true; window.location.hash = "/settings"; }} aria-label="Settings">{NAME[0]}</button>
                 </div>
                 <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? greeting ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
               </header>
@@ -287,7 +298,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         </BottomSheet>
       )}
 
-      {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={() => { window.location.hash = `/${tab}`; }} /></Suspense>}
+      {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} /></Suspense>}
 
       {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(false)} /></Suspense>}
 
@@ -821,6 +832,7 @@ function ExamPicker({ e, onStart }: { e: Engine; onStart: (f: Filter, n: number)
 function BottomSheet({ title, eyebrow, onClose, children }: { title: string; eyebrow?: string; onClose: () => void; children: React.ReactNode }) {
   const [closing, setClosing] = useState(false);
   const close = () => { setClosing(true); setTimeout(onClose, 300); };
+  useBackClose(close);
   useEffect(() => {
     const k = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
     window.addEventListener("keydown", k);

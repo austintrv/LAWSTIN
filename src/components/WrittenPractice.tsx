@@ -7,6 +7,7 @@ import { useLawstinAi } from "../helpers/useLawstinAi";
 import { type GradeDTO, type SpotterDTO } from "../endpoints/ai_POST.schema";
 import { COURSES, type CourseCode } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
+import { useBackClose } from "../helpers/useBackClose";
 import { toast } from "../helpers/toast";
 import styles from "./WrittenPractice.module.css";
 
@@ -36,6 +37,7 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
   }, [result]);
 
   const close = () => { setClosing(true); setTimeout(onClose, 360); };
+  useBackClose(close);
 
   // Starting over keeps an Undo for a few seconds when an ungraded answer would be thrown away.
   const discard = () => {

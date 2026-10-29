@@ -6,6 +6,7 @@ import { AskPanel } from "./AskPanel";
 import type { QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
 import { COURSES, ROLE_LABEL, type RoundItem } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
+import { useBackClose } from "../helpers/useBackClose";
 import styles from "./QuizSession.module.css";
 
 export type QuizMode = "practice" | "exam";
@@ -65,6 +66,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
     if (mode === "exam" && !done && results.some((r) => r !== undefined)) { haptic(); setDone(true); return; }
     close();
   }, [mode, done, results, close]);
+  useBackClose(() => {
+    const stay = mode === "exam" && !done && results.some((r) => r !== undefined);
+    exit();
+    if (stay) return false;
+  });
 
   const goTo = useCallback((n: number, dir: "out" | "back" = "out") => {
     setAnim(dir);

@@ -5,6 +5,7 @@ import { useLawstinAi } from "../helpers/useLawstinAi";
 import { AiRequestError } from "../endpoints/ai_POST.schema";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import { haptic } from "../helpers/haptics";
+import { useBackClose } from "../helpers/useBackClose";
 import styles from "./AskPanel.module.css";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -28,6 +29,7 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs, ask.isPending]);
 
   const close = () => { setClosing(true); setTimeout(onClose, 320); };
+  useBackClose(close);
 
   const send = async (text: string) => {
     const t = text.trim();
