@@ -19,9 +19,12 @@
 .task { transition: opacity 0.35s ease 0.1s; }
 .leaving { opacity: 0.4; }
 .taskRow { display: flex; align-items: flex-start; gap: 12px; padding: 0 16px; }
-.check { width: 24px; height: 24px; margin-top: 15px; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--c) 70%, var(--border)); display: grid; place-items: center; color: #fff; flex-shrink: 0; transition: background 0.2s, border-color 0.2s, transform 0.2s var(--ease-ios); }
-.check:active { transform: scale(0.88); }
-.checked { background: var(--c); border-color: var(--c); animation: pop 0.35s var(--ease-ios); }
+/* 44pt hit area around a 24px circle. */
+.check { position: relative; width: 44px; height: 44px; margin: 5px -10px 0; display: grid; place-items: center; color: #fff; flex-shrink: 0; }
+.check::before { content: ""; position: absolute; width: 24px; height: 24px; box-sizing: border-box; border-radius: 50%; border: 2px solid color-mix(in srgb, var(--c) 70%, var(--border)); transition: background 0.2s, border-color 0.2s, transform 0.2s var(--ease-ios); }
+.check svg { position: relative; }
+.check:active::before { transform: scale(0.88); }
+.checked::before { background: var(--c); border-color: var(--c); animation: pop 0.35s var(--ease-ios); }
 @keyframes pop { 50% { transform: scale(1.15); } }
 .taskMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 15px 0; text-align: left; }
 .taskTitle { font-size: 17px; line-height: 1.35; color: var(--card-foreground); overflow-wrap: anywhere; }

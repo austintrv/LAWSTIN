@@ -39,13 +39,13 @@ button.row:active:not(:disabled) { background: var(--fill); }
 .input::placeholder { color: var(--faint-foreground); }
 
 .stepper { display: inline-flex; align-items: center; gap: 2px; background: var(--fill); border-radius: 10px; padding: 2px; }
-.stepper button { width: 36px; height: 32px; border-radius: 8px; display: grid; place-items: center; color: var(--foreground); }
+.stepper button { width: 44px; height: 40px; border-radius: 8px; display: grid; place-items: center; color: var(--foreground); }
 .stepper button:active:not(:disabled) { background: var(--card); }
 .stepper button:disabled { opacity: 0.3; }
 .stepper b { min-width: 34px; text-align: center; font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--fill); border-radius: 10px; padding: 2px; }
-.seg button { height: 32px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--foreground); transition: background 0.2s, box-shadow 0.2s; }
+.seg button { height: 40px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--foreground); transition: background 0.2s, box-shadow 0.2s; }
 .segOn { background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 
 /* Off switch tracks need contrast on the white card. */

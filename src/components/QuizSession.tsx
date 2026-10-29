@@ -168,7 +168,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
     <div className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label={mode === "exam" ? "Practice exam" : "Practice"}>
       <div className={styles.top} onTouchStart={onTouchStart} onTouchEnd={onTopTouchEnd}>
         <div className={styles.topIn}>
-          <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
+          {mode === "exam" && <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>}
           {mode === "exam" ? (
             <>
               <div className={styles.prog}>
@@ -182,6 +182,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
               <div className={styles.tally} aria-live="polite">
                 {answered > 0 && <><span className={styles.tallyOk}><Check size={13} strokeWidth={3} />{right}</span><span className={styles.tallyBad}><X size={13} strokeWidth={3} />{answered - right}</span></>}
               </div>
+              <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
             </>
           )}
         </div>

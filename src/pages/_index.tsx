@@ -326,7 +326,7 @@ function DueSoonCard() {
           const c = SCHOOL_COURSES[t.course], label = dueLabel(t.due!);
           return (
             <div key={t.id} className={styles.row}>
-              <button className={styles.todoCheck} style={{ borderColor: c.color }} aria-label="Mark done"
+              <button className={styles.todoCheck} style={{ color: c.color }} aria-label="Mark done"
                 onClick={() => { haptic(); update.mutate({ id: t.id, patch: { done_at: new Date().toISOString() } }); }} />
               <button className={styles.rowMain} onClick={() => { haptic(); window.location.hash = `/courses/${t.course}`; }}>
                 <span className={styles.rowTitle}>{t.title}</span>
