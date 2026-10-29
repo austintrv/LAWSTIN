@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { readPrefs, writePrefs, type ReadingSize } from "../helpers/prefs";
 const SIZES: ReadingSize[] = ["s", "m", "l", "xl"];
@@ -158,7 +159,8 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
       </section>
       {store.runs[0] && <section className={styles.runNote}><div><p className={styles.overline}>Latest study update</p><h2>{store.runs[0].added} materials added</h2></div><div className={styles.runChips}>{SCHOOL_ORDER.filter(k => store.runs[0].by_course[k]).map(k => <button key={k} style={{ "--course-color": SCHOOL_COURSES[k].color } as React.CSSProperties} onClick={() => go(k)}><i />{SCHOOL_COURSES[k].short}<small>{store.runs[0].by_course[k]}</small></button>)}</div></section>}
     </> : <>
-      <section className={styles.courseHero} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
+      <section className={`${styles.courseHero} ${auraHost}`} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
+        <Aura colors={[SCHOOL_COURSES[course].color, "var(--uh-red)", SCHOOL_COURSES[course].color]} />
         <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
         <h2>{SCHOOL_COURSES[course].name}</h2>
         {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}

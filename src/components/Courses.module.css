@@ -41,10 +41,10 @@
 .back{display:flex;align-items:center;gap:10px;min-height:44px;width:fit-content;font-size:17px;font-weight:600;color:var(--uh-red)}
 .courseHero{padding:0 0 4px;position:relative}
 .courseHero h2{font-size:clamp(30px,5.5vw,72px);font-weight:700;line-height:1.08;letter-spacing:-.04em;max-width:16ch;margin:4px 0 18px;text-wrap:balance}
-.courseHero::after{content:"";position:absolute;right:3%;top:10px;width:140px;height:140px;border:26px solid var(--course-color);border-radius:50%;opacity:.05;pointer-events:none}
+
 .heroActions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .heroActions>button{justify-content:center;min-width:0}
-@media(max-width:649px){.courseHero::after{display:none}.heroActions>button{white-space:nowrap;padding-inline:12px;font-size:16px}.heroActions>.secondary svg{display:none}}
+@media(max-width:649px){.heroActions>button{white-space:nowrap;padding-inline:12px;font-size:16px}.heroActions>.secondary svg{display:none}}
 .headButton{white-space:nowrap;flex-shrink:0}
 .deckCard h4{font-variant-numeric:tabular-nums}
 .courseWorkspace{display:grid;gap:24px;min-width:0;align-items:start}
@@ -187,7 +187,7 @@
  
  
  .courseGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:20px}.courseCard{grid-column:span 2;min-height:300px;padding:30px}.workspaceCard{grid-column:span 3;min-height:225px}.courseCard h3{font-size:28px}.workspaceCard h3{font-size:25px}.workspaceCard .courseCardTop{margin-bottom:20px}.courseCard::after{width:210px;height:210px;border-width:36px;right:-110px;top:-110px}
- .methodGrid{grid-template-columns:repeat(6,minmax(0,1fr))}.methodGrid>button{min-height:180px}.runNote{display:grid;grid-template-columns:1fr 1.4fr;padding:36px;align-items:center}.courseWorkspace{grid-template-columns:250px minmax(0,1fr);gap:48px}.sidebar{position:sticky;top:32px}.sidebar nav{display:flex;flex-direction:column;overflow:visible;padding:0;gap:6px}.sidebar nav button{background:none;border-color:transparent;white-space:normal;text-align:left}.writingLink{border-top:1px solid var(--border);padding-top:24px;margin-top:24px;width:100%}.courseHero{padding-bottom:28px}.heroActions{display:flex;flex-wrap:wrap}.heroActions>button{justify-content:flex-start}.courseHero::after{width:240px;height:240px;border-width:40px;top:-10px;right:5%}.searchSection{padding-top:40px}
+ .methodGrid{grid-template-columns:repeat(6,minmax(0,1fr))}.methodGrid>button{min-height:180px}.runNote{display:grid;grid-template-columns:1fr 1.4fr;padding:36px;align-items:center}.courseWorkspace{grid-template-columns:250px minmax(0,1fr);gap:48px}.sidebar{position:sticky;top:32px}.sidebar nav{display:flex;flex-direction:column;overflow:visible;padding:0;gap:6px}.sidebar nav button{background:none;border-color:transparent;white-space:normal;text-align:left}.writingLink{border-top:1px solid var(--border);padding-top:24px;margin-top:24px;width:100%}.courseHero{padding-bottom:28px}.heroActions{display:flex;flex-wrap:wrap}.heroActions>button{justify-content:flex-start}.searchSection{padding-top:40px}
 }
 @media(prefers-reduced-motion:reduce){.courses *,.dialog *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.courseCard:hover,.materialCard:hover{transform:none}.dialog{animation:none}}
 /* Phone: comparison rows become stacked cards, the footer buttons share a row, and Print is left to desktop. */

@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Aura, auraHost } from "../components/Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
 const loadCourses = () => import("../components/Courses");
@@ -251,7 +252,8 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
             <div className={`${styles.navbar} ${compact[k] ? styles.navbarOn : ""}`} aria-hidden="true">
               <span>{k === "study" ? "Study" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</span>
             </div>
-            <div className={styles.shell}>
+            <div className={`${styles.shell} ${k === "study" ? auraHost : ""}`}>
+              {k === "study" && <Aura className={styles.studyAura} colors={["var(--uh-red)", "var(--course-il)", "var(--course-asy)"]} />}
               <header className={styles.head}>
                 <div className={styles.headRow}>
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>

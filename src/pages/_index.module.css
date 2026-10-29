@@ -13,7 +13,7 @@
 .pane {
   position: absolute;
   inset: 0;
-  overflow-y: auto;
+  overflow-y: auto; overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior-y: contain;
   opacity: 0;
@@ -238,6 +238,7 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 @media (prefers-reduced-motion: reduce) { .note, .feedIn { animation: none; } .bubble:active { transform: none; } }
 
 .barAvatar { display: none; }
+.studyAura { bottom: auto; height: 620px; -webkit-mask-image: linear-gradient(#000 60%, transparent); mask-image: linear-gradient(#000 60%, transparent); }
 .studyCols, .studyCol { display: contents; }
 .o1 { order: 1; } .o2 { order: 2; } .o3 { order: 3; } .o4 { order: 4; }
 .o1:empty { display: none; }

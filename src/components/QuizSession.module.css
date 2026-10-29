@@ -23,7 +23,7 @@
 .prog i.done { background: var(--foreground); opacity: 0.55; }
 .count { font-size: 13px; font-weight: 600; color: var(--muted-foreground); min-width: 48px; text-align: right; font-variant-numeric: tabular-nums; }
 
-.scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 6px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 6px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
 .body { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; padding-bottom: calc(130px + env(safe-area-inset-bottom, 0px)); }
 .in { animation: qIn 0.38s var(--ease-ios); }
 .out { animation: qOut 0.18s ease-in forwards; }
@@ -79,6 +79,7 @@
 
 .res { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 22px; padding: 16px 0 calc(40px + env(safe-area-inset-bottom, 0px)); animation: qIn 0.4s var(--ease-ios); }
 .ring { width: 200px; height: 200px; margin: 12px auto 0; position: relative; }
+.ringAura { inset: -90px -140px; -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent); mask-image: radial-gradient(closest-side, #000 55%, transparent); }
 .ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
 .ring circle { fill: none; stroke-width: 18; stroke-linecap: round; }
 .track { stroke: var(--uh-red-soft); }

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { clearCaches } from "../helpers/offlineCache";
 import { Bell, ChevronLeft, Download, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
@@ -141,7 +142,8 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
         <span className={styles.barTitle}>Settings</span>
       </header>
       <div className={styles.scroll} ref={scroll} onScroll={(e) => { const on = e.currentTarget.scrollTop > 40; if (on !== compact) setCompact(on); }}>
-        <div className={styles.inner}>
+        <div className={`${styles.inner} ${auraHost}`}>
+          <Aura className={styles.aura} colors={["var(--uh-red)", "var(--course-il)", "var(--course-pr)"]} />
           <h1 className={styles.title}>Settings</h1>
 
           <section className={`${styles.card} ${styles.profile}`}>

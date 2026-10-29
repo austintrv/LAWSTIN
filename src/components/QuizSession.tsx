@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles } from "lucide-react";
 import { Button } from "./Button";
@@ -402,7 +403,8 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
 
   return (
     <div className={styles.res}>
-      <div className={`${styles.ring} ${perfect ? styles.ringPerfect : ""}`}>
+      <div className={`${styles.ring} ${perfect ? styles.ringPerfect : ""} ${auraHost}`}>
+        <Aura className={styles.ringAura} colors={perfect ? ["var(--success)", "var(--uh-red)", "var(--success)"] : ["var(--uh-red)", "var(--course-il)", "var(--uh-red-light)"]} />
         <svg viewBox="0 0 200 200">
           <defs>
             <linearGradient id="lawstinRing" x1="0" y1="0" x2="1" y2="1">
