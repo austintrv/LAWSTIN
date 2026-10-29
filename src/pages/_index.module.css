@@ -131,6 +131,9 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 .rowEnd { color: var(--muted-foreground); font-size: 15px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .chev { color: var(--faint-foreground); flex-shrink: 0; }
 .dot { width: 22px; height: 22px; border-radius: 7px; flex-shrink: 0; display: grid; place-items: center; color: #fff; font-size: 11px; font-weight: 600; }
+.lessonHero { display: flex; align-items: center; gap: 14px; width: 100%; padding: 18px 16px; margin-bottom: 12px; border: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; overflow: hidden; transition: transform 0.25s var(--ease-ios); }
+.lessonHero:active { transform: scale(0.98); }
+.lessonIcon { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; background: var(--uh-red); color: #fff; }
 .finalTiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .finalTile { padding: 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; border: 0; color: inherit; font: inherit; cursor: pointer; transition: transform 0.25s var(--ease-ios); }
 .finalTile:active { transform: scale(0.97); }

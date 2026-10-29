@@ -89,6 +89,28 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
     return topicStats().filter((t) => t.c + t.w >= 2 && t.c / (t.c + t.w) < 0.7);
   }
 
+  /**
+   * Topics with missed or guessed questions, worst first: questions still missed count most, then
+   * past misses and guesses. Each carries its missed questions (still-missed first) for a lesson.
+   */
+  function missedTopics() {
+    const m = new Map<string, { course: CourseCode; topic: string; items: { q: QuestionDTO; p: ProgressDTO }[]; c: number; w: number; score: number }>();
+    for (const q of questions) {
+      const p = prog(q.id);
+      if (!p || !(p.wrong > 0 || p.guessed > 0 || p.lastCorrect === false)) continue;
+      const k = `${q.course}|${q.topic}`;
+      if (!m.has(k)) m.set(k, { course: q.course, topic: q.topic, items: [], c: 0, w: 0, score: 0 });
+      const t = m.get(k)!;
+      t.items.push({ q, p });
+      t.score += (p.lastCorrect === false ? 3 : 0) + p.wrong + p.guessed;
+    }
+    for (const t of m.values()) {
+      for (const st of topicStats()) if (st.course === t.course && st.topic === t.topic) { t.c = st.c; t.w = st.w; }
+      t.items.sort((a, b) => Number(b.p.lastCorrect === false) - Number(a.p.lastCorrect === false) || b.p.wrong - a.p.wrong);
+    }
+    return [...m.values()].sort((a, b) => b.score - a.score);
+  }
+
   function courseStats(c: CourseCode) {
     let n = 0, s = 0, cor = 0, wr = 0;
     for (const q of questions) {
@@ -178,7 +200,7 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
     return out;
   }
 
-  return { questions, prog, today, queues, topicStats, weakTopics, courseStats, buildRound, listRound, topicRound, examRound, streak, lastNDays, missProfile, topicRules, todayCount: days.get(today) };
+  return { questions, prog, today, queues, topicStats, weakTopics, missedTopics, courseStats, buildRound, listRound, topicRound, examRound, streak, lastNDays, missProfile, topicRules, todayCount: days.get(today) };
 }
 
 /** A greeting picked once per app open. Context lines only when the data supports them. */

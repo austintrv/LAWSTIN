@@ -1,16 +1,18 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Aura, auraHost } from "../components/Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
+import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig, GraduationCap, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
 const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
 import { Skeleton } from "../components/Skeleton";
 import type { QuizMode, QuizSnapshot } from "../components/QuizSession";
+import type { LessonTopic } from "../components/MissedLesson";
 // Screens opened from the Study tab load on demand and are warmed in the background after first paint.
 const loadQuiz = () => import("../components/QuizSession");
 const QuizSession = lazy(() => loadQuiz().then((m) => ({ default: m.QuizSession })));
 const SettingsPage = lazy(() => import("../components/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const MissedLesson = lazy(() => import("../components/MissedLesson").then((m) => ({ default: m.MissedLesson })));
 const WrittenPractice = lazy(() => import("../components/WrittenPractice").then((m) => ({ default: m.WrittenPractice })));
 import { useLawstinData } from "../helpers/useLawstinData";
 import { useLawstinAi } from "../helpers/useLawstinAi";
@@ -83,6 +85,17 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     else window.location.hash = `/${tab}`;
   };
   const [writing, setWriting] = useState(false);
+  const [lesson, setLesson] = useState<LessonTopic[] | null>(null);
+  const openLesson = (list: MissedTopic[]) => {
+    haptic();
+    setLesson(list.map((t) => {
+      // Check with a question the lesson hasn't just explained: unseen first, then any other in the topic.
+      const shown = new Set(t.items.slice(0, 3).map((it) => it.q.id));
+      const others = e.questions.filter((q) => q.course === t.course && q.topic === t.topic && !shown.has(q.id));
+      const check = others.find((q) => !e.prog(q.id)?.seen) ?? others[0] ?? t.items[0].q;
+      return { course: t.course, topic: t.topic, rules: e.topicRules(t.course, t.topic), items: t.items, check };
+    }));
+  };
   const [celebrate, setCelebrate] = useState(false);
   // Chosen once per open, after data loads, so the heading never swaps lines in front of you.
   const [greeting, setGreeting] = useState<string | null>(null);
@@ -286,7 +299,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               )}
               {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
               {state && k === "activity" && (
-                <ActivityView e={e} state={state}
+                <ActivityView e={e} state={state} onLesson={openLesson}
                   onStudy={(list, c) => start((eng) => {
                     const ids = new Set(eng.questions.map((q) => q.id));
                     const left = list.filter((q) => ids.has(q.id) && !eng.prog(q.id)?.seen);
@@ -339,6 +352,10 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
       {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(false)} /></Suspense>}
 
+      {lesson && <Suspense fallback={null}><MissedLesson topics={lesson} onAnswer={onAnswer} onClose={() => setLesson(null)}
+        onDrill={(qs) => { setLesson(null); start((eng) => { const ids = new Set(eng.questions.map((q) => q.id)); return eng.listRound(qs.filter((q) => ids.has(q.id))); }); }}
+        tools={(course, topic) => <TopicTools course={course} topic={topic} onGo={(hash) => { haptic(); afterOverlayClose(() => { window.location.hash = hash; }); setLesson(null); }} />} /></Suspense>}
+
       {session && (
         <Suspense fallback={null}><QuizSession
           key={session.key}
@@ -366,8 +383,43 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 }
 
 type Engine = ReturnType<typeof studyEngine>;
+type MissedTopic = ReturnType<Engine["missedTopics"]>[number];
 
 const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 864e5);
+
+/** Topics with misses, worst first, each opening a short lesson; the top row mixes the weakest few. */
+function MissedTopics({ topics, onLesson }: { topics: MissedTopic[]; onLesson: (topics: MissedTopic[]) => void }) {
+  const mix = topics.slice(0, 4);
+  const count = mix.reduce((a, t) => a + Math.min(3, t.items.length), 0);
+  return (
+    <section className={styles.sec}>
+      <div className={styles.secH}><h2>Missed topics</h2></div>
+      {topics.length > 1 && (
+        <button className={`${styles.card} ${styles.lessonHero} ${auraHost}`} onClick={() => onLesson(mix)}>
+          <Aura colors={[COURSES[mix[0].course].color, "var(--uh-red)", COURSES[mix[1].course].color]} />
+          <span className={styles.lessonIcon}><GraduationCap size={22} /></span>
+          <span className={styles.rowMain}><span className={styles.rowTitle}>Mixed lesson</span><span className={styles.rowSub}>{mix.length} topics · {count} questions</span></span>
+          <ChevronRight size={18} className={styles.chev} />
+        </button>
+      )}
+      <div className={`${styles.card} ${styles.list}`}>
+        {topics.map((t) => {
+          const c = COURSES[t.course], still = t.items.filter((it) => it.p.lastCorrect === false).length;
+          return (
+            <button key={`${t.course}|${t.topic}`} className={styles.row} onClick={() => onLesson([t])}>
+              <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
+              <span className={styles.rowMain}>
+                <span className={styles.rowTitle}>{t.topic}</span>
+                <span className={styles.rowSub}>{still ? `${still} still missed` : `${t.items.length} to revisit`}{t.c + t.w ? ` · ${pct(t.c, t.c + t.w)}% correct` : ""}</span>
+              </span>
+              <ChevronRight size={18} className={styles.chev} />
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 /** Days to each final, soonest first, with how much of that course's bank is seen and answered correctly. */
 function FinalsCard({ e, onCourse }: { e: Engine; onCourse: (c: CourseCode) => void }) {
@@ -726,15 +778,17 @@ function ProgressView({ e, onTopic }: { e: Engine; onTopic: (c: CourseCode, t: s
   );
 }
 
-function ActivityView({ e, state, onStudy }: { e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+function ActivityView({ e, state, onStudy, onLesson }: { e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void; onLesson: (topics: MissedTopic[]) => void }) {
   const days = e.lastNDays(14);
   const max = Math.max(10, ...days.map((d) => d.answered));
   const studied = [...state.days].filter((d) => d.answered).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
   const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, o);
   const library = useStudyLibrary();
   const total = days.reduce((a, d) => a + d.answered, 0);
+  const missed = e.missedTopics();
   return (
     <>
+      {missed.length > 0 && <MissedTopics topics={missed} onLesson={onLesson} />}
       {total > 0 && <section className={styles.sec}>
         <div className={styles.secH}><h2>Last 14 days</h2><small>{total} answers</small></div>
         <div className={`${styles.card} ${styles.bars}`}>

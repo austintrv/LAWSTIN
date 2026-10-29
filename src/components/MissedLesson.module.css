@@ -1,0 +1,24 @@
+.head { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px 2px; }
+.head h2 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.note { font-size: 14px; color: var(--muted-foreground); }
+
+.rules { display: flex; flex-direction: column; gap: 12px; }
+.rule { margin: 0; font-family: var(--font-family-reading); font-size: calc(17.5px * var(--reading-scale, 1)); line-height: 1.55; }
+
+/* Try-it-again choices after checking: right in green, a wrong pick in red, the rest faded. */
+.pick[data-state="right"] { border-color: var(--success); background: var(--success-soft); }
+.pick[data-state="right"] > span:first-child { background: var(--success); color: #fff; }
+.pick[data-state="wrong"] { border-color: var(--error); background: var(--error-soft); }
+.pick[data-state="wrong"] > span:first-child { background: var(--error); color: #fff; }
+.pick[data-state="other"] { opacity: 0.5; }
+
+.end { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding-top: 40px; }
+.endMark { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; background: var(--success-soft); color: var(--success); animation: pop 0.5s var(--ease-ios); }
+.end h2 { margin: 6px 0 0; font-family: var(--font-family-script); font-style: italic; font-weight: 400; font-size: 40px; color: var(--uh-red); }
+.end p { margin: 0; font-size: 17px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.endTopics { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+.endTopics span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-full); font-size: 14px; font-weight: 600; color: var(--course-color); background: color-mix(in srgb, var(--course-color) 12%, transparent); }
+.endTopics i { width: 7px; height: 7px; border-radius: 50%; background: var(--course-color); }
+.endActions { display: flex; flex-direction: column; gap: 6px; }
+@keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { .endMark { animation: none; } }
