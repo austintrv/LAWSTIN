@@ -76,8 +76,7 @@
 .hero { padding: 20px; display: flex; flex-direction: column; gap: 18px; background: linear-gradient(165deg, var(--uh-red-tint) 0%, transparent 60%), var(--card); }
 .seg { display: flex; background: var(--fill); border-radius: 10px; padding: 2px; gap: 2px; }
 .seg button { flex: 1; min-width: 0; min-height: 40px; padding: 8px 4px; border: 0; background: none; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s var(--ease-ios); }
-.seg button.segOn { background: var(--card); color: var(--foreground); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
-:global(.dark) .seg button.segOn { background: #5a5a60; }
+.seg button.segOn { background: var(--seg-on); color: var(--foreground); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 .split { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .split div { display: flex; flex-direction: column; gap: 2px; }
 .split b { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }

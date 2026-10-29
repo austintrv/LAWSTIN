@@ -47,7 +47,7 @@ button.row:active:not(:disabled) { background: var(--fill); }
 
 .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--fill); border-radius: 10px; padding: 2px; }
 .seg button { height: 40px; border-radius: 8px; font-size: 14px; font-weight: 600; color: var(--foreground); transition: background 0.2s, box-shadow 0.2s; }
-.segOn { background: var(--card); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
+.segOn { background: var(--seg-on); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 
 /* Off switch tracks need contrast on the white card. */
 .card button[role="switch"][data-state="unchecked"]::before { background-color: color-mix(in srgb, var(--foreground) 16%, transparent); }
