@@ -12,6 +12,9 @@ let owned = false;
 // True while our own history.back() is on its way; its popstate is not a user Back.
 let backing = false;
 let listening = false;
+// Navigation waiting for an overlay's history entry to be removed first.
+let after: (() => void)[] = [];
+function flushAfter() { const fns = after; after = []; fns.forEach((f) => f()); }
 
 function push() {
   history.pushState({ lawstinOverlay: true }, "");
@@ -21,6 +24,7 @@ function push() {
 function settle() {
   backing = false;
   if (stack.length && !owned) push();
+  flushAfter();
 }
 
 function onPop() {
@@ -47,12 +51,17 @@ function unregister(entry: Entry) {
   stack.splice(at, 1);
   // Wait a tick so an overlay that replaces another (exam sheet → quiz) reuses the entry.
   setTimeout(() => {
-    if (stack.length || !owned) return;
+    if (stack.length || !owned) { flushAfter(); return; }
     owned = false;
     backing = true;
     history.back();
     setTimeout(() => { if (backing) settle(); }, 1000);
   }, 0);
+}
+
+/** Runs fn (for example a route change) once the closing overlay's history entry is gone. */
+export function afterOverlayClose(fn: () => void) {
+  if (owned || backing) after.push(fn); else fn();
 }
 
 export function useBackClose(onBack: () => boolean | void, active = true) {

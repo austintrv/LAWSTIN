@@ -1,6 +1,6 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
+import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
 const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
@@ -18,11 +18,11 @@ import { applyPrefs } from "../helpers/prefs";
 import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
-import { useBackClose } from "../helpers/useBackClose";
+import { afterOverlayClose, useBackClose } from "../helpers/useBackClose";
 import { useSwipeDown } from "../helpers/useSwipeDown";
 import { isNetworkError } from "../helpers/offlineCache";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
-import { SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
+import { MATERIAL_LABELS, SCHOOL_COURSES, type MaterialKind, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
 import { useReadyCards } from "../helpers/useStudyMaterials";
 import { dueLabel } from "../components/TaskList";
@@ -304,6 +304,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               </div>
             ))}
           </div>
+          <TopicTools course={topicSheet.course} topic={topicSheet.topic} onGo={(hash) => { haptic(); afterOverlayClose(() => { window.location.hash = hash; }); setTopicSheet(null); }} />
           <Button className={`${styles.big} ${styles.cta}`} onClick={() => start((eng) => eng.topicRound(topicSheet.course, topicSheet.topic))}>Drill this topic</Button>
         </BottomSheet>
       )}
@@ -340,6 +341,32 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 }
 
 type Engine = ReturnType<typeof studyEngine>;
+
+const KIND_ICON: Record<MaterialKind, typeof Layers3> = { flashcard: Layers3, flowchart: GitBranch, outline: BookOpen, comparison: Columns3, drill: ListChecks, hypothetical: PenLine };
+
+/** The topic's study materials from Courses, with its flashcards as one row. Hidden when there are none. */
+function TopicTools({ course, topic, onGo }: { course: CourseCode; topic: string; onGo: (hash: string) => void }) {
+  const library = useStudyLibrary();
+  const mats = (library.data?.materials ?? []).filter((m) => m.course === course && m.topic === topic);
+  if (!mats.length) return null;
+  const cards = mats.filter((m) => m.kind === "flashcard").length;
+  const row = (key: string, kind: MaterialKind, title: string, sub: string, hash: string) => {
+    const Icon = KIND_ICON[kind];
+    return (
+      <button key={key} className={styles.row} onClick={() => onGo(hash)}>
+        <span className={styles.dot} style={{ background: COURSES[course].color }}><Icon size={12} color="#fff" strokeWidth={2.4} /></span>
+        <span className={styles.rowMain}><span className={styles.rowTitle}>{title}</span><span className={styles.rowSub}>{sub}</span></span>
+        <ChevronRight size={18} className={styles.chev} />
+      </button>
+    );
+  };
+  return (
+    <div className={`${styles.card} ${styles.list}`}>
+      {mats.filter((m) => m.kind !== "flashcard").map((m) => row(m.id, m.kind, m.title, MATERIAL_LABELS[m.kind], `/courses/${course}/${m.kind}/${m.id}`))}
+      {cards > 0 && row("cards", "flashcard", MATERIAL_LABELS.flashcard, `${cards} cards`, `/courses/${course}/flashcard`)}
+    </div>
+  );
+}
 
 /** Clinic and Tutoring tasks that are overdue or due within two days. Hidden when there are none. */
 function DueSoonCard() {
