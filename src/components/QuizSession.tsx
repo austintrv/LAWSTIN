@@ -49,6 +49,14 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const [asking, setAsking] = useState(false);
   const [harder, setHarder] = useState<Record<string, "busy" | "added">>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+  // On a wide screen the review shows the fact pattern beside the explanations.
+  const [wide, setWide] = useState(() => window.matchMedia("(min-width: 1000px)").matches);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1000px)");
+    const on = () => setWide(mq.matches);
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
   const touch = useRef<{ x: number; y: number } | null>(null);
   const item = items[Math.min(i, items.length - 1)];
   const q = item.q;
@@ -223,7 +231,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
             </div>
           </div>
         ) : (
-          <div className={`${styles.body} ${styles.review} ${animCls}`} key={`r-${i}-${q.id}`}>
+          <div className={`${styles.body} ${styles.review} ${wide ? styles.split : ""} ${animCls}`} key={`r-${i}-${q.id}`}>
             <header className={styles.verdict}>
               <span className={`${styles.vBig} ${ok ? styles.vOk : styles.vBad}`}>{ok ? <Check size={20} strokeWidth={3} /> : <X size={20} strokeWidth={3} />}</span>
               <div>
@@ -232,7 +240,8 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
               </div>
             </header>
 
-            <details className={styles.rc}>
+            <div className={styles.paneL}>
+            <details className={styles.rc} open={wide}>
               <summary className={styles.factHead}>
                 <span className={styles.label}><i style={{ background: course.color }} />{course.short} · {q.subtopic ?? q.topic}</span>
                 <span className={styles.strong}>{q.prompt}</span>
@@ -240,6 +249,8 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
               </summary>
               <div className={styles.factStem}>{paras(q.stem)}</div>
             </details>
+            </div>
+            <div className={styles.paneR}>
 
             {!ok && chosen && (
               <section className={`${styles.rc} ${styles.answerCard}`}>
@@ -306,6 +317,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
                 <Button variant="secondary" onClick={() => { onFlag(q, flagNote); setFlagged((f) => new Set(f).add(q.id)); setFlagOpen(false); }}>Send flag</Button>
               </div>
             )}
+            </div>
           </div>
         )}
       </div>

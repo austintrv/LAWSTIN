@@ -117,9 +117,15 @@
 
 /* Review screen: one card style, two text weights, one label style */
 .review { gap: 12px; }
+/* Phone: the panes vanish and the cards stack. Wide: fact pattern left (stays in view), explanations right. */
+.paneL, .paneR { display: contents; }
+.split { max-width: 1120px; display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 20px; align-items: start; }
+.split .verdict { grid-column: 1 / -1; }
+.split .paneL { display: block; position: sticky; top: 0; }
+.split .paneR { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
 .verdict { display: flex; align-items: center; gap: 14px; padding: 4px 4px 8px; }
 .verdict h2 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
-.verdict span { font-size: 15px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.verdict div span { font-size: 15px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .vBig { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; color: #fff; flex-shrink: 0; animation: vPop 0.5s var(--ease-ios); }
 .vOk { background: var(--success); box-shadow: 0 6px 16px -6px var(--success); }
 .vBad { background: var(--error); box-shadow: 0 6px 16px -6px var(--error); }

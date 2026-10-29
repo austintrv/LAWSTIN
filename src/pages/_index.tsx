@@ -73,6 +73,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   }, []);
   // Opened from the avatar: closing steps back so Back afterwards doesn't reopen Settings.
   const settingsFromApp = useRef(false);
+  const openSettings = () => { haptic(); settingsFromApp.current = true; window.location.hash = "/settings"; };
   const closeSettings = () => {
     if (settingsFromApp.current) { settingsFromApp.current = false; history.back(); }
     else window.location.hash = `/${tab}`;
@@ -235,7 +236,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               <header className={styles.head}>
                 <div className={styles.headRow}>
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
-                  <button className={styles.avatar} onClick={() => { haptic(); settingsFromApp.current = true; window.location.hash = "/settings"; }} aria-label="Settings">{NAME[0]}</button>
+                  <button className={styles.avatar} onClick={openSettings} aria-label="Settings">{NAME[0]}</button>
                 </div>
                 <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? greeting ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
               </header>
@@ -288,6 +289,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
             </button>
           ))}
         </div>
+        <button className={`${styles.avatar} ${styles.barAvatar}`} onClick={openSettings} aria-label="Settings">{NAME[0]}</button>
       </nav>
 
       {topicSheet && (
@@ -466,62 +468,70 @@ function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, o
         </div>
       </div>
 
-      <DueSoonCard />
-
-      <section className={styles.sec}>
-        <div className={styles.secH}><h2>Courses</h2></div>
-        <div className={`${styles.card} ${styles.list}`}>
-          {COURSE_KEYS.map((k) => {
-            const c = COURSES[k], s = e.courseStats(k), q = e.queues(k);
-            return (
-              <button key={k} className={styles.row} onClick={() => onCourse(k)}>
-                <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
-                <span className={styles.rowMain}>
-                  <span className={styles.rowTitle}>{c.name}</span>
-                  <span className={styles.rowSub}>{q.fresh.length} new · {q.due.length} due{s.seen ? ` · ${s.acc}% correct` : ""}</span>
-                  <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
-                </span>
-                <ChevronRight size={18} className={styles.chev} />
-              </button>
-            );
-          })}
+      {/* Two independent columns from tablet width up; on a phone the wrappers vanish and `order` keeps the list order. */}
+      <div className={styles.studyCols}>
+        <div className={styles.studyCol}>
+          <div className={styles.o1}><DueSoonCard /></div>
+          <div className={styles.o3}>
+              <section className={styles.sec}>
+                <div className={`${styles.card} ${styles.list}`}>
+                  <button className={styles.row} onClick={onExam}>
+                    <span className={styles.dot} style={{ background: "var(--foreground)" }}><Timer size={13} color="var(--background)" /></span>
+                    <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
+                    <ChevronRight size={18} className={styles.chev} />
+                  </button>
+                  <button className={styles.row} onClick={() => { haptic(); window.location.hash = "/courses/review"; }} disabled={!readyCards}>
+                    <span className={styles.dot} style={{ background: "#5e5ce6" }}><Layers3 size={12} color="#fff" strokeWidth={2.4} /></span>
+                    <span className={styles.rowMain}><span className={styles.rowTitle}>Flashcards</span></span>
+                    <span className={styles.rowEnd}>{readyCards}</span>
+                    <ChevronRight size={18} className={styles.chev} />
+                  </button>
+                  <button className={styles.row} onClick={onWrite}>
+                    <span className={styles.dot} style={{ background: "var(--uh-red)" }}><PenLine size={12} color="#fff" strokeWidth={2.4} /></span>
+                    <span className={styles.rowMain}><span className={styles.rowTitle}>Written practice</span></span>
+                    <ChevronRight size={18} className={styles.chev} />
+                  </button>
+                  <button className={styles.row} onClick={onMissed} disabled={!qs.missed.length}>
+                    <span className={styles.dot} style={{ background: "var(--error)" }}>!</span>
+                    <span className={styles.rowMain}><span className={styles.rowTitle}>Missed questions</span></span>
+                    <span className={styles.rowEnd}>{qs.missed.length}</span>
+                    <ChevronRight size={18} className={styles.chev} />
+                  </button>
+                  <button className={styles.row} onClick={onStarred} disabled={!qs.starred.length}>
+                    <span className={styles.dot} style={{ background: "#e0a100" }}><Star size={12} color="#fff" fill="#fff" /></span>
+                    <span className={styles.rowMain}><span className={styles.rowTitle}>Starred</span></span>
+                    <span className={styles.rowEnd}>{qs.starred.length}</span>
+                    <ChevronRight size={18} className={styles.chev} />
+                  </button>
+                </div>
+              </section>
+          </div>
         </div>
-      </section>
-
-      <section className={styles.sec}>
-        <div className={`${styles.card} ${styles.list}`}>
-          <button className={styles.row} onClick={onExam}>
-            <span className={styles.dot} style={{ background: "var(--foreground)" }}><Timer size={13} color="var(--background)" /></span>
-            <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
-            <ChevronRight size={18} className={styles.chev} />
-          </button>
-          <button className={styles.row} onClick={() => { haptic(); window.location.hash = "/courses/review"; }} disabled={!readyCards}>
-            <span className={styles.dot} style={{ background: "#5e5ce6" }}><Layers3 size={12} color="#fff" strokeWidth={2.4} /></span>
-            <span className={styles.rowMain}><span className={styles.rowTitle}>Flashcards</span></span>
-            <span className={styles.rowEnd}>{readyCards}</span>
-            <ChevronRight size={18} className={styles.chev} />
-          </button>
-          <button className={styles.row} onClick={onWrite}>
-            <span className={styles.dot} style={{ background: "var(--uh-red)" }}><PenLine size={12} color="#fff" strokeWidth={2.4} /></span>
-            <span className={styles.rowMain}><span className={styles.rowTitle}>Written practice</span></span>
-            <ChevronRight size={18} className={styles.chev} />
-          </button>
-          <button className={styles.row} onClick={onMissed} disabled={!qs.missed.length}>
-            <span className={styles.dot} style={{ background: "var(--error)" }}>!</span>
-            <span className={styles.rowMain}><span className={styles.rowTitle}>Missed questions</span></span>
-            <span className={styles.rowEnd}>{qs.missed.length}</span>
-            <ChevronRight size={18} className={styles.chev} />
-          </button>
-          <button className={styles.row} onClick={onStarred} disabled={!qs.starred.length}>
-            <span className={styles.dot} style={{ background: "#e0a100" }}><Star size={12} color="#fff" fill="#fff" /></span>
-            <span className={styles.rowMain}><span className={styles.rowTitle}>Starred</span></span>
-            <span className={styles.rowEnd}>{qs.starred.length}</span>
-            <ChevronRight size={18} className={styles.chev} />
-          </button>
+        <div className={styles.studyCol}>
+          <div className={styles.o2}>
+              <section className={styles.sec}>
+                <div className={styles.secH}><h2>Courses</h2></div>
+                <div className={`${styles.card} ${styles.list}`}>
+                  {COURSE_KEYS.map((k) => {
+                    const c = COURSES[k], s = e.courseStats(k), q = e.queues(k);
+                    return (
+                      <button key={k} className={styles.row} onClick={() => onCourse(k)}>
+                        <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
+                        <span className={styles.rowMain}>
+                          <span className={styles.rowTitle}>{c.name}</span>
+                          <span className={styles.rowSub}>{q.fresh.length} new · {q.due.length} due{s.seen ? ` · ${s.acc}% correct` : ""}</span>
+                          <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
+                        </span>
+                        <ChevronRight size={18} className={styles.chev} />
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+          </div>
+          {run && <div className={styles.o4}><UpdateCard e={e} run={run} onStudy={onUpdate} /></div>}
         </div>
-      </section>
-
-      {run && <UpdateCard e={e} run={run} onStudy={onUpdate} />}
+      </div>
     </>
   );
 }
