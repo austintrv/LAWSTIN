@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { ArrowUp, ArrowUpRight, CalendarDays, Check, ChevronRight, FileText, Flag, Trash2, X } from "lucide-react";
+import { Plus, ArrowUp, ArrowUpRight, CalendarDays, Check, ChevronRight, FileText, Flag, Trash2, X } from "lucide-react";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { sortTasks, useCourseTasks, type CourseTask, type TaskCourse } from "../helpers/useCourseTasks";
@@ -204,7 +204,7 @@ type Hours = { logged: number; required: number; as_of: string };
 function ClinicHours() {
   const key = "workspace:clinic:hours";
   const [h, setH] = useState<Hours | null>(() => { try { const v = workspaceCache.get(key); return v ? JSON.parse(v) : null; } catch { return null; } });
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState<null | "set" | "add">(null);
   const [draft, setDraft] = useState("");
   useEffect(() => {
     supabase.from("app_settings").select("value").eq("key", key).maybeSingle().then(({ data }) => {
@@ -214,10 +214,16 @@ function ClinicHours() {
   }, []);
   if (!h) return <section className={`${styles.card} ${styles.hours} ${styles.placeholder}`} aria-hidden="true" />;
   const save = async () => {
-    const n = Number(draft);
-    setEditing(false);
+    const mode = editing;
+    setEditing(null);
+    // Blank or invalid cancels. "Add" mode adds to the total; tapping the total replaces it.
+    const raw = draft.trim();
+    if (!raw) return;
+    const n = Number(raw);
     if (!Number.isFinite(n) || n < 0) return;
-    const next = { ...h, logged: Math.round(n * 100) / 100, as_of: dateKey.today() };
+    const logged = Math.round((mode === "add" ? h.logged + n : n) * 100) / 100;
+    if (logged === h.logged) return;
+    const next = { ...h, logged, as_of: dateKey.today() };
     setH(next); haptic();
     workspaceCache.set(key, JSON.stringify(next));
     await supabase.from("app_settings").upsert({ key, value: JSON.stringify(next), updated_at: new Date().toISOString() }, { onConflict: "key" });
@@ -237,13 +243,16 @@ function ClinicHours() {
       {editing ? (
         <form className={styles.hoursEdit} onSubmit={(e) => { e.preventDefault(); void save(); }}>
           <input autoFocus inputMode="decimal" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => void save()} aria-label="Hours logged" />
-          <span>of {h.required} hours</span>
+          <span>{editing === "add" ? "hours to add" : `of ${h.required} hours`}</span>
         </form>
       ) : (
-        <button className={styles.hoursMain} onClick={() => { setDraft(String(h.logged)); setEditing(true); }}>
+        <>
+        <button className={styles.hoursMain} onClick={() => { setDraft(String(h.logged)); setEditing("set"); }}>
           <span className={styles.hoursBig}>{h.logged} <small>of {h.required} hours</small></span>
           <span className={styles.hoursSub}>{Math.max(0, Math.round((h.required - h.logged) * 100) / 100)} to go · as of {asOf}</span>
         </button>
+        <button className={styles.addGo} aria-label="Add hours" onClick={() => { haptic(); setDraft(""); setEditing("add"); }}><Plus size={18} strokeWidth={2.6} /></button>
+        </>
       )}
     </section>
   );
