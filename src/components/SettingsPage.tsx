@@ -65,7 +65,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
     try {
       if (next) {
         const ok = await enablePush();
-        if (!ok) toast.error("Notifications are blocked for Lawstin in iPhone Settings");
+        if (!ok) toast.error("Notifications are turned off for Lawstin in system settings");
       } else await disablePush();
     } catch (e) {
       toast.error((e as Error).message || "Couldn’t change notifications");

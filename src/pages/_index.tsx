@@ -18,7 +18,7 @@ import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
-import { MATERIAL_LABELS, SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
+import { SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
 import { dueLabel } from "../components/TaskList";
 import { COURSES, COURSE_KEYS, DAILY_GOAL, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
@@ -217,8 +217,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               {loading && k !== "courses" && <LoadingCard />}
               {failed && k !== "courses" && (
                 <div className={`${styles.card} ${styles.empty}`}>
-                  <h2>Couldn’t load your questions</h2>
-                  <p>{(query.error as Error)?.message}</p>
+                  <h2>{navigator.onLine ? "Couldn’t load your questions" : "You’re offline"}</h2>
                   <Button variant="secondary" onClick={() => query.refetch()}>Try again</Button>
                 </div>
               )}
@@ -378,7 +377,7 @@ function StudyView({ e, state, goal, filter, setFilter, celebrate, onStart, onCo
   onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
   if (!e.questions.length) {
-    return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2><p>New questions arrive Tuesday, Thursday, and Saturday mornings.</p></div>;
+    return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2></div>;
   }
   const qs = e.queues(filter);
   const today = e.todayCount?.answered ?? 0;
@@ -734,12 +733,15 @@ function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
       </div>
       <button className={styles.noteMain} onClick={() => onStudy(added, null)}>
         <b>{run.added} new question{run.added === 1 ? "" : "s"}</b>
-        <span>{left === 0 ? "All studied" : left === run.added ? "Tap a topic to start" : `${left} left to study`}</span>
+        <span>{left === 0 ? "All studied" : `${left} left to study`}</span>
       </button>
       <TopicBubbles bubbles={bubbles} onStudy={onStudy} />
     </div>
   );
 }
+
+const KIND_ONE = { flashcard: "flashcard", flowchart: "flowchart", outline: "rule review", comparison: "comparison", drill: "sorting drill", hypothetical: "hypothetical" };
+const KIND_MANY = { flashcard: "flashcards", flowchart: "flowcharts", outline: "rule reviews", comparison: "comparisons", drill: "sorting drills", hypothetical: "hypotheticals" };
 
 function StudyNote({ today, run, materials }: { today: string; run: StudyRun; materials: StudyMaterial[] }) {
   const added = materials.filter((m) => m.batch === run.run_date);
@@ -752,7 +754,7 @@ function StudyNote({ today, run, materials }: { today: string; run: StudyRun; ma
   let bubbles = [...groups.values()].sort((a, b) => COURSE_KEYS.indexOf(a.course) - COURSE_KEYS.indexOf(b.course) || b.n - a.n);
   if (!bubbles.length) bubbles = (Object.entries(run.by_course) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k]).map(([k, n]) => ({ course: k, label: COURSES[k].short, n }));
   const kinds = Object.entries(run.by_kind).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
-    .map(([k, n]) => `${n} ${(MATERIAL_LABELS[k as keyof typeof MATERIAL_LABELS] ?? k).toLowerCase()}`).join(" · ");
+    .map(([k, n]) => `${n} ${(n === 1 ? KIND_ONE : KIND_MANY)[k as keyof typeof KIND_ONE] ?? k}`).join(" · ");
   const open = (course?: CourseCode) => { haptic(); window.location.hash = course ? `/courses/${course}` : "/courses"; };
   return (
     <div className={`${styles.card} ${styles.note}`}>

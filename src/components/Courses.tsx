@@ -102,7 +102,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
     </> : <>
       <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
       <section className={styles.courseHero} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
-        <p className={styles.overline}>Fall 2026</p><h2>{SCHOOL_COURSES[course].name}</h2>
+        <h2>{SCHOOL_COURSES[course].name}</h2>
         {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : "Flashcards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
       </section>
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
@@ -226,7 +226,7 @@ function MaterialReader({ material: m, store, onQuiz, onClose }: { material: Stu
   const highlight = () => {
     const selection = window.getSelection();
     const text = selection?.toString().trim();
-    if (!text || text.length > 500 || !body.current?.contains(selection?.anchorNode ?? null) || !body.current?.contains(selection?.focusNode ?? null)) { toast("Select up to 500 characters in the material"); return; }
+    if (!text || text.length > 500 || !body.current?.contains(selection?.anchorNode ?? null) || !body.current?.contains(selection?.focusNode ?? null)) { toast("Select some text to highlight"); return; }
     store.update(p => ({ ...p, highlights: { ...p.highlights, [m.id]: [...new Set([...(p.highlights[m.id] ?? []), text])] } }));
     selection?.removeAllRanges();
   };
@@ -250,7 +250,7 @@ function MaterialReader({ material: m, store, onQuiz, onClose }: { material: Stu
       </div>
       {!!highlights.length && <details className={styles.highlights}><summary>Your highlights</summary>{highlights.map((text, i) => <div key={i}><mark>{text}</mark><button className={styles.iconButton} aria-label="Remove highlight" onClick={() => store.update(p => ({ ...p, highlights: { ...p.highlights, [m.id]: highlights.filter(t => t !== text) } }))}><X size={18} /></button></div>)}</details>}
       <SourceList material={m} />
-      <div className={styles.confidence}><h3>Recall confidence</h3><div>{([ ["shaky", "Shaky"], ["learning", "Learning"], ["solid", "Solid"] ] as const).map(([key, label]) => <button key={key} aria-pressed={confidence === key} onClick={() => store.update(p => ({ ...p, confidence: { ...p.confidence, [m.id]: key } }))}>{label}</button>)}</div></div>
+      <div className={styles.confidence}><h3>Confidence</h3><div>{([ ["shaky", "Shaky"], ["learning", "Learning"], ["solid", "Solid"] ] as const).map(([key, label]) => <button key={key} aria-pressed={confidence === key} onClick={() => store.update(p => ({ ...p, confidence: { ...p.confidence, [m.id]: key } }))}>{label}</button>)}</div></div>
       <div className={styles.readerFooter}><button className={styles.secondary} aria-pressed={!!store.record.completed[m.id]} onClick={() => complete(m.id)}><Check size={20} />{store.record.completed[m.id] ? "Reviewed" : "Mark reviewed"}</button><button className={styles.primary} onClick={() => { onClose(); onQuiz(); }}>Practice this topic<ArrowRight size={18} /></button></div>
     </div>
   </StudyDialog>;
