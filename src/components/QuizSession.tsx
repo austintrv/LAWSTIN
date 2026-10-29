@@ -24,22 +24,27 @@ type Props = {
   onMore?: (exclude: Set<string>) => RoundItem[];
   onAnother: () => void;
   onRetry: (items: RoundItem[]) => void;
-  onClose: () => void;
+  /** Gets where the session stood (unless it was finished), so reopening it can pick up there. */
+  onClose: (snapshot?: QuizSnapshot) => void;
+  /** A session closed earlier, reopened where it left off. */
+  resume?: QuizSnapshot;
   /** Writes a harder version of the question with AI; it is inserted right after the current one. */
   onHarder?: (q: QuestionDTO) => Promise<QuestionDTO | null>;
   className?: string;
 };
 
+export type QuizSnapshot = { items: RoundItem[]; i: number; picks: (string | undefined)[]; results: (boolean | undefined)[] };
+
 const paras = (t: string) => t.split(/\n\s*\n/).map((p, i) => <p key={i}>{p.trim()}</p>);
 const isAi = (q: QuestionDTO) => q.id.startsWith("ai-");
 
-export function QuizSession({ items: initial, mode, getProgress, onAnswer, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, className }: Props) {
-  const [items, setItems] = useState(initial);
-  const [i, setI] = useState(0);
+export function QuizSession({ items: initial, mode, getProgress, onAnswer, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, className }: Props) {
+  const [items, setItems] = useState(resume?.items ?? initial);
+  const [i, setI] = useState(resume?.i ?? 0);
   const [sel, setSel] = useState<string | null>(null);
   // Per-position answers, so going back shows that question's review exactly as it was.
-  const [results, setResults] = useState<(boolean | undefined)[]>([]);
-  const [picks, setPicks] = useState<(string | undefined)[]>([]);
+  const [results, setResults] = useState<(boolean | undefined)[]>(resume?.results ?? []);
+  const [picks, setPicks] = useState<(string | undefined)[]>(resume?.picks ?? []);
   const [done, setDone] = useState(false);
   const [anim, setAnim] = useState<"in" | "out" | "back">("in");
   const [closing, setClosing] = useState(false);
@@ -67,9 +72,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const answered = results.filter((r) => r !== undefined).length;
   const right = results.filter(Boolean).length;
 
+  const snapshot = useRef<QuizSnapshot | undefined>(undefined);
+  snapshot.current = done ? undefined : { items, i, picks, results };
   const close = useCallback(() => {
     setClosing(true);
-    setTimeout(onClose, 380);
+    setTimeout(() => onClose(snapshot.current), 380);
   }, [onClose]);
   // Leaving an exam partway shows results for what was answered; closing the results leaves.
   const exit = useCallback(() => {

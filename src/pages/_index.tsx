@@ -5,7 +5,7 @@ const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
 import { Skeleton } from "../components/Skeleton";
-import type { QuizMode } from "../components/QuizSession";
+import type { QuizMode, QuizSnapshot } from "../components/QuizSession";
 // Screens opened from the Study tab load on demand and are warmed in the background after first paint.
 const loadQuiz = () => import("../components/QuizSession");
 const QuizSession = lazy(() => loadQuiz().then((m) => ({ default: m.QuizSession })));
@@ -58,7 +58,9 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>("all");
-  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source } | null>(null);
+  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot } | null>(null);
+  // The last practice session closed partway, so starting the same one again within a few hours resumes it.
+  const lastPractice = useRef<{ key: string; snap: QuizSnapshot; at: number } | null>(null);
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
   const [examSheet, setExamSheet] = useState(false);
   // Settings is a full page at #/settings so the system back gesture and button close it.
@@ -157,12 +159,20 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     const s = latest.current;
     return studyEngine(s && exclude ? { ...s, questions: s.questions.filter((q) => !exclude.has(q.id)) } : s);
   };
-  const start = (source: Source, mode: QuizMode = "practice") => {
+  const start = (source: Source, mode: QuizMode = "practice", resumeKey?: string) => {
+    const last = lastPractice.current;
+    if (mode === "practice" && resumeKey && last?.key === resumeKey && Date.now() - last.at < 3 * 3600 * 1000) {
+      haptic();
+      lastPractice.current = null;
+      setExamSheet(false); setTopicSheet(null);
+      setSession({ items: last.snap.items, mode, key: Date.now(), source, resumeKey, resume: last.snap });
+      return;
+    }
     const items = source(engineFor());
     if (!items.length) { toast("Nothing to study here yet"); return; }
     haptic();
     setExamSheet(false); setTopicSheet(null);
-    setSession({ items, mode, key: Date.now(), source });
+    setSession({ items, mode, key: Date.now(), source, resumeKey });
   };
 
   // A question notification opens #/q/<id>: answer that question first, then keep going with the usual queue.
@@ -252,10 +262,10 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
               {state && k === "study" && (
                 <StudyView e={e} state={state} goal={goal} readyCards={readyCards} filter={filter} setFilter={setFilter} celebrate={celebrate}
-                  onStart={() => start((eng) => eng.buildRound(filter))}
-                  onCourse={(c) => start((eng) => eng.buildRound(c))}
-                  onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed))}
-                  onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred))}
+                  onStart={() => start((eng) => eng.buildRound(filter), "practice", `round:${filter}`)}
+                  onCourse={(c) => start((eng) => eng.buildRound(c), "practice", `round:${c}`)}
+                  onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed), "practice", `missed:${filter}`)}
+                  onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred), "practice", `starred:${filter}`)}
                   onExam={() => { haptic(); setExamSheet(true); }}
                   onWrite={() => { haptic(); setWriting(true); }}
                   onUpdate={(list, c) => start((eng) => {
@@ -331,9 +341,14 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           onGuess={(q) => mark.mutate({ action: "guess", questionId: q.id, localDate: dateKey.today() })}
           onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
           onMore={(exclude) => session.source(engineFor(exclude))}
-          onAnother={() => { const items = session.source(engineFor()); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now() }); }}
+          onAnother={() => { const items = session.source(engineFor()); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now(), resume: undefined }); }}
           onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: session.source })}
-          onClose={() => setSession(null)}
+          resume={session.resume}
+          onClose={(snap) => {
+            lastPractice.current = session.mode === "practice" && session.resumeKey && snap?.results.some((r) => r !== undefined)
+              ? { key: session.resumeKey, snap, at: Date.now() } : null;
+            setSession(null);
+          }}
         /></Suspense>
       )}
     </div>
