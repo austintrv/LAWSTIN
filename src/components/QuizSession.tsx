@@ -86,7 +86,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
     }
   }, [i, items, mode, onMore, goTo]);
 
-  const goBack = useCallback(() => { if (i > 0) { haptic(); goTo(i - 1, "back"); } }, [i, goTo]);
+  const goBack = useCallback(() => {
+    if (done) { haptic(); setAnim("back"); setDone(false); return; }
+    if (i > 0) { haptic(); goTo(i - 1, "back"); }
+  }, [i, done, goTo]);
+  const reopen = useCallback((k: number) => { haptic(); setDone(false); setI(k); setAnim("back"); scrollRef.current?.scrollTo({ top: 0 }); }, []);
 
   const check = useCallback(async () => {
     if (!sel || checked) return;
@@ -125,7 +129,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
       } else if (e.key === "Enter" && !done) {
         e.preventDefault();
         if (!checked) check(); else if (mode === "practice") goNext();
-      } else if (e.key === "ArrowLeft" && !done && mode === "practice") goBack();
+      } else if (e.key === "ArrowLeft" && mode === "practice") goBack();
       else if (e.key === "ArrowRight" && !done && checked && mode === "practice") goNext();
       else if (e.key === "Escape") close();
     };
@@ -136,9 +140,10 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const onTouchStart = (e: React.TouchEvent) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
   const onTouchEnd = (e: React.TouchEvent) => {
     const t = touch.current; touch.current = null;
-    if (!t || mode !== "practice" || done) return;
+    if (!t || mode !== "practice") return;
     const dx = e.changedTouches[0].clientX - t.x, dy = e.changedTouches[0].clientY - t.y;
     if (Math.abs(dy) > 50) return;
+    if (done) { if (dx > 70) goBack(); return; }
     if (checked && dx < -70) goNext();
     else if (dx > 70) goBack();
   };
@@ -173,7 +178,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
             </>
           ) : (
             <>
-              <button className={styles.x} onClick={goBack} disabled={i === 0 || done} aria-label="Previous question"><ChevronLeft size={18} strokeWidth={2.4} /></button>
+              <button className={styles.x} onClick={goBack} disabled={i === 0 && !done} aria-label="Previous question"><ChevronLeft size={18} strokeWidth={2.4} /></button>
               <div className={styles.tally} aria-live="polite">
                 {answered > 0 && <><span className={styles.tallyOk}><Check size={13} strokeWidth={3} />{right}</span><span className={styles.tallyBad}><X size={13} strokeWidth={3} />{answered - right}</span></>}
               </div>
@@ -184,7 +189,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
 
       <div className={styles.scroll} ref={scrollRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {done ? (
-          <Results items={items} results={results} picks={picks} mode={mode} onAnother={onAnother} onRetry={onRetry} onClose={close} />
+          <Results items={items} results={results} picks={picks} mode={mode} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={reopen} />
         ) : !reviewing ? (
           <div className={`${styles.body} ${animCls}`} key={`q-${i}-${q.id}`}>
             <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
@@ -326,9 +331,9 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   );
 }
 
-function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose }: {
+function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose, onOpen }: {
   items: RoundItem[]; results: (boolean | undefined)[]; picks: (string | undefined)[]; mode: QuizMode;
-  onAnother: () => void; onRetry: (items: RoundItem[]) => void; onClose: () => void;
+  onAnother: () => void; onRetry: (items: RoundItem[]) => void; onClose: () => void; onOpen: (index: number) => void;
 }) {
   // Only answered questions count; a practice session can end anywhere.
   const items = mode === "exam" ? all : all.filter((_, k) => results[k] !== undefined);
@@ -415,9 +420,11 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
       ) : missed.length > 0 ? (
         <div className={styles.card}>
           {missed.map((it) => (
-            <div key={it.q.id} className={styles.row}>
+            <button key={it.q.id} className={`${styles.row} ${styles.rowBtn}`} onClick={() => onOpen(all.indexOf(it))}>
+              <span className={`${styles.mark} ${styles.markBad}`}><X size={13} strokeWidth={3} /></span>
               <span className={styles.rowMain}><span className={styles.rowTitle}>{it.q.subtopic ?? it.q.topic}</span><span className={styles.rowSub}>{it.q.prompt}</span></span>
-            </div>
+              <ChevronRight size={16} className={styles.chev} />
+            </button>
           ))}
         </div>
       ) : null}

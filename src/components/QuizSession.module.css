@@ -171,3 +171,5 @@ details[open] > .factHead .factToggle svg { transform: rotate(90deg); }
 .inBack { animation: qInBack 0.38s var(--ease-ios); }
 @keyframes qInBack { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .inBack, .vBig { animation: none; } }
+.rowBtn { width: 100%; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.rowBtn:active { background: var(--fill); }
