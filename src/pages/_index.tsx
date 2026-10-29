@@ -138,6 +138,14 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   }, [query]);
 
   // Daily goal: celebrate once when today's count crosses the goal.
+  // Home Screen icon badge: question reviews due today (cleared at zero). Needs notification permission on iOS.
+  const dueCount = state ? e.queues("all").due.length : null;
+  useEffect(() => {
+    if (dueCount === null) return;
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    (dueCount ? nav.setAppBadge?.(dueCount) : nav.clearAppBadge?.())?.catch(() => {});
+  }, [dueCount]);
+
   const todayAnswered = e.todayCount?.answered ?? 0;
   useEffect(() => {
     if (!state) return;
