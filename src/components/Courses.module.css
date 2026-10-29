@@ -114,7 +114,7 @@
 .readerToolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .readerToolbar button{display:flex;align-items:center;gap:8px;min-height:44px;padding:10px 14px;border-radius:12px;background:var(--fill);font-size:16px}
 .readerToolbar button:disabled{opacity:.4}
-.readerBody{font-family:var(--font-family-reading);font-size:var(--reading-size,19px);line-height:1.65}
+.readerBody{font-family:var(--font-family-reading);font-size:calc(19px * var(--reading-scale,1));line-height:1.65}
 .readerBody h3{font-family:var(--font-family-base);font-size:21px;font-weight:600;line-height:1.4;letter-spacing:-.015em}
 .readerBody button,.readerBody label,.readerBody textarea,.readerBody summary{font-family:var(--font-family-base)}
 .readerBody mark,.highlights mark{background:#ffe69a;color:#332709;border-radius:3px;padding:1px 2px}
@@ -146,14 +146,9 @@
 .tableScroll th,.tableScroll td{text-align:left;vertical-align:top;padding:20px;border:1px solid var(--border)}
 .tableScroll th{font:600 17px/1.5 var(--font-family-base);background:var(--muted)}
 .tableScroll th>.authority{margin-top:12px;font-weight:400}
-.outlineControls{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px;font:16px var(--font-family-base)}
 .ruleSection{border:1px solid var(--border);border-radius:16px;margin-bottom:16px;background:var(--card);padding:0 22px}
 .ruleSection>summary{font-weight:600;font-size:20px;cursor:pointer;padding:20px 0}
 .ruleSection>p{margin-bottom:20px}
-.checkoff{display:flex;align-items:center;gap:10px;font-size:16px;margin-bottom:16px;min-height:44px}
-.checkoff>span{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--muted-foreground);border-radius:7px}
-.checkoff[aria-pressed=true]{color:var(--uh-red)}
-.checkoff[aria-pressed=true]>span{background:var(--uh-red);color:white;border-color:var(--uh-red)}
 .drill,.hypo{display:flex;flex-direction:column;gap:24px}
 .drillItem,.modelAnswer{padding:24px;background:var(--card);border:1px solid var(--border);border-radius:20px}
 .sortChoices{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}
@@ -187,6 +182,15 @@
  .methodGrid{grid-template-columns:repeat(6,minmax(0,1fr))}.methodGrid>button{min-height:180px}.runNote{display:grid;grid-template-columns:1fr 1.4fr;padding:36px;align-items:center}.courseWorkspace{grid-template-columns:250px minmax(0,1fr);gap:48px}.sidebar{position:sticky;top:32px}.sidebar nav{display:flex;flex-direction:column;overflow:visible;padding:0;gap:6px}.sidebar nav button{background:none;border-color:transparent;white-space:normal;text-align:left}.writingLink{border-top:1px solid var(--border);padding-top:24px;margin-top:24px;width:100%}.courseHero{padding-bottom:28px}.heroActions{display:flex;flex-wrap:wrap}.heroActions>button{justify-content:flex-start}.courseHero::after{width:240px;height:240px;border-width:40px;top:-10px;right:5%}.searchSection{padding-top:40px}
 }
 @media(prefers-reduced-motion:reduce){.courses *,.dialog *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.courseCard:hover,.materialCard:hover{transform:none}.dialog{animation:none}}
+/* Phone: comparison rows become stacked cards, the footer buttons share a row, and Print is left to desktop. */
+@media(max-width:649px){.printButton{display:none!important}.readerFooter{display:grid;grid-template-columns:1fr 1fr}.readerFooter>button{justify-content:center;padding-inline:12px;white-space:nowrap}.readerFooter>.primary svg{display:none}.confidence>div{flex:1}.confidence button{flex:1}.tableScroll{display:none}}
+@media(min-width:650px){.compareCards{display:none}}
+.compareCards{display:flex;flex-direction:column;gap:14px}
+.compareCards section{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden}
+.compareCards h3{padding:16px 20px 0;font:600 18px/1.4 var(--font-family-base)}
+.compareCards section>.authority{padding:4px 20px 14px;font-size:15px}
+.compareCards section>div{padding:14px 20px;border-top:1px solid var(--border)}
+.compareCards section>div>span{display:block;margin-bottom:4px;font:600 13px/1.4 var(--font-family-base);color:var(--muted-foreground);letter-spacing:.02em}
 @media print{.dialogBackdrop{position:absolute;background:white;display:block;backdrop-filter:none}.dialog{height:auto;max-height:none;max-width:none;overflow:visible;border-radius:0;box-shadow:none;animation:none}.reader{overflow:visible;padding:0}.dialogHeader,.readerToolbar,.readerFooter,.confidence,.sources,.flowControls,.highlights,.hypo textarea,.hypo>label,.hypo>button{display:none}.readerBody{font-size:12pt}.ruleSection,.flowNode,.modelAnswer,.drillItem{break-inside:avoid}.tableScroll{overflow:visible}.tableScroll table{min-width:0}.tableScroll td,.tableScroll th{padding:10px}.courses .sidebar,.courses .search{display:none}}
 .runChips{display:flex;flex-wrap:wrap;gap:8px}
 .runChips button{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 12px;border-radius:999px;background:color-mix(in srgb,var(--course-color) 13%,transparent);color:var(--course-color);font-size:15px;font-weight:600;transition:transform .2s var(--ease-ios)}

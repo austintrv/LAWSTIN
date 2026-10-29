@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
+import { readPrefs, writePrefs, type ReadingSize } from "../helpers/prefs";
+const SIZES: ReadingSize[] = ["s", "m", "l", "xl"];
 import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, ClipboardList, Columns3, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, Printer, RotateCcw, Scale, Search, Star, X } from "lucide-react";
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
 import { dateKey } from "../helpers/dateKey";
@@ -250,8 +252,9 @@ function SourceList({ material }: { material: StudyMaterial }) {
 }
 
 function MaterialReader({ material: m, store, onQuiz, onClose }: { material: StudyMaterial; store: Store; onQuiz: () => void; onClose: () => void }) {
-  const [font, setFont] = useState(0);
-  const [hideDone, setHideDone] = useState(false);
+  // Text size is the app-wide reading size from Settings, so it matches the quiz.
+  const [size, setSize] = useState<ReadingSize>(() => readPrefs().reading);
+  const step = (d: number) => { const next = SIZES[Math.min(SIZES.length - 1, Math.max(0, SIZES.indexOf(size) + d))]; haptic(); setSize(next); writePrefs({ reading: next }); };
   const body = useRef<HTMLDivElement>(null);
   const confidence = store.record.confidence[m.id];
   const highlights = store.record.highlights[m.id] ?? [];
@@ -272,11 +275,12 @@ function MaterialReader({ material: m, store, onQuiz, onClose }: { material: Stu
   return <StudyDialog title={SCHOOL_COURSES[m.course].name} onClose={onClose} actions={<StarButton material={m} store={store} />}>
     <div className={styles.reader}>
       <div className={styles.readerTitle}><p className={styles.overline}>{MATERIAL_LABELS[m.kind]} · {m.topic}</p><h2>{m.title}</h2></div>
-      <div className={styles.readerToolbar}><button onClick={() => setFont(n => Math.max(0, n - 1))} disabled={!font} aria-label="Smaller reading text">A−</button><button onClick={() => setFont(n => Math.min(3, n + 1))} disabled={font === 3} aria-label="Larger reading text">A+</button><button onClick={highlight}><Highlighter size={20} />Highlight</button><button onClick={() => window.print()}><Printer size={20} />Print</button></div>
-      <div ref={body} data-selectable className={styles.readerBody} style={{ "--reading-size": `${19 + font * 2}px` } as React.CSSProperties}>
+      <div className={styles.readerToolbar}><button onClick={() => step(-1)} disabled={size === SIZES[0]} aria-label="Smaller reading text">A−</button><button onClick={() => step(1)} disabled={size === SIZES[SIZES.length - 1]} aria-label="Larger reading text">A+</button><button onClick={highlight}><Highlighter size={20} />Highlight</button><button className={styles.printButton} onClick={() => window.print()}><Printer size={20} />Print</button></div>
+      <div ref={body} data-selectable className={styles.readerBody}>
         {m.kind === "flowchart" && <FlowchartView material={m} />}
         {m.kind === "comparison" && <div className={styles.tableScroll} tabIndex={0} role="region" aria-label={m.title}><table><thead><tr><th scope="col">Rule</th>{m.columns.map(c => <th key={c} scope="col">{c}</th>)}</tr></thead><tbody>{m.rows.map((r, i) => <tr key={i}><th scope="row">{r.label}<p className={styles.authority}>{r.authority}</p></th>{r.cells.map((c, k) => <td key={k}>{highlighted(c)}</td>)}</tr>)}</tbody></table></div>}
-        {m.kind === "outline" && <><div className={styles.outlineControls}><button className={styles.secondary} aria-pressed={hideDone} onClick={() => setHideDone(v => !v)}>{hideDone ? "Show all sections" : "Hide checked sections"}</button><span>{m.sections.filter((_, i) => store.record.completed[`${m.id}:${i}`]).length} of {m.sections.length} checked</span></div>{m.sections.map((s, i) => hideDone && store.record.completed[`${m.id}:${i}`] ? null : <details key={i} className={styles.ruleSection} open><summary>{s.heading}</summary><p>{highlighted(s.text)}</p><p className={styles.authority}>{s.authority}</p><button className={styles.checkoff} aria-pressed={!!store.record.completed[`${m.id}:${i}`]} onClick={() => complete(`${m.id}:${i}`)}><span>{store.record.completed[`${m.id}:${i}`] && <Check size={17} />}</span>Checked off</button></details>)}</>}
+        {m.kind === "comparison" && <div className={styles.compareCards}>{m.rows.map((r, i) => <section key={i}><h3>{r.label}</h3><p className={styles.authority}>{r.authority}</p>{r.cells.map((c, k) => <div key={k}><span>{m.columns[k]}</span><p>{highlighted(c)}</p></div>)}</section>)}</div>}
+        {m.kind === "outline" && m.sections.map((s, i) => <details key={i} className={styles.ruleSection} open><summary>{s.heading}</summary><p>{highlighted(s.text)}</p><p className={styles.authority}>{s.authority}</p></details>)}
         {m.kind === "drill" && <SortingDrill material={m} />}
         {m.kind === "hypothetical" && <HypotheticalView material={m} store={store} />}
       </div>
