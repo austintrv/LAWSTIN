@@ -10,6 +10,11 @@
   pointer-events: none;
 }
 
+/* Over a full-screen view (quiz, Ask, Written practice), sit under its header instead of on it. */
+:global(body:has([aria-modal="true"])) .region:not(.dynamic):not(.inline) {
+  top: calc(var(--safe-area-inset-top, env(safe-area-inset-top, 0px)) + 64px);
+}
+
 /* One per notice. Carries the card's place in the stack; the transition is
    what makes the stack restack smoothly. Spans the region minus its side
    padding so long notices still get the full width. */
