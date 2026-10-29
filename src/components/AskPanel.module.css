@@ -10,8 +10,10 @@
 
 .head { flex-shrink: 0; padding: calc(12px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 0.5px solid var(--border); background: var(--bar); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }
 .headIn { max-width: 680px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.headIn h2 { margin: 0; font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
-.x { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--fill); color: var(--muted-foreground); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; }
+.headIn h2 { flex: 1; text-align: center; margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -0.01em; }
+.x { position: relative; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--fill); color: var(--muted-foreground); display: grid; place-items: center; cursor: pointer; flex-shrink: 0; }
+.x::after { content: ""; position: absolute; inset: -4px; }
+.spacer { width: 36px; flex-shrink: 0; }
 
 .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 16px max(16px, env(safe-area-inset-right, 0px)) 16px max(16px, env(safe-area-inset-left, 0px)); }
 .thread { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }

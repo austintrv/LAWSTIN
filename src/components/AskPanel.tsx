@@ -55,8 +55,9 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
     <div ref={swipe.ref} className={`${styles.panel} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Ask about this question">
       <div className={styles.head} {...swipe.handle}>
         <div className={styles.headIn}>
+          <span className={styles.spacer} />
           <h2>Ask about this question</h2>
-          <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
+          <button className={styles.x} onClick={close} aria-label="Close"><X size={17} strokeWidth={2.4} /></button>
         </div>
       </div>
 

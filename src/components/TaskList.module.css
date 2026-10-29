@@ -29,7 +29,7 @@
 .taskMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; padding: 15px 0; text-align: left; }
 .taskTitle { font-size: 17px; line-height: 1.35; color: var(--card-foreground); overflow-wrap: anywhere; }
 .isDone .taskTitle, .leaving .taskTitle { color: var(--muted-foreground); text-decoration: line-through; text-decoration-color: var(--faint-foreground); }
-.taskMeta { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; color: var(--muted-foreground); min-width: 0; }
+.taskMeta { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 400; color: var(--muted-foreground); min-width: 0; }
 .notePreview { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .late { color: var(--error); font-weight: 600; }
 .soon { color: var(--warning); font-weight: 600; }
@@ -48,7 +48,7 @@
 
 .done summary { list-style: none; display: flex; align-items: center; gap: 8px; padding: 16px; cursor: pointer; font-size: 17px; font-weight: 600; }
 .done summary::-webkit-details-marker { display: none; }
-.count { color: var(--muted-foreground); font-weight: 500; font-variant-numeric: tabular-nums; }
+.count { color: var(--muted-foreground); font-weight: 400; font-variant-numeric: tabular-nums; }
 .chev { margin-left: auto; color: var(--faint-foreground); transition: transform 0.25s var(--ease-ios); }
 .done[open] .chev { transform: rotate(90deg); }
 
@@ -73,10 +73,10 @@
 .hoursRing circle { fill: none; stroke-width: 7; stroke-linecap: round; }
 .hoursTrack { stroke: color-mix(in srgb, var(--c) 16%, transparent); }
 .hoursVal { stroke: var(--c); transition: stroke-dashoffset 0.8s var(--ease-ios); }
-.hoursRing b { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hoursRing b { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .hoursMain { flex: 1; display: flex; flex-direction: column; gap: 2px; text-align: left; }
 .hoursBig { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.hoursBig small { font-size: 16px; font-weight: 500; color: var(--muted-foreground); letter-spacing: 0; }
+.hoursBig small { font-size: 16px; font-weight: 400; color: var(--muted-foreground); letter-spacing: 0; }
 .hoursSub { font-size: 14px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .hoursEdit { flex: 1; display: flex; align-items: baseline; gap: 8px; }
 .hoursEdit input { width: 110px; font: inherit; font-size: 24px; font-weight: 700; border: 1px solid var(--border); border-radius: 12px; background: var(--fill); color: var(--foreground); padding: 4px 10px; outline: none; }

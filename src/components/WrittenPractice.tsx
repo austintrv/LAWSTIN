@@ -73,9 +73,9 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
     <div className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Written practice">
       <div className={styles.top}>
         <div className={styles.topIn}>
-          <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
-          <span className={styles.topTitle}>Written practice</span>
           <span className={styles.spacer} />
+          <span className={styles.topTitle}>Written practice</span>
+          <button className={styles.x} onClick={close} aria-label="Close"><X size={17} strokeWidth={2.4} /></button>
         </div>
       </div>
 

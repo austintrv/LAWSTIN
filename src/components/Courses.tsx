@@ -129,7 +129,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={route.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
         })}</nav><button className={styles.writingLink} onClick={onWrite}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
         <div className={styles.materialsPanel}>
-          <div className={styles.sectionHead}><h3>{route.kind ? MATERIAL_LABELS[route.kind] : "Study materials"}</h3><button className={styles.iconButton} aria-label="Print course materials" onClick={() => window.print()}><Printer size={21} /></button></div>
+          <div className={styles.sectionHead}><h3>{route.kind ? MATERIAL_LABELS[route.kind] : "Study materials"}</h3><button className={styles.iconButton} aria-label="Print course materials" onClick={() => window.print()}><Printer size={18} /></button></div>
           <SearchField value={search} onChange={setSearch} />
           <label className={styles.topicSelect}><span>Topic</span><select value={topic} onChange={e => setTopic(e.target.value)}><option value="all">All topics</option>{topics.map(t => <option key={t}>{t}</option>)}</select></label>
           <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} />
@@ -196,7 +196,7 @@ function StudyDialog({ title, children, onClose, actions }: { title: string; chi
   }, []);
   // The dialog is portalled so that the underlying scrolling pane can be inert.
   return <DialogPortal><div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose(); }}><div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={styles.dialog}>
-    <header className={styles.dialogHeader}><span>{title}</span><div>{actions}<button className={styles.iconButton} aria-label="Close study session" onClick={onClose}><X size={23} /></button></div></header>{children}
+    <header className={styles.dialogHeader}><div>{actions}</div><span>{title}</span><div><button className={styles.iconButton} aria-label="Close" onClick={onClose}><X size={17} strokeWidth={2.4} /></button></div></header>{children}
   </div></div></DialogPortal>;
 }
 
@@ -242,7 +242,7 @@ function FlashcardSession({ cards, again, store, onClose, onAgain }: { cards: Fl
 
 function StarButton({ material, store }: { material: StudyMaterial; store: Store }) {
   const starred = !!store.record.starred[material.id];
-  return <button className={styles.iconButton} aria-label={starred ? "Unstar material" : "Star material"} aria-pressed={starred} onClick={() => store.update(p => ({ ...p, starred: { ...p.starred, [material.id]: !starred } }))}><Star size={22} fill={starred ? "currentColor" : "none"} /></button>;
+  return <button className={styles.iconButton} aria-label={starred ? "Unstar material" : "Star material"} aria-pressed={starred} onClick={() => store.update(p => ({ ...p, starred: { ...p.starred, [material.id]: !starred } }))}><Star size={18} fill={starred ? "currentColor" : "none"} /></button>;
 }
 
 function SourceList({ material }: { material: StudyMaterial }) {

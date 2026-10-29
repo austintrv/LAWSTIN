@@ -64,7 +64,8 @@
 - No marketing slogans or hero banners (“Five courses. One workspace.”, “Your law school. In one place.”) and no institution labels in chrome (“UH Law Center”).
 - No plain paragraphs of text for updates or summaries; show them as visual, tappable elements (notification cards, colored topic bubbles, chips).
 - It must behave like a native Apple app: no pinch zoom, no long-press text selection on controls, no content that visibly swaps after appearing (the greeting is chosen once, after data loads).
-- Consistent typography and spacing: one card style, two text weights (600 for primary lines, 400 for body), one small label style, no randomly light or dark text, even gaps between boxes.
+- Consistent typography and spacing: one card style, weights 400 (body) and 600 (labels, primary lines, headings under 22px), 700 only for titles and big numbers 22px and up; nothing at 500 or 650. One small label style, no randomly light or dark text, even gaps between boxes.
+- Full-screen views (quiz, Written practice, Ask, flashcards, reader) share one header: title centered, Close (36px gray circle, 44px tap area) on the right, Back or Star on the left. Settings is a pushed page with “Back”. Buttons: red primary, gray secondary.
 - Quiz: always allow going back to earlier questions and explanations; no forced rounds; leaving keeps his place.
 - Answer choices must not reveal the correct one through extra detail, length, or rule-tracking qualifiers.
 - Joy matters: witty greetings, smooth animations, satisfying feedback. He wants to love the app so he studies more.

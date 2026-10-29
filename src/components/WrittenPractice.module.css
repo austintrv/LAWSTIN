@@ -5,9 +5,10 @@
 
 .top { flex-shrink: 0; padding: calc(10px + env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px)); }
 .topIn { max-width: 680px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
-.x { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--fill); color: var(--muted-foreground); display: grid; place-items: center; flex-shrink: 0; cursor: pointer; }
+.x { position: relative; width: 36px; height: 36px; border-radius: 50%; border: 0; background: var(--fill); color: var(--muted-foreground); display: grid; place-items: center; flex-shrink: 0; cursor: pointer; }
 .topTitle { flex: 1; text-align: center; font-size: 17px; font-weight: 600; }
-.spacer { width: 32px; flex-shrink: 0; }
+.spacer { width: 36px; flex-shrink: 0; }
+.x::after { content: ""; position: absolute; inset: -4px; }
 
 .scroll { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 6px max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px)); }
 .body { max-width: 680px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px)); animation: fadeIn 0.35s var(--ease-ios); }
@@ -26,11 +27,11 @@
 
 .loading { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
 .meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-.chip { font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius-full); }
-.topic { font-size: 13px; color: var(--muted-foreground); font-weight: 500; }
+.chip { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-full); }
+.topic { font-size: 13px; color: var(--muted-foreground); font-weight: 400; }
 .facts { font-family: var(--font-family-reading); font-size: 18.5px; line-height: 1.56; display: flex; flex-direction: column; gap: 12px; }
 .facts p { margin: 0; }
-.call { margin: 0; font-size: 17px; font-weight: 650; line-height: 1.4; }
+.call { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.4; }
 .answerBox { position: relative; }
 .answer { width: 100%; min-height: 240px; border-radius: var(--radius-md); background: var(--card); box-shadow: var(--shadow); border: 1.5px solid transparent; padding: 14px 16px 30px; font-size: 16px; line-height: 1.5; resize: vertical; field-sizing: content; }
 .answer:focus { border-color: var(--uh-red); outline: none; }
@@ -49,7 +50,7 @@
 .summary { margin: 0; font-size: 15px; line-height: 1.5; }
 
 .sec { display: flex; flex-direction: column; gap: 8px; }
-.okH, .badH { margin: 0; padding-inline: 4px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.okH, .badH { margin: 0; padding-inline: 4px; font-size: 13px; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
 .okH { color: var(--success); }
 .badH { color: var(--error); }
 .card { background: var(--card); border-radius: var(--radius-lg); box-shadow: var(--shadow); overflow: hidden; }
