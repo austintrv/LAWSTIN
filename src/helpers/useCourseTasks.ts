@@ -74,5 +74,24 @@ export function useCourseTasks() {
     onError: () => { toast.error("Couldn’t delete that task"); settle(); },
   });
 
-  return { tasks: query.data ?? [], loading: query.isLoading, add, update, remove };
+  const restore = useMutation({
+    mutationFn: async (t: CourseTask) => {
+      const { error } = await supabase.from("course_tasks").insert({ id: t.id, course: t.course, title: t.title, notes: t.notes, due: t.due, flagged: t.flagged, done_at: t.done_at, created_at: t.created_at });
+      if (error) throw error;
+    },
+    onMutate: (t) => set((list) => [...list.filter((x) => x.id !== t.id), t]),
+    onError: () => { toast.error("Couldn’t restore that task"); settle(); },
+  });
+
+  /** Deletes with an Undo; marks done with an Undo. */
+  const removeWithUndo = (t: CourseTask) => {
+    remove.mutate(t.id);
+    toast("Task deleted", { action: { label: "Undo", onClick: () => restore.mutate(t) } });
+  };
+  const completeWithUndo = (t: CourseTask) => {
+    update.mutate({ id: t.id, patch: { done_at: new Date().toISOString() } });
+    toast("Done", { action: { label: "Undo", onClick: () => update.mutate({ id: t.id, patch: { done_at: null } }) } });
+  };
+
+  return { tasks: query.data ?? [], loading: query.isLoading, add, update, remove, removeWithUndo, completeWithUndo };
 }

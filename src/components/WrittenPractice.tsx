@@ -7,6 +7,7 @@ import { useLawstinAi } from "../helpers/useLawstinAi";
 import { type GradeDTO, type SpotterDTO } from "../endpoints/ai_POST.schema";
 import { COURSES, type CourseCode } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
+import { toast } from "../helpers/toast";
 import styles from "./WrittenPractice.module.css";
 
 const STORE = "lawstin-written";
@@ -36,8 +37,15 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
 
   const close = () => { setClosing(true); setTimeout(onClose, 360); };
 
+  // Starting over keeps an Undo for a few seconds when an ungraded answer would be thrown away.
+  const discard = () => {
+    if (!spot || !answer.trim() || result) return;
+    const prev = { spot, answer };
+    toast("Answer cleared", { action: { label: "Undo", onClick: () => { setSpot(prev.spot); setAnswer(prev.answer); setResult(null); } } });
+  };
   const newSpot = async () => {
     haptic();
+    discard();
     setErr(null); setResult(null); setAnswer(""); setSpot(null);
     try {
       const r = await spotter.mutateAsync({ course });
@@ -166,7 +174,7 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
               </>
             ) : (
               <>
-                <Button variant="secondary" className={styles.side} onClick={() => { setSpot(null); setResult(null); setAnswer(""); }}>Course</Button>
+                <Button variant="secondary" className={styles.side} onClick={() => { discard(); setSpot(null); setResult(null); setAnswer(""); }}>Course</Button>
                 <Button className={`${styles.big} ${styles.cta}`} onClick={newSpot}>New fact pattern</Button>
               </>
             )}

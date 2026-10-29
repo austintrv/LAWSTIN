@@ -19,7 +19,7 @@ export function dueLabel(due: string, today = dateKey.today()): { text: string; 
 export type WorkspaceLink = { title: string; url: string };
 
 export function TaskList({ course, color, links = [] }: { course: TaskCourse; color: string; links?: WorkspaceLink[] }) {
-  const { tasks, add, update, remove } = useCourseTasks();
+  const { tasks, add, update, removeWithUndo, completeWithUndo } = useCourseTasks();
   const mine = tasks.filter((t) => t.course === course);
   const { open, done } = sortTasks(mine);
   const [title, setTitle] = useState("");
@@ -41,7 +41,7 @@ export function TaskList({ course, color, links = [] }: { course: TaskCourse; co
     // Let the check fill before the row leaves the open list.
     setLeaving((s) => new Set(s).add(t.id));
     setTimeout(() => {
-      update.mutate({ id: t.id, patch: { done_at: new Date().toISOString() } });
+      completeWithUndo(t);
       setLeaving((s) => { const n = new Set(s); n.delete(t.id); return n; });
     }, 420);
   };
@@ -61,7 +61,7 @@ export function TaskList({ course, color, links = [] }: { course: TaskCourse; co
             {open.map((t) => (
               <TaskRow key={t.id} task={t} leaving={leaving.has(t.id)} open={expanded === t.id}
                 onToggle={() => setExpanded((x) => (x === t.id ? null : t.id))} onComplete={() => complete(t)}
-                onPatch={(patch) => update.mutate({ id: t.id, patch })} onDelete={() => { haptic(); remove.mutate(t.id); setExpanded(null); }} />
+                onPatch={(patch) => update.mutate({ id: t.id, patch })} onDelete={() => { haptic(); removeWithUndo(t); setExpanded(null); }} />
             ))}
           </ul>
         )}
@@ -74,7 +74,7 @@ export function TaskList({ course, color, links = [] }: { course: TaskCourse; co
             {done.slice(0, 50).map((t) => (
               <TaskRow key={t.id} task={t} leaving={false} open={expanded === t.id}
                 onToggle={() => setExpanded((x) => (x === t.id ? null : t.id))} onComplete={() => complete(t)}
-                onPatch={(patch) => update.mutate({ id: t.id, patch })} onDelete={() => { haptic(); remove.mutate(t.id); setExpanded(null); }} />
+                onPatch={(patch) => update.mutate({ id: t.id, patch })} onDelete={() => { haptic(); removeWithUndo(t); setExpanded(null); }} />
             ))}
           </ul>
         </details>

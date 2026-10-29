@@ -316,7 +316,7 @@ type Engine = ReturnType<typeof studyEngine>;
 
 /** Clinic and Tutoring tasks that are overdue or due within two days. Hidden when there are none. */
 function DueSoonCard() {
-  const { tasks, update } = useCourseTasks();
+  const { tasks, completeWithUndo } = useCourseTasks();
   const list = dueSoon(tasks);
   if (!list.length) return null;
   return (
@@ -328,7 +328,7 @@ function DueSoonCard() {
           return (
             <div key={t.id} className={styles.row}>
               <button className={styles.todoCheck} style={{ color: c.color }} aria-label="Mark done"
-                onClick={() => { haptic(); update.mutate({ id: t.id, patch: { done_at: new Date().toISOString() } }); }} />
+                onClick={() => { haptic(); completeWithUndo(t); }} />
               <button className={styles.rowMain} onClick={() => { haptic(); window.location.hash = `/courses/${t.course}`; }}>
                 <span className={styles.rowTitle}>{t.title}</span>
                 <span className={styles.rowSub}><span className={label.tone === "late" ? styles.todoLate : label.tone === "soon" ? styles.todoSoon : ""}>{label.text}</span> · {c.short}</span>

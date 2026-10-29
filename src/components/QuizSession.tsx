@@ -60,6 +60,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
     setClosing(true);
     setTimeout(onClose, 380);
   }, [onClose]);
+  // Leaving an exam partway shows results for what was answered; closing the results leaves.
+  const exit = useCallback(() => {
+    if (mode === "exam" && !done && results.some((r) => r !== undefined)) { haptic(); setDone(true); return; }
+    close();
+  }, [mode, done, results, close]);
 
   const goTo = useCallback((n: number, dir: "out" | "back" = "out") => {
     setAnim(dir);
@@ -131,11 +136,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
         if (!checked) check(); else if (mode === "practice") goNext();
       } else if (e.key === "ArrowLeft" && mode === "practice") goBack();
       else if (e.key === "ArrowRight" && !done && checked && mode === "practice") goNext();
-      else if (e.key === "Escape") close();
+      else if (e.key === "Escape") exit();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, checked, check, goNext, goBack, close, mode, asking]);
+  }, [done, checked, check, goNext, goBack, exit, mode, asking]);
 
   const onTouchStart = (e: React.TouchEvent) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -168,7 +173,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
     <div className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label={mode === "exam" ? "Practice exam" : "Practice"}>
       <div className={styles.top} onTouchStart={onTouchStart} onTouchEnd={onTopTouchEnd}>
         <div className={styles.topIn}>
-          {mode === "exam" && <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>}
+          {mode === "exam" && <button className={styles.x} onClick={exit} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>}
           {mode === "exam" ? (
             <>
               <div className={styles.prog}>
@@ -336,9 +341,11 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
   items: RoundItem[]; results: (boolean | undefined)[]; picks: (string | undefined)[]; mode: QuizMode;
   onAnother: () => void; onRetry: (items: RoundItem[]) => void; onClose: () => void; onOpen: (index: number) => void;
 }) {
-  // Only answered questions count; a practice session can end anywhere.
-  const items = mode === "exam" ? all : all.filter((_, k) => results[k] !== undefined);
-  const res = mode === "exam" ? results : results.filter((r) => r !== undefined);
+  // Only answered questions count; practice and an exam ended early can stop anywhere.
+  const idx = all.map((_, k) => k).filter((k) => results[k] !== undefined);
+  const items = idx.map((k) => all[k]);
+  const res = idx.map((k) => results[k]);
+  const pk = idx.map((k) => picks[k]);
   const n = items.length;
   const c = res.filter(Boolean).length;
   const missed = items.filter((_, k) => res[k] === false);
@@ -397,19 +404,19 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
       {mode === "exam" ? (
         <div className={styles.card}>
           {items.map((it, k) => {
-            const pick = it.q.choices.find((x) => x.id === picks[k]);
+            const pick = it.q.choices.find((x) => x.id === pk[k]);
             const right = it.q.choices.find((x) => x.id === it.q.answer)!;
             const isOpen = open === k;
             return (
               <div key={k} className={styles.reviewItem}>
                 <button className={styles.reviewHead} onClick={() => setOpen(isOpen ? null : k)} aria-expanded={isOpen}>
-                  <span className={`${styles.mark} ${results[k] ? styles.markOk : styles.markBad}`}>{results[k] ? <Check size={13} strokeWidth={3} /> : <X size={13} strokeWidth={3} />}</span>
+                  <span className={`${styles.mark} ${res[k] ? styles.markOk : styles.markBad}`}>{res[k] ? <Check size={13} strokeWidth={3} /> : <X size={13} strokeWidth={3} />}</span>
                   <span className={styles.rowMain}><span className={styles.rowTitle}>{it.q.subtopic ?? it.q.topic}</span><span className={styles.rowSub}>{it.q.prompt}</span></span>
                   <ChevronRight size={16} className={`${styles.chev} ${isOpen ? styles.chevOpen : ""}`} />
                 </button>
                 {isOpen && (
                   <div className={styles.reviewBody}>
-                    {!results[k] && pick && <p><b>You chose {pick.id}.</b> {pick.why}</p>}
+                    {!res[k] && pick && <p><b>You chose {pick.id}.</b> {pick.why}</p>}
                     <p><b>The answer is {right.id}.</b> {right.why}</p>
                     {it.q.rule && <p className={styles.reviewRule}>{it.q.rule}</p>}
                   </div>
