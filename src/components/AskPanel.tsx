@@ -6,6 +6,7 @@ import { AiRequestError } from "../endpoints/ai_POST.schema";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
+import { useSwipeDown } from "../helpers/useSwipeDown";
 import styles from "./AskPanel.module.css";
 
 type Msg = { role: "user" | "assistant"; content: string };
@@ -30,6 +31,7 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
 
   const close = () => { setClosing(true); setTimeout(onClose, 320); };
   useBackClose(close);
+  const swipe = useSwipeDown<HTMLDivElement>(close);
 
   const send = async (text: string) => {
     const t = text.trim();
@@ -50,8 +52,8 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
   };
 
   return (
-    <div className={`${styles.panel} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Ask about this question">
-      <div className={styles.head}>
+    <div ref={swipe.ref} className={`${styles.panel} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Ask about this question">
+      <div className={styles.head} {...swipe.handle}>
         <div className={styles.headIn}>
           <h2>Ask about this question</h2>
           <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>

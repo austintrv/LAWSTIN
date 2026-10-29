@@ -18,6 +18,7 @@ import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
+import { useSwipeDown } from "../helpers/useSwipeDown";
 import { isNetworkError } from "../helpers/offlineCache";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
 import { SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
@@ -845,6 +846,7 @@ function BottomSheet({ title, eyebrow, onClose, children }: { title: string; eye
   const [closing, setClosing] = useState(false);
   const close = () => { setClosing(true); setTimeout(onClose, 300); };
   useBackClose(close);
+  const swipe = useSwipeDown<HTMLDivElement>(close);
   useEffect(() => {
     const k = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
     window.addEventListener("keydown", k);
@@ -852,11 +854,13 @@ function BottomSheet({ title, eyebrow, onClose, children }: { title: string; eye
   });
   return (
     <div className={`${styles.scrim} ${closing ? styles.scrimOut : ""}`} onClick={close}>
-      <div className={`${styles.bsheet} ${closing ? styles.bsheetOut : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(ev) => ev.stopPropagation()}>
-        <div className={styles.grab} />
-        <div className={styles.bsheetHead}>
-          <div>{eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}<h2>{title}</h2></div>
-          <button className={styles.x} onClick={close} aria-label="Close"><X size={15} strokeWidth={2.4} /></button>
+      <div ref={swipe.ref} className={`${styles.bsheet} ${closing ? styles.bsheetOut : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(ev) => ev.stopPropagation()}>
+        <div {...swipe.handle}>
+          <div className={styles.grab} />
+          <div className={styles.bsheetHead}>
+            <div>{eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}<h2>{title}</h2></div>
+            <button className={styles.x} onClick={close} aria-label="Close"><X size={15} strokeWidth={2.4} /></button>
+          </div>
         </div>
         <div className={styles.bsheetBody}>{children}</div>
       </div>
