@@ -48,11 +48,13 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   const [route, setRoute] = useState(readRoute);
   const [search, setSearch] = useState("");
   const [topic, setTopic] = useState("all");
+  // Home: a study-tool tile lists that tool's materials from every course.
+  const [homeKind, setHomeKind] = useState<MaterialKind | null>(null);
   const [deck, setDeck] = useState<Flashcard[] | null>(null);
   const [selected, setSelected] = useState<StudyMaterial | null>(null);
   const root = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const sync = () => { setRoute(readRoute()); setTopic("all"); setSearch(""); };
+    const sync = () => { setRoute(readRoute()); setTopic("all"); setSearch(""); setHomeKind(null); };
     window.addEventListener("hashchange", sync); return () => window.removeEventListener("hashchange", sync);
   }, []);
   useEffect(() => {
@@ -81,6 +83,9 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
     history.replaceState(null, "", "#/courses");
     startCards();
   }, [store.loading, route]);
+  // Browsing a course shows its flashcards as one deck; the Flashcards filter and searches list each card.
+  const deckCards = filtered.filter((m): m is Flashcard => m.kind === "flashcard");
+  const deckRow = deckCards.length > 1 && route.kind !== "flashcard" && !terms.length;
   const open = (m: StudyMaterial) => {
     if (m.kind === "flashcard") startCards(cardQueue([m, ...cards.filter(c => c.id !== m.id)], store.record, state, dateKey.today(), true).sort((a, b) => Number(b.id === m.id) - Number(a.id === m.id)));
     else go(m.course, m.kind, m.id);
@@ -88,7 +93,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
 
   return <div ref={root} className={styles.courses}>
     {!course ? <>
-      <div className={styles.sectionHead}><h2>Your courses</h2><button className={styles.primary} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} flashcards` : store.unavailable ? "Flashcards unavailable offline" : "Flashcards up to date"}</button></div>
+      <div className={styles.sectionHead}><h2>Your courses</h2><button className={`${styles.primary} ${styles.headButton}`} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button></div>
       <div className={styles.courseGrid}>
         {SCHOOL_ORDER.map((key, index) => {
           const c = SCHOOL_COURSES[key], Icon = ICONS[key];
@@ -97,22 +102,27 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           return <button key={key} className={`${styles.courseCard} ${isStudyCourse(key) ? "" : styles.workspaceCard}`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
             <div className={styles.courseCardTop}><span className={styles.courseIcon}><Icon size={26} strokeWidth={1.6} /></span><ArrowRight size={22} /></div>
             <h3>{c.name}</h3>{isStudyCourse(key) ? (store.loading ? <span className={styles.skel} /> : store.unavailable ? <p>Unavailable offline</p> : <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>) : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}
-            {isStudyCourse(key) && <div className={styles.courseTools}><span><GitBranch size={18} />Flowcharts</span><span><Layers3 size={18} />Flashcards</span></div>}
           </button>;
         })}
       </div>
-      <section className={styles.searchSection}><div className={styles.sectionHead}><h2>Across your courses</h2><BookOpen size={24} /></div>
+      <section className={styles.searchSection}><div className={styles.sectionHead}><h2>Across your courses</h2></div>
         <SearchField value={search} onChange={setSearch} />
-        {search.trim() ? <MaterialGrid list={filtered} record={store.record} onOpen={open} /> : <div className={styles.methodGrid}>{KINDS.map(kind => {
-          const Icon = TOOLS[kind]; return <div key={kind}><Icon size={25} strokeWidth={1.6} /><h3>{MATERIAL_LABELS[kind]}</h3><span>{store.materials.filter(m => m.kind === kind).length}</span></div>;
-        })}</div>}
+        {search.trim() ? <MaterialGrid list={filtered} record={store.record} onOpen={open} showCourse /> : <>
+          <div className={styles.methodGrid}>{KINDS.map(kind => {
+            const Icon = TOOLS[kind], count = store.materials.filter(m => m.kind === kind).length;
+            // Flashcards start a review; the other tools list their materials below.
+            const pick = () => { haptic(); if (kind === "flashcard") startCards(queue.length ? queue : cardQueue(cards, store.record, state, dateKey.today(), true)); else setHomeKind(k => k === kind ? null : kind); };
+            return <button key={kind} disabled={!count} aria-pressed={kind === "flashcard" ? undefined : homeKind === kind} onClick={pick}><Icon size={25} strokeWidth={1.6} /><h3>{MATERIAL_LABELS[kind]}</h3><span>{kind === "flashcard" && queue.length ? `${queue.length} ready` : count}</span></button>;
+          })}</div>
+          {homeKind && <MaterialGrid list={store.materials.filter(m => m.kind === homeKind)} record={store.record} onOpen={open} showCourse />}
+        </>}
       </section>
       {store.runs[0] && <section className={styles.runNote}><div><p className={styles.overline}>Latest study update</p><h2>{store.runs[0].added} materials added</h2></div><div className={styles.runChips}>{SCHOOL_ORDER.filter(k => store.runs[0].by_course[k]).map(k => <button key={k} style={{ "--course-color": SCHOOL_COURSES[k].color } as React.CSSProperties} onClick={() => go(k)}><i />{SCHOOL_COURSES[k].short}<small>{store.runs[0].by_course[k]}</small></button>)}</div></section>}
     </> : <>
-      <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
       <section className={styles.courseHero} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
+        <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
         <h2>{SCHOOL_COURSES[course].name}</h2>
-        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Flashcards unavailable offline" : "Flashcards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
+        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
       </section>
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!route.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
@@ -123,7 +133,8 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           <SearchField value={search} onChange={setSearch} />
           <label className={styles.topicSelect}><span>Topic</span><select value={topic} onChange={e => setTopic(e.target.value)}><option value="all">All topics</option>{topics.map(t => <option key={t}>{t}</option>)}</select></label>
           <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} />
-          {store.loading ? null : <MaterialGrid list={filtered} record={store.record} onOpen={open} />}
+          {store.loading ? null : <MaterialGrid list={deckRow ? filtered.filter(m => m.kind !== "flashcard") : filtered} record={store.record} onOpen={open}
+            deck={deckRow ? { total: deckCards.length, ready: cardQueue(deckCards, store.record, state).length, onOpen: () => { const ready = cardQueue(deckCards, store.record, state); startCards(ready.length ? ready : cardQueue(deckCards, store.record, state, dateKey.today(), true)); } } : undefined} />}
         </div>
       </div>}
     </>}
@@ -141,12 +152,16 @@ function SearchField({ value, onChange }: { value: string; onChange: (value: str
   return <label className={styles.search}><Search size={22} /><input aria-label="Search study materials" type="search" placeholder="Search rules, cases, and topics" value={value} onChange={e => onChange(e.target.value)} />{value && <button aria-label="Clear search" onClick={() => onChange("")}><X size={20} /></button>}</label>;
 }
 
-function MaterialGrid({ list, record, onOpen }: { list: StudyMaterial[]; record: StudyRecord; onOpen: (m: StudyMaterial) => void }) {
-  if (!list.length) return <div className={styles.empty}><Search size={30} strokeWidth={1.5} /><h3>No materials found</h3></div>;
-  return <div className={styles.materialGrid}>{list.map(m => {
+type Deck = { total: number; ready: number; onOpen: () => void };
+function MaterialGrid({ list, record, onOpen, showCourse, deck }: { list: StudyMaterial[]; record: StudyRecord; onOpen: (m: StudyMaterial) => void; showCourse?: boolean; deck?: Deck }) {
+  if (!list.length && !deck) return <div className={styles.empty}><Search size={30} strokeWidth={1.5} /><h3>No materials found</h3></div>;
+  return <div className={styles.materialGrid}>{deck && <button className={`${styles.materialCard} ${styles.deckCard}`} onClick={() => { haptic(); deck.onOpen(); }}>
+    <div className={styles.materialTop}><span><Layers3 size={19} />{MATERIAL_LABELS.flashcard}</span><ChevronRight size={19} /></div>
+    <h4>{deck.total} cards</h4><p>{deck.ready ? `${deck.ready} ready to review` : "All reviewed"}</p>
+  </button>}{list.map(m => {
     const Icon = TOOLS[m.kind]; return <button key={m.id} className={styles.materialCard} onClick={() => onOpen(m)}>
       <div className={styles.materialTop}><span><Icon size={19} />{MATERIAL_LABELS[m.kind]}</span>{record.starred[m.id] ? <Star size={19} fill="currentColor" /> : record.completed[m.id] ? <Check size={19} /> : <ChevronRight size={19} />}</div>
-      <h4>{m.title}</h4><p>{m.topic}</p><span className={styles.materialCourse}>{SCHOOL_COURSES[m.course].short}</span>
+      <h4>{m.title}</h4><p>{m.topic}</p>{showCourse && <span className={styles.materialCourse}>{SCHOOL_COURSES[m.course].short}</span>}
     </button>;
   })}</div>;
 }

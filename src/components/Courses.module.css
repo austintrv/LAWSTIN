@@ -21,8 +21,6 @@
 .courseIcon{display:grid;place-items:center;width:54px;height:54px;background:color-mix(in srgb,var(--course-color) 10%,transparent);border-radius:16px}
 .courseCard h3{font-size:25px;line-height:1.2;letter-spacing:-.025em;font-weight:650;text-wrap:balance}
 .courseCard>p{font-size:16px;color:var(--muted-foreground);margin-top:10px}
-.courseTools{display:flex;gap:18px;border-top:1px solid var(--border);padding-top:20px;margin-top:24px;width:100%;font-size:16px}
-.courseTools span{display:inline-flex;align-items:center;gap:8px}
 .workspaceCard{background:linear-gradient(130deg,color-mix(in srgb,var(--course-color) 5%,var(--card)),var(--card))}
 .searchSection{padding-top:24px;display:flex;flex-direction:column;gap:24px}
 .search{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:16px;padding:0 16px;min-height:56px;color:var(--muted-foreground)}
@@ -30,7 +28,10 @@
 .search input{width:100%;min-width:0;padding:16px 0;background:none;color:var(--foreground);border:0;outline:none;font-size:17px}
 .search button{display:grid;place-items:center;min-width:44px;min-height:44px}
 .methodGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.methodGrid>div{padding:20px;background:var(--card);border-radius:20px;display:flex;flex-direction:column;gap:16px}
+.methodGrid>button{padding:20px;background:var(--card);border:1px solid transparent;border-radius:20px;display:flex;flex-direction:column;align-items:flex-start;gap:16px;text-align:left;transition:transform .15s,border-color .2s}
+.methodGrid>button:active{transform:scale(.97)}
+.methodGrid>button[aria-pressed=true]{border-color:var(--uh-red);background:var(--uh-red-tint)}
+.methodGrid>button:disabled{opacity:.5}
 .methodGrid svg{color:var(--uh-red)}
 .methodGrid h3{font-size:18px;font-weight:600}
 .methodGrid span{font-size:24px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
@@ -38,10 +39,14 @@
 .runNote h2{font-size:26px;letter-spacing:-.03em;margin-top:8px}
 .runNote>p{font-size:17px;line-height:1.6;color:var(--muted-foreground)}
 .back{display:flex;align-items:center;gap:10px;min-height:44px;width:fit-content;font-size:17px;font-weight:600;color:var(--uh-red)}
-.courseHero{padding:20px 0 8px;position:relative}
-.courseHero h2{font-size:clamp(38px,5.5vw,72px);font-weight:650;line-height:1.05;letter-spacing:-.045em;max-width:16ch;margin:12px 0 28px;text-wrap:balance}
+.courseHero{padding:0 0 4px;position:relative}
+.courseHero h2{font-size:clamp(30px,5.5vw,72px);font-weight:650;line-height:1.08;letter-spacing:-.04em;max-width:16ch;margin:4px 0 18px;text-wrap:balance}
 .courseHero::after{content:"";position:absolute;right:3%;top:10px;width:140px;height:140px;border:26px solid var(--course-color);border-radius:50%;opacity:.05;pointer-events:none}
-.heroActions{display:flex;flex-wrap:wrap;gap:12px}
+.heroActions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.heroActions>button{justify-content:center;min-width:0}
+@media(max-width:649px){.courseHero::after{display:none}.heroActions>button{white-space:nowrap;padding-inline:12px;font-size:16px}.heroActions>.secondary svg{display:none}}
+.headButton{white-space:nowrap;flex-shrink:0}
+.deckCard h4{font-variant-numeric:tabular-nums}
 .courseWorkspace{display:grid;gap:24px;min-width:0;align-items:start}
 .sidebar{min-width:0}
 .sidebar nav{display:flex;overflow-x:auto;gap:8px;padding:4px 2px 10px;scrollbar-width:thin}
@@ -174,8 +179,8 @@
  .courses{gap:40px}
  
  
- .courseGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:20px}.courseCard{grid-column:span 2;min-height:300px;padding:30px}.workspaceCard{grid-column:span 3;min-height:225px}.courseCard h3{font-size:28px}.workspaceCard h3{font-size:25px}.courseTools{margin-top:auto}.workspaceCard .courseCardTop{margin-bottom:20px}.courseCard::after{width:210px;height:210px;border-width:36px;right:-110px;top:-110px}
- .methodGrid{grid-template-columns:repeat(6,minmax(0,1fr))}.methodGrid>div{min-height:180px}.runNote{display:grid;grid-template-columns:1fr 1.4fr;padding:36px;align-items:center}.courseWorkspace{grid-template-columns:250px minmax(0,1fr);gap:48px}.sidebar{position:sticky;top:32px}.sidebar nav{display:flex;flex-direction:column;overflow:visible;padding:0;gap:6px}.sidebar nav button{background:none;border-color:transparent;white-space:normal;text-align:left}.writingLink{border-top:1px solid var(--border);padding-top:24px;margin-top:24px;width:100%}.courseHero{padding-bottom:28px}.courseHero::after{width:240px;height:240px;border-width:40px;top:-10px;right:5%}.searchSection{padding-top:40px}
+ .courseGrid{grid-template-columns:repeat(6,minmax(0,1fr));gap:20px}.courseCard{grid-column:span 2;min-height:300px;padding:30px}.workspaceCard{grid-column:span 3;min-height:225px}.courseCard h3{font-size:28px}.workspaceCard h3{font-size:25px}.workspaceCard .courseCardTop{margin-bottom:20px}.courseCard::after{width:210px;height:210px;border-width:36px;right:-110px;top:-110px}
+ .methodGrid{grid-template-columns:repeat(6,minmax(0,1fr))}.methodGrid>button{min-height:180px}.runNote{display:grid;grid-template-columns:1fr 1.4fr;padding:36px;align-items:center}.courseWorkspace{grid-template-columns:250px minmax(0,1fr);gap:48px}.sidebar{position:sticky;top:32px}.sidebar nav{display:flex;flex-direction:column;overflow:visible;padding:0;gap:6px}.sidebar nav button{background:none;border-color:transparent;white-space:normal;text-align:left}.writingLink{border-top:1px solid var(--border);padding-top:24px;margin-top:24px;width:100%}.courseHero{padding-bottom:28px}.heroActions{display:flex;flex-wrap:wrap}.heroActions>button{justify-content:flex-start}.courseHero::after{width:240px;height:240px;border-width:40px;top:-10px;right:5%}.searchSection{padding-top:40px}
 }
 @media(prefers-reduced-motion:reduce){.courses *,.dialog *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.courseCard:hover,.materialCard:hover{transform:none}.dialog{animation:none}}
 @media print{.dialogBackdrop{position:absolute;background:white;display:block;backdrop-filter:none}.dialog{height:auto;max-height:none;max-width:none;overflow:visible;border-radius:0;box-shadow:none;animation:none}.reader{overflow:visible;padding:0}.dialogHeader,.readerToolbar,.readerFooter,.confidence,.sources,.flowControls,.highlights,.hypo textarea,.hypo>label,.hypo>button{display:none}.readerBody{font-size:12pt}.ruleSection,.flowNode,.modelAnswer,.drillItem{break-inside:avoid}.tableScroll{overflow:visible}.tableScroll table{min-width:0}.tableScroll td,.tableScroll th{padding:10px}.courses .sidebar,.courses .search{display:none}}
