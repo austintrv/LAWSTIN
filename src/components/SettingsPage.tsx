@@ -90,8 +90,21 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
     haptic();
     action.mutate({ action: "set", key, value }, { onError: (e) => toast.error((e as Error).message) });
   };
-  const setNumber = (key: "nudges_per_day" | "daily_goal", value: number) =>
-    action.mutate({ action: "setNumber", key, value }, { onError: (e) => toast.error((e as Error).message) });
+  // Steppers show the new number at once and save shortly after the last tap.
+  const [local, setLocal] = useState<{ daily_goal?: number; nudges_per_day?: number }>({});
+  const timers = useRef<Record<string, number>>({});
+  const setNumber = (key: "nudges_per_day" | "daily_goal", value: number) => {
+    setLocal((l) => ({ ...l, [key]: value }));
+    window.clearTimeout(timers.current[key]);
+    timers.current[key] = window.setTimeout(() => {
+      action.mutate({ action: "setNumber", key, value }, {
+        onSettled: () => setLocal((l) => { const n = { ...l }; if (n[key] === value) delete n[key]; return n; }),
+        onError: (e) => toast.error((e as Error).message),
+      });
+    }, 450);
+  };
+  const goal = local.daily_goal ?? s?.dailyGoal ?? 20;
+  const perDay = local.nudges_per_day ?? s?.nudgesPerDay ?? 2;
   const saveEmail = () => {
     const v = email.trim();
     if (!v || v === s?.summaryEmail) return;
@@ -139,7 +152,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
               <div className={styles.row}>
                 <Icon color="var(--uh-red)"><Target size={16} /></Icon>
                 <span className={styles.label}>Daily goal</span>
-                <Stepper label="daily goal" value={s?.dailyGoal ?? 20} min={5} max={100} step={5} onChange={(v) => setNumber("daily_goal", v)} />
+                <Stepper label="daily goal" value={goal} min={5} max={100} step={5} onChange={(v) => setNumber("daily_goal", v)} />
               </div>
               <div className={`${styles.row} ${styles.stack}`}>
                 <div className={styles.rowHead}><Icon color="#5e5ce6"><Type size={16} /></Icon><span className={styles.label}>Question text size</span></div>
@@ -180,7 +193,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
                 <div className={`${styles.row} ${notifyOff ? styles.off : ""}`}>
                   <span className={styles.indent} />
                   <span className={styles.label}>Nudges per day</span>
-                  <Stepper label="nudges per day" value={s?.nudgesPerDay ?? 2} min={1} max={6} onChange={(v) => setNumber("nudges_per_day", v)} />
+                  <Stepper label="nudges per day" value={perDay} min={1} max={6} onChange={(v) => setNumber("nudges_per_day", v)} />
                 </div>
               )}
               <label className={`${styles.row} ${notifyOff ? styles.off : ""}`}>
