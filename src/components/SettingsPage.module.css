@@ -1,7 +1,8 @@
-.page { position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--background); color: var(--foreground); display: flex; flex-direction: column; animation: pushIn 0.42s var(--ease-ios); }
-.closing { animation: pushOut 0.3s var(--ease-ios) forwards; }
-@keyframes pushIn { from { transform: translateX(100%); } to { transform: none; } }
-@keyframes pushOut { to { transform: translateX(100%); } }
+.page { position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--background); color: var(--foreground); display: flex; flex-direction: column; animation: settingsIn 0.34s var(--ease-ios); }
+.closing { animation: settingsOut 0.22s ease-in forwards; }
+/* A soft fade with a slight rise, instead of the whole screen sliding across. */
+@keyframes settingsIn { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes settingsOut { to { opacity: 0; transform: translateY(10px) scale(0.99); } }
 
 .bar { position: relative; flex-shrink: 0; height: calc(48px + env(safe-area-inset-top, 0px)); padding: env(safe-area-inset-top, 0px) 8px 0; display: flex; align-items: center; border-bottom: 0.5px solid transparent; transition: background 0.2s, border-color 0.2s; }
 .barOn { background: var(--bar); border-bottom-color: var(--border); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); }

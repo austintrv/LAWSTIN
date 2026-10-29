@@ -54,7 +54,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
 
   useEffect(() => onPushEnabledChange(setPushOn), []);
   useEffect(() => { if (s?.summaryEmail) setEmail(s.summaryEmail); }, [s?.summaryEmail]);
-  const close = () => { setClosing(true); setTimeout(onClose, 300); };
+  const close = () => { setClosing(true); setTimeout(onClose, 220); };
   useEffect(() => {
     const k = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
     window.addEventListener("keydown", k);
