@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, Star, Flag, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles } from "lucide-react";
+import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles } from "lucide-react";
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
 import { AskPanel } from "./AskPanel";
@@ -262,6 +262,12 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
             )}
 
             <section className={`${styles.rc} ${styles.listCard}`}>
+              {ok && !ai && (
+                <button className={styles.listRow} disabled={isGuess} onClick={() => { haptic(); onGuess(q); setGuessed((g) => new Set(g).add(q.id)); }}>
+                  <span className={styles.rowIcon}>{isGuess ? <Check size={17} /> : <CircleHelp size={17} />}</span>
+                  <span className={styles.strong}>{isGuess ? "Marked as a guess" : "I guessed"}</span>
+                </button>
+              )}
               <button className={styles.listRow} onClick={() => { haptic(); setAsking(true); }}>
                 <span className={styles.rowIcon}><MessageCircle size={17} /></span><span className={styles.strong}>Ask about this</span><ChevronRight size={16} className={styles.otherChev} />
               </button>
@@ -308,11 +314,6 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
                 <button className={`${styles.iconBtn} ${isFlagged ? styles.flagOn : ""}`} aria-label="Flag a problem" onClick={() => { if (isFlagged) return; setFlagOpen((v) => !v); setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }), 60); }}>
                   <Flag size={20} fill={isFlagged ? "currentColor" : "none"} />
                 </button>
-                {ok && (
-                  <Button variant="secondary" className={styles.guess} disabled={isGuess} onClick={() => { haptic(); onGuess(q); setGuessed((g) => new Set(g).add(q.id)); }}>
-                    {isGuess ? "Marked as a guess" : "I guessed"}
-                  </Button>
-                )}
               </>
             )}
             <Button className={`${styles.next} ${styles.cta}`} onClick={() => { haptic(); goNext(); }}>Next question</Button>
