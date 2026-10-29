@@ -56,8 +56,20 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   const [deck, setDeck] = useState<Flashcard[] | null>(null);
   const [selected, setSelected] = useState<StudyMaterial | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  // Filters and search reset only when moving to another course or tool, not when opening or
+  // closing a material or visiting another tab, so Back returns to the same results.
+  const listRoute = useRef(route);
+  const openedHere = useRef(false);
   useEffect(() => {
-    const sync = () => { setRoute(readRoute()); setTopic("all"); setSearch(""); setHomeKind(null); };
+    const sync = () => {
+      if (!window.location.hash.startsWith("#/courses")) return;
+      const next = readRoute(), prev = listRoute.current;
+      if (!next.item) {
+        if (next.course !== prev.course || next.kind !== prev.kind) { setTopic("all"); setSearch(""); setHomeKind(null); }
+        listRoute.current = next;
+      }
+      setRoute(next);
+    };
     window.addEventListener("hashchange", sync); return () => window.removeEventListener("hashchange", sync);
   }, []);
   useEffect(() => {
@@ -65,7 +77,14 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
     else setSelected(null);
   }, [route.course, route.kind, route.item, store.materials]);
   // Scroll to the top only when the route changes, never on a data refresh.
-  useEffect(() => { root.current?.closest("[data-pane]")?.scrollTo({ top: 0 }); }, [route.course, route.kind, route.item]);
+  const scrolledFor = useRef(`${route.course}/${route.kind}`);
+  useEffect(() => {
+    if (route.item) return;
+    const key = `${route.course}/${route.kind}`;
+    if (key === scrolledFor.current) return;
+    scrolledFor.current = key;
+    root.current?.closest("[data-pane]")?.scrollTo({ top: 0 });
+  }, [route.course, route.kind, route.item]);
 
   const offline = store.syncStatus === "offline";
   useEffect(() => { if (offline) toast("Offline. Study progress will sync later."); }, [offline]);
@@ -91,7 +110,12 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   const deckRow = deckCards.length > 1 && route.kind !== "flashcard" && !terms.length;
   const open = (m: StudyMaterial) => {
     if (m.kind === "flashcard") startCards(cardQueue([m, ...cards.filter(c => c.id !== m.id)], store.record, state, dateKey.today(), true).sort((a, b) => Number(b.id === m.id) - Number(a.id === m.id)));
-    else go(m.course, m.kind, m.id);
+    else { openedHere.current = true; go(m.course, m.kind, m.id); }
+  };
+  // Back to the list as it was (same filter, search and scroll), or to the material's list for a direct link.
+  const closeReader = (m: StudyMaterial) => {
+    if (openedHere.current) { openedHere.current = false; history.back(); }
+    else go(m.course, m.kind);
   };
 
   return <div ref={root} className={styles.courses}>
@@ -142,7 +166,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
       </div>}
     </>}
     {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store} onClose={() => setDeck(null)} onAgain={list => { setAgain(true); setDeck(list); }} />}
-    {selected && <MaterialReader key={selected.id} material={selected} store={store} onQuiz={() => onQuiz(selected.course, selected.topic)} onClose={() => go(selected.course, selected.kind)} />}
+    {selected && <MaterialReader key={selected.id} material={selected} store={store} onQuiz={() => { openedHere.current = false; go(selected.course, listRoute.current.course === selected.course ? listRoute.current.kind : selected.kind); onQuiz(selected.course, selected.topic); }} onClose={() => closeReader(selected)} />}
   </div>;
 }
 
@@ -286,7 +310,7 @@ function MaterialReader({ material: m, store, onQuiz, onClose }: { material: Stu
       {!!highlights.length && <details className={styles.highlights}><summary>Your highlights</summary>{highlights.map((text, i) => <div key={i}><mark>{text}</mark><button className={styles.iconButton} aria-label="Remove highlight" onClick={() => store.update(p => ({ ...p, highlights: { ...p.highlights, [m.id]: highlights.filter(t => t !== text) } }))}><X size={18} /></button></div>)}</details>}
       <SourceList material={m} />
       <div className={styles.confidence}><h3>Confidence</h3><div>{([ ["shaky", "Shaky"], ["learning", "Learning"], ["solid", "Solid"] ] as const).map(([key, label]) => <button key={key} aria-pressed={confidence === key} onClick={() => store.update(p => ({ ...p, confidence: { ...p.confidence, [m.id]: key } }))}>{label}</button>)}</div></div>
-      <div className={styles.readerFooter}><button className={styles.secondary} aria-pressed={!!store.record.completed[m.id]} onClick={() => complete(m.id)}><Check size={20} />{store.record.completed[m.id] ? "Reviewed" : "Mark reviewed"}</button><button className={styles.primary} onClick={() => { onClose(); onQuiz(); }}>Practice this topic<ArrowRight size={18} /></button></div>
+      <div className={styles.readerFooter}><button className={styles.secondary} aria-pressed={!!store.record.completed[m.id]} onClick={() => complete(m.id)}><Check size={20} />{store.record.completed[m.id] ? "Reviewed" : "Mark reviewed"}</button><button className={styles.primary} onClick={onQuiz}>Practice this topic<ArrowRight size={18} /></button></div>
     </div>
   </StudyDialog>;
 }
@@ -295,8 +319,14 @@ function FlowchartView({ material }: { material: Extract<StudyMaterial, { kind: 
   const [path, setPath] = useState<string[]>([material.start]);
   const [choices, setChoices] = useState<Record<string, number>>({});
   const [overview, setOverview] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+  // After a choice, bring the next step (or the outcome) into view.
+  useEffect(() => {
+    if (!Object.keys(choices).length) return;
+    box.current?.querySelector("section:last-of-type")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [choices]);
   const nodes = overview ? material.nodes : path.map(id => material.nodes.find(n => n.id === id)!);
-  return <div className={styles.flow}><div className={styles.flowControls}><button className={styles.secondary} onClick={() => setOverview(v => !v)} aria-pressed={overview}>{overview ? "Walk through" : "See full tree"}</button><button className={styles.secondary} onClick={() => { setPath([material.start]); setChoices({}); }}><RotateCcw size={18} />Start over</button></div>
+  return <div ref={box} className={styles.flow}><div className={styles.flowControls}><button className={styles.secondary} onClick={() => setOverview(v => !v)} aria-pressed={overview}>{overview ? "Walk through" : "See full tree"}</button><button className={styles.secondary} onClick={() => { setPath([material.start]); setChoices({}); }}><RotateCcw size={18} />Start over</button></div>
     {nodes.map((n, i) => <React.Fragment key={n.id}>{i > 0 && <ArrowDown className={styles.flowArrow} size={24} />}<section className={styles.flowNode}><span className={styles.overline}>Step {material.nodes.indexOf(n) + 1}</span><h3>{n.question}</h3><p className={styles.authority}>{n.authority}</p><div className={styles.flowBranches}>{n.branches.map((b, j) => overview ? <div key={j}><b>{b.label}</b><p>{b.outcome ?? `Continue to step ${material.nodes.findIndex(n => n.id === b.next) + 1}`}</p></div> : <button key={j} aria-pressed={choices[n.id] === j} onClick={() => { setChoices(prev => Object.fromEntries([...path.slice(0, i).map(id => [id, prev[id]]), [n.id, j]])); setPath([...path.slice(0, i + 1), ...(b.next ? [b.next] : [])]); }}>{b.label}<ArrowRight size={18} /></button>)}</div>{!overview && n.branches[choices[n.id]]?.outcome && <p className={styles.flowOutcome} role="status">{n.branches[choices[n.id]].outcome}</p>}</section></React.Fragment>)}
   </div>;
 }
