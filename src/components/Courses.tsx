@@ -73,7 +73,8 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   const terms = search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   const filtered = materials.filter(m => (!route.kind || m.kind === route.kind) && (topic === "all" || m.topic === topic)
     && terms.every(term => JSON.stringify(m).toLocaleLowerCase().includes(term)));
-  const startCards = (list = queue) => { if (list.length) setDeck(list.slice(0, 30)); };
+  const [again, setAgain] = useState(false);
+  const startCards = (list = queue) => { if (list.length) { setAgain(false); setDeck(list.slice(0, 30)); } };
   // #/courses/review (from the Study tab) opens a flashcard session as soon as the library is ready.
   useEffect(() => {
     if (window.location.hash !== "#/courses/review" || store.loading) return;
@@ -126,7 +127,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
         </div>
       </div>}
     </>}
-    {deck && <FlashcardSession key={deck.map(c => c.id).join(",")} cards={deck} store={store} onClose={() => setDeck(null)} />}
+    {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store} onClose={() => setDeck(null)} onAgain={list => { setAgain(true); setDeck(list); }} />}
     {selected && <MaterialReader key={selected.id} material={selected} store={store} onQuiz={() => onQuiz(selected.course, selected.topic)} onClose={() => go(selected.course, selected.kind)} />}
   </div>;
 }
@@ -187,17 +188,21 @@ function StudyDialog({ title, children, onClose, actions }: { title: string; chi
 import { createPortal } from "react-dom";
 function DialogPortal({ children }: { children: React.ReactNode }) { return createPortal(children, document.body); }
 
-function FlashcardSession({ cards, store, onClose }: { cards: Flashcard[]; store: Store; onClose: () => void }) {
+// An again round goes back over missed cards without moving their review dates a second time.
+function FlashcardSession({ cards, again, store, onClose, onAgain }: { cards: Flashcard[]; again: boolean; store: Store; onClose: () => void; onAgain: (cards: Flashcard[]) => void }) {
   const log = useLogStudy();
-  const [index, setIndex] = useState(0), [flipped, setFlipped] = useState(false), [known, setKnown] = useState(0);
+  const [index, setIndex] = useState(0), [flipped, setFlipped] = useState(false), [missed, setMissed] = useState<Flashcard[]>([]);
   const card = cards[index];
   useBackClose(onClose);
   const grade = (correct: boolean) => {
     if (!flipped || !card) return;
-    haptic(); store.update(prev => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
+    haptic();
+    if (!again) store.update(prev => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
     log("card", card.id, correct);
-    setKnown(n => n + Number(correct)); setIndex(n => n + 1); setFlipped(false);
+    if (!correct) setMissed(m => [...m, card]);
+    setIndex(n => n + 1); setFlipped(false);
   };
+  const known = index - missed.length;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement).matches("input,textarea,select,button,a")) return;
@@ -215,7 +220,8 @@ function FlashcardSession({ cards, store, onClose }: { cards: Flashcard[]; store
         <span className={styles.overline}>{flipped ? "Answer" : card.topic}</span><h2>{flipped ? card.back : card.front}</h2>{flipped ? <p>{card.reason}</p> : <span className={styles.revealPrompt}>Reveal answer<ArrowRight size={20} /></span>}
       </button>
       {flipped && <><p className={styles.authority}>{card.authority}</p><div className={styles.gradeActions}><button className={styles.secondary} onClick={() => grade(false)}><RotateCcw size={20} />Review tomorrow</button><button className={styles.primary} onClick={() => grade(true)}><Check size={20} />Recalled it</button></div><SourceList material={card} /></>}
-    </div> : <div className={styles.sessionDone}><span className={styles.doneCircle}><Check size={40} /></span><h2>Session complete</h2><p>{known} of {cards.length} recalled.</p><button className={styles.primary} onClick={onClose}>Done</button></div>}
+    </div> : <div className={styles.sessionDone}><span className={styles.doneCircle}><Check size={40} /></span><h2>{again ? "Round complete" : "Session complete"}</h2><p>{known} of {cards.length} recalled</p>
+      <div className={styles.doneActions}>{missed.length > 0 && <button className={styles.primary} onClick={() => { haptic(); onAgain(missed); }}><RotateCcw size={20} />Go over {missed.length} missed</button>}<button className={missed.length ? styles.secondary : styles.primary} onClick={onClose}>Done</button></div></div>}
   </StudyDialog>;
 }
 
@@ -280,7 +286,28 @@ function FlowchartView({ material }: { material: Extract<StudyMaterial, { kind: 
 function SortingDrill({ material }: { material: Extract<StudyMaterial, { kind: "drill" }> }) {
   const log = useLogStudy();
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  return <div className={styles.drill}><p>{material.prompt}</p>{material.items.map((item, i) => <section key={i} className={styles.drillItem}><h3>{item.statement}</h3><div className={styles.sortChoices}>{material.categories.map(c => <button key={c} disabled={answers[i] !== undefined} aria-pressed={answers[i] === c} onClick={() => { haptic(); log("drill", `${material.id}:${i}`, c === item.answer); setAnswers(p => ({ ...p, [i]: c })); }}>{c}</button>)}</div>{answers[i] !== undefined && <div className={styles.drillResult} role="status"><b>{answers[i] === item.answer ? "Correct" : `Answer: ${item.answer}`}</b><p>{item.why}</p><p className={styles.authority}>{item.authority}</p></div>}</section>)}<button className={styles.secondary} onClick={() => setAnswers({})}><RotateCcw size={19} />Reset drill</button></div>;
+  const items = useRef<(HTMLElement | null)[]>([]);
+  const total = material.items.length, done = Object.keys(answers).length;
+  const right = material.items.filter((it, i) => answers[i] === it.answer).length;
+  const missed = material.items.flatMap((it, i) => answers[i] !== undefined && answers[i] !== it.answer ? [i] : []);
+  const retry = () => {
+    haptic();
+    setAnswers(p => { const n = { ...p }; missed.forEach(i => delete n[i]); return n; });
+    items.current[missed[0]]?.scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  return <div className={styles.drill}><p>{material.prompt}</p>{material.items.map((item, i) => {
+    const a = answers[i], ok = a === item.answer;
+    return <section key={i} ref={el => { items.current[i] = el; }} className={styles.drillItem}><h3>{item.statement}</h3>
+      <div className={styles.sortChoices}>{material.categories.map(c => {
+        const state = a === undefined ? undefined : c === item.answer ? "right" : c === a ? "wrong" : "other";
+        return <button key={c} disabled={a !== undefined} data-state={state} aria-pressed={a === c} onClick={() => { haptic(); log("drill", `${material.id}:${i}`, c === item.answer); setAnswers(p => ({ ...p, [i]: c })); }}>{state === "right" && <Check size={17} strokeWidth={2.6} />}{state === "wrong" && <X size={17} strokeWidth={2.6} />}{c}</button>;
+      })}</div>
+      {a !== undefined && <div className={styles.drillResult} data-ok={ok} role="status"><b>{ok ? "Correct" : `Answer: ${item.answer}`}</b><p>{item.why}</p><p className={styles.authority}>{item.authority}</p></div>}
+    </section>;
+  })}
+    {done > 0 && <div className={styles.drillScore}><span aria-live="polite"><b>{right}</b> of {total} correct{done < total ? ` · ${total - done} left` : ""}</span>
+      {done === total && missed.length > 0 ? <button className={styles.primary} onClick={retry}><RotateCcw size={19} />Retry {missed.length} missed</button> : <button className={styles.secondary} onClick={() => setAnswers({})}><RotateCcw size={19} />Reset</button>}</div>}
+  </div>;
 }
 
 function HypotheticalView({ material, store }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; store: Store }) {
