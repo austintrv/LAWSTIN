@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../helpers/useModalFocus";
 import { readPrefs, writePrefs, type ReadingSize } from "../helpers/prefs";
 const SIZES: ReadingSize[] = ["s", "m", "l", "xl"];
 import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, ClipboardList, Columns3, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, Printer, RotateCcw, Scale, Search, Star, X } from "lucide-react";
@@ -176,12 +177,10 @@ function StudyPlan({ materials, record, weak, onOpen }: { materials: StudyMateri
 }
 
 function StudyDialog({ title, children, onClose, actions }: { title: string; children: React.ReactNode; onClose: () => void; actions?: React.ReactNode }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useModalFocus<HTMLDivElement>();
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    ref.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
       if (e.key !== "Tab") return;
@@ -192,9 +191,7 @@ function StudyDialog({ title, children, onClose, actions }: { title: string; chi
       else if (!e.shiftKey && (document.activeElement === last || document.activeElement === ref.current)) { e.preventDefault(); first.focus(); }
     };
     window.addEventListener("keydown", onKey);
-    const panes = document.querySelector("[data-app-panes]");
-    panes?.setAttribute("inert", "");
-    return () => { window.removeEventListener("keydown", onKey); panes?.removeAttribute("inert"); previous?.focus(); };
+    return () => window.removeEventListener("keydown", onKey);
   }, []);
   // The dialog is portalled so that the underlying scrolling pane can be inert.
   return <DialogPortal><div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose(); }}><div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={styles.dialog}>
@@ -222,8 +219,10 @@ function FlashcardSession({ cards, again, store, onClose, onAgain }: { cards: Fl
   const known = index - missed.length;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.target as HTMLElement).matches("input,textarea,select,button,a")) return;
-      if (e.code === "Space" && card) { e.preventDefault(); setFlipped(v => !v); }
+      const t = e.target as HTMLElement;
+      if (t.matches("input,textarea,select")) return;
+      // A focused button already handles Space itself.
+      if (e.code === "Space" && card && !t.matches("button,a")) { e.preventDefault(); setFlipped(v => !v); }
       if (e.key === "1") grade(false);
       if (e.key === "2") grade(true);
     };

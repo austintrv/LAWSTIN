@@ -32,6 +32,11 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
   const close = () => { setClosing(true); setTimeout(onClose, 320); };
   useBackClose(close);
   const swipe = useSwipeDown<HTMLDivElement>(close);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const send = async (text: string) => {
     const t = text.trim();

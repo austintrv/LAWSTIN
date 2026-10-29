@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useModalFocus } from "../helpers/useModalFocus";
 import { X, Check, ChevronRight } from "lucide-react";
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
@@ -38,6 +39,7 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
 
   const close = () => { setClosing(true); setTimeout(onClose, 360); };
   useBackClose(close);
+  const modalRef = useModalFocus<HTMLDivElement>();
 
   // Starting over keeps an Undo for a few seconds when an ungraded answer would be thrown away.
   const discard = () => {
@@ -70,7 +72,7 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
   const c = spot ? COURSES[spot.course] : COURSES[course];
 
   return (
-    <div className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Written practice">
+    <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Written practice">
       <div className={styles.top}>
         <div className={styles.topIn}>
           <span className={styles.spacer} />

@@ -9,3 +9,7 @@
 html,body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 input,textarea,select,[contenteditable],[data-selectable],[data-selectable] *{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 img{-webkit-user-drag:none}
+
+/* Overlays take focus when they open; the container itself never shows a focus ring. */
+[role="dialog"][tabindex="-1"]:focus, [tabindex="-1"]:focus:not(:focus-visible) { outline: none; }
+[role="dialog"][tabindex="-1"]:focus-visible { outline: none; }

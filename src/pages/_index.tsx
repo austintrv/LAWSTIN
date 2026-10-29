@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useModalFocus } from "../helpers/useModalFocus";
 import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
 const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
@@ -857,13 +858,14 @@ function BottomSheet({ title, eyebrow, onClose, children }: { title: string; eye
   const close = () => { setClosing(true); setTimeout(onClose, 300); };
   useBackClose(close);
   const swipe = useSwipeDown<HTMLDivElement>(close);
+  const modalRef = useModalFocus<HTMLDivElement>();
   useEffect(() => {
     const k = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
     window.addEventListener("keydown", k);
     return () => window.removeEventListener("keydown", k);
   });
   return (
-    <div className={`${styles.scrim} ${closing ? styles.scrimOut : ""}`} onClick={close}>
+    <div ref={modalRef} tabIndex={-1} className={`${styles.scrim} ${closing ? styles.scrimOut : ""}`} onClick={close}>
       <div ref={swipe.ref} className={`${styles.bsheet} ${closing ? styles.bsheetOut : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(ev) => ev.stopPropagation()}>
         <div {...swipe.handle}>
           <div className={styles.grab} />

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../helpers/useModalFocus";
 import { clearCaches } from "../helpers/offlineCache";
 import { Bell, ChevronLeft, Download, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
 import { Switch } from "./Switch";
@@ -47,6 +48,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+  const modalRef = useModalFocus<HTMLDivElement>();
   const [compact, setCompact] = useState(false);
   const scroll = useRef<HTMLDivElement>(null);
 
@@ -133,7 +135,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
 
   const notifyOff = !pushOn;
   return (
-    <div className={`${styles.page} ${closing ? styles.closing : ""}`} role="dialog" aria-modal="true" aria-label="Settings">
+    <div ref={modalRef} tabIndex={-1} className={`${styles.page} ${closing ? styles.closing : ""}`} role="dialog" aria-modal="true" aria-label="Settings">
       <header className={`${styles.bar} ${compact ? styles.barOn : ""}`}>
         <button className={styles.back} onClick={() => { haptic(); close(); }}><ChevronLeft size={24} strokeWidth={2.4} />Back</button>
         <span className={styles.barTitle}>Settings</span>

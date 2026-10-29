@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useModalFocus } from "../helpers/useModalFocus";
 import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles } from "lucide-react";
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
@@ -49,6 +50,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const [asking, setAsking] = useState(false);
   const [harder, setHarder] = useState<Record<string, "busy" | "added">>({});
   const scrollRef = useRef<HTMLDivElement>(null);
+  const modalRef = useModalFocus<HTMLDivElement>();
   // On a wide screen the review shows the fact pattern beside the explanations.
   const [wide, setWide] = useState(() => window.matchMedia("(min-width: 1000px)").matches);
   useEffect(() => {
@@ -184,7 +186,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const animCls = anim === "in" ? styles.in : anim === "back" ? styles.inBack : styles.out;
 
   return (
-    <div className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label={mode === "exam" ? "Practice exam" : "Practice"}>
+    <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label={mode === "exam" ? "Practice exam" : "Practice"}>
       <div className={styles.top} onTouchStart={onTouchStart} onTouchEnd={onTopTouchEnd}>
         <div className={styles.topIn}>
           {mode === "exam" && <button className={styles.x} onClick={exit} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>}
