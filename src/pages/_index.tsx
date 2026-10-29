@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
+import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig } from "lucide-react";
 const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
@@ -20,6 +20,7 @@ import { haptic } from "../helpers/haptics";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
 import { SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
+import { useReadyCards } from "../helpers/useStudyMaterials";
 import { dueLabel } from "../components/TaskList";
 import { COURSES, COURSE_KEYS, DAILY_GOAL, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
@@ -49,6 +50,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const goal = settings.query.data?.settings.dailyGoal ?? DAILY_GOAL;
   const state = query.data;
   const e = useMemo(() => studyEngine(state), [state]);
+  const readyCards = useReadyCards(userId, state);
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>("all");
@@ -223,7 +225,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               )}
 
               {state && k === "study" && (
-                <StudyView e={e} state={state} goal={goal} filter={filter} setFilter={setFilter} celebrate={celebrate}
+                <StudyView e={e} state={state} goal={goal} readyCards={readyCards} filter={filter} setFilter={setFilter} celebrate={celebrate}
                   onStart={() => start((eng) => eng.buildRound(filter))}
                   onCourse={(c) => start((eng) => eng.buildRound(c))}
                   onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed))}
@@ -371,8 +373,9 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, goal, filter, setFilter, celebrate, onStart, onCourse, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, onStart, onCourse, onMissed, onStarred, onExam, onWrite, onUpdate }: {
   goal: number;
+  readyCards: number;
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
   onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
@@ -466,6 +469,12 @@ function StudyView({ e, state, goal, filter, setFilter, celebrate, onStart, onCo
           <button className={styles.row} onClick={onExam}>
             <span className={styles.dot} style={{ background: "var(--foreground)" }}><Timer size={13} color="var(--background)" /></span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+          <button className={styles.row} onClick={() => { haptic(); window.location.hash = "/courses/review"; }} disabled={!readyCards}>
+            <span className={styles.dot} style={{ background: "#5e5ce6" }}><Layers3 size={12} color="#fff" strokeWidth={2.4} /></span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Flashcards</span></span>
+            <span className={styles.rowEnd}>{readyCards}</span>
             <ChevronRight size={18} className={styles.chev} />
           </button>
           <button className={styles.row} onClick={onWrite}>

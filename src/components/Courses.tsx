@@ -5,6 +5,7 @@ import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { toast } from "../helpers/toast";
 import { useStudyMaterials } from "../helpers/useStudyMaterials";
+import { useLogStudy } from "../helpers/useLogStudy";
 import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, weakMaterialTopics, type Flashcard, type MaterialKind, type SchoolCourse, type StudyMaterial, type StudyRecord } from "../helpers/studyMaterials";
 import type { CourseCode } from "../helpers/studyEngine";
 import { TaskList, type WorkspaceLink } from "./TaskList";
@@ -72,6 +73,12 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   const filtered = materials.filter(m => (!route.kind || m.kind === route.kind) && (topic === "all" || m.topic === topic)
     && terms.every(term => JSON.stringify(m).toLocaleLowerCase().includes(term)));
   const startCards = (list = queue) => { if (list.length) setDeck(list.slice(0, 30)); };
+  // #/courses/review (from the Study tab) opens a flashcard session as soon as the library is ready.
+  useEffect(() => {
+    if (window.location.hash !== "#/courses/review" || store.loading) return;
+    history.replaceState(null, "", "#/courses");
+    startCards();
+  }, [store.loading, route]);
   const open = (m: StudyMaterial) => {
     if (m.kind === "flashcard") startCards(cardQueue([m, ...cards.filter(c => c.id !== m.id)], store.record, state, dateKey.today(), true).sort((a, b) => Number(b.id === m.id) - Number(a.id === m.id)));
     else go(m.course, m.kind, m.id);
@@ -180,11 +187,13 @@ import { createPortal } from "react-dom";
 function DialogPortal({ children }: { children: React.ReactNode }) { return createPortal(children, document.body); }
 
 function FlashcardSession({ cards, store, onClose }: { cards: Flashcard[]; store: Store; onClose: () => void }) {
+  const log = useLogStudy();
   const [index, setIndex] = useState(0), [flipped, setFlipped] = useState(false), [known, setKnown] = useState(0);
   const card = cards[index];
   const grade = (correct: boolean) => {
     if (!flipped || !card) return;
     haptic(); store.update(prev => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
+    log("card", card.id, correct);
     setKnown(n => n + Number(correct)); setIndex(n => n + 1); setFlipped(false);
   };
   useEffect(() => {
@@ -267,8 +276,9 @@ function FlowchartView({ material }: { material: Extract<StudyMaterial, { kind: 
 }
 
 function SortingDrill({ material }: { material: Extract<StudyMaterial, { kind: "drill" }> }) {
+  const log = useLogStudy();
   const [answers, setAnswers] = useState<Record<number, string>>({});
-  return <div className={styles.drill}><p>{material.prompt}</p>{material.items.map((item, i) => <section key={i} className={styles.drillItem}><h3>{item.statement}</h3><div className={styles.sortChoices}>{material.categories.map(c => <button key={c} disabled={answers[i] !== undefined} aria-pressed={answers[i] === c} onClick={() => setAnswers(p => ({ ...p, [i]: c }))}>{c}</button>)}</div>{answers[i] !== undefined && <div className={styles.drillResult} role="status"><b>{answers[i] === item.answer ? "Correct" : `Answer: ${item.answer}`}</b><p>{item.why}</p><p className={styles.authority}>{item.authority}</p></div>}</section>)}<button className={styles.secondary} onClick={() => setAnswers({})}><RotateCcw size={19} />Reset drill</button></div>;
+  return <div className={styles.drill}><p>{material.prompt}</p>{material.items.map((item, i) => <section key={i} className={styles.drillItem}><h3>{item.statement}</h3><div className={styles.sortChoices}>{material.categories.map(c => <button key={c} disabled={answers[i] !== undefined} aria-pressed={answers[i] === c} onClick={() => { haptic(); log("drill", `${material.id}:${i}`, c === item.answer); setAnswers(p => ({ ...p, [i]: c })); }}>{c}</button>)}</div>{answers[i] !== undefined && <div className={styles.drillResult} role="status"><b>{answers[i] === item.answer ? "Correct" : `Answer: ${item.answer}`}</b><p>{item.why}</p><p className={styles.authority}>{item.authority}</p></div>}</section>)}<button className={styles.secondary} onClick={() => setAnswers({})}><RotateCcw size={19} />Reset drill</button></div>;
 }
 
 function HypotheticalView({ material, store }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; store: Store }) {
