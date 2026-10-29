@@ -6,6 +6,7 @@ import type { ProgressDTO, QuestionDTO } from "../endpoints/state_GET.schema";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
 import { useModalFocus } from "../helpers/useModalFocus";
+import { useWide } from "../helpers/useWide";
 import q from "./QuizSession.module.css";
 import styles from "./MissedLesson.module.css";
 
@@ -51,6 +52,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
   }, [topics]);
 
   const [at, setAt] = useState(0);
+  const wide = useWide();
   const [dir, setDir] = useState<"in" | "back">("in");
   const [closing, setClosing] = useState(false);
   const [picks, setPicks] = useState<Record<number, string>>({});
@@ -111,7 +113,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
       </div>
 
       <div className={q.scroll} ref={scroll}>
-        <div className={`${q.body} ${dir === "back" ? q.inBack : q.in}`} key={at}>
+        <div className={`${q.body} ${step.kind === "slip" || step.kind === "check" ? q.split : ""} ${dir === "back" ? q.inBack : q.in}`} key={at}>
           {step.kind === "rule" && <>
             <div className={styles.head}>{label(step.t)}<h2>The rule</h2></div>
             <div className={styles.rules}>
@@ -133,13 +135,16 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
             return <>
               <div className={styles.head}>{label(step.t)}<h2>Where you slipped{step.of > 1 ? ` · ${step.n} of ${step.of}` : ""}</h2>
                 {!chosen && <span className={styles.note}>{p.lastCorrect ? "Missed before, right last time" : "Marked as a guess"}</span>}</div>
-              <details className={q.rc}>
+              <div className={q.paneL}>
+              <details className={q.rc} open={wide}>
                 <summary className={q.factHead}>
                   <span className={q.strong}>{qq.prompt}</span>
                   <span className={q.factToggle}>Fact pattern <ChevronRight size={15} /></span>
                 </summary>
                 <div className={q.factStem}>{paras(qq.stem)}</div>
               </details>
+              </div>
+              <div className={q.paneR}>
               {chosen && (
                 <section className={`${q.rc} ${q.answerCard}`}>
                   <span className={`${q.label} ${q.labelBad}`}><span className={`${q.letterSm} ${q.letterBad}`}>{chosen.id}</span>Your answer · {ROLE_LABEL[chosen.role]}</span>
@@ -152,6 +157,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
                 <p className={q.strong}>{answer.text}</p>
                 <p className={q.bodyText}>{answer.why}</p>
               </section>
+              </div>
             </>;
           })()}
 
@@ -160,7 +166,8 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
             const answer = qq.choices.find((c) => c.id === qq.answer)!;
             return <>
               <div className={styles.head}>{label(step.t)}<h2>Check yourself</h2></div>
-              <div className={q.stem}>{paras(qq.stem)}</div>
+              <div className={q.paneL}><div className={q.stem}>{paras(qq.stem)}</div></div>
+              <div className={q.paneR}>
               <p className={q.ask}>{qq.prompt}</p>
               <div className={q.choices} role="group" aria-label="Answer choices">
                 {qq.choices.map((c) => {
@@ -180,6 +187,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
                   <p className={q.bodyText}>{answer.why}</p>
                 </section>
               )}
+              </div>
             </>;
           })()}
 

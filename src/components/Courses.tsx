@@ -3,7 +3,7 @@ import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { readPrefs, writePrefs, type ReadingSize } from "../helpers/prefs";
 const SIZES: ReadingSize[] = ["s", "m", "l", "xl"];
-import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, ClipboardList, Columns3, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, Printer, RotateCcw, Scale, Search, Star, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, ClipboardList, Columns3, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, RotateCcw, Scale, Search, Star, X } from "lucide-react";
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
@@ -170,7 +170,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={view.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
         })}</nav><button className={styles.writingLink} onClick={onWrite}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
         <div className={styles.materialsPanel}>
-          <div className={styles.sectionHead}><h3>{view.kind ? MATERIAL_LABELS[view.kind] : "Study materials"}</h3><button className={styles.iconButton} aria-label="Print course materials" onClick={() => window.print()}><Printer size={18} /></button></div>
+          <div className={styles.sectionHead}><h3>{view.kind ? MATERIAL_LABELS[view.kind] : "Study materials"}</h3></div>
           <SearchField value={search} onChange={setSearch} />
           <label className={styles.topicSelect}><span>Topic</span><select value={topic} onChange={e => setTopic(e.target.value)}><option value="all">All topics</option>{topics.map(t => <option key={t}>{t}</option>)}</select></label>
           <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} />
@@ -313,8 +313,8 @@ function MaterialReader({ material: m, store, onQuiz, onClose }: { material: Stu
   return <StudyDialog title={SCHOOL_COURSES[m.course].name} onClose={onClose} actions={<StarButton material={m} store={store} />}>
     <div className={styles.reader}>
       <div className={styles.readerTitle}><p className={styles.overline}>{MATERIAL_LABELS[m.kind]} · {m.topic}</p><h2>{m.title}</h2></div>
-      <div className={styles.readerToolbar}><button onClick={() => step(-1)} disabled={size === SIZES[0]} aria-label="Smaller reading text">A−</button><button onClick={() => step(1)} disabled={size === SIZES[SIZES.length - 1]} aria-label="Larger reading text">A+</button><button onClick={highlight}><Highlighter size={20} />Highlight</button><button className={styles.printButton} onClick={() => window.print()}><Printer size={20} />Print</button></div>
-      <div ref={body} data-selectable className={styles.readerBody}>
+      <div className={styles.readerToolbar}><button onClick={() => step(-1)} disabled={size === SIZES[0]} aria-label="Smaller reading text">A−</button><button onClick={() => step(1)} disabled={size === SIZES[SIZES.length - 1]} aria-label="Larger reading text">A+</button><button onClick={highlight}><Highlighter size={20} />Highlight</button></div>
+      <div ref={body} data-selectable data-kind={m.kind} className={styles.readerBody}>
         {m.kind === "flowchart" && <FlowchartView material={m} />}
         {m.kind === "comparison" && <div className={styles.tableScroll} tabIndex={0} role="region" aria-label={m.title}><table><thead><tr><th scope="col">Rule</th>{m.columns.map(c => <th key={c} scope="col">{c}</th>)}</tr></thead><tbody>{m.rows.map((r, i) => <tr key={i}><th scope="row">{r.label}<p className={styles.authority}>{r.authority}</p></th>{r.cells.map((c, k) => <td key={k}>{highlighted(c)}</td>)}</tr>)}</tbody></table></div>}
         {m.kind === "comparison" && <div className={styles.compareCards}>{m.rows.map((r, i) => <section key={i}><h3>{r.label}</h3><p className={styles.authority}>{r.authority}</p>{r.cells.map((c, k) => <div key={k}><span>{m.columns[k]}</span><p>{highlighted(c)}</p></div>)}</section>)}</div>}
@@ -341,7 +341,7 @@ function FlowchartView({ material }: { material: Extract<StudyMaterial, { kind: 
     box.current?.querySelector("section:last-of-type")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [choices]);
   const nodes = overview ? material.nodes : path.map(id => material.nodes.find(n => n.id === id)!);
-  return <div ref={box} className={styles.flow}><div className={styles.flowControls}><button className={styles.secondary} onClick={() => setOverview(v => !v)} aria-pressed={overview}>{overview ? "Walk through" : "See full tree"}</button><button className={styles.secondary} onClick={() => { setPath([material.start]); setChoices({}); }}><RotateCcw size={18} />Start over</button></div>
+  return <div ref={box} className={styles.flow} data-overview={overview || undefined}><div className={styles.flowControls}><button className={styles.secondary} onClick={() => setOverview(v => !v)} aria-pressed={overview}>{overview ? "Walk through" : "See full tree"}</button><button className={styles.secondary} onClick={() => { setPath([material.start]); setChoices({}); }}><RotateCcw size={18} />Start over</button></div>
     {nodes.map((n, i) => <React.Fragment key={n.id}>{i > 0 && <ArrowDown className={styles.flowArrow} size={24} />}<section className={styles.flowNode}><span className={styles.overline}>Step {material.nodes.indexOf(n) + 1}</span><h3>{n.question}</h3><p className={styles.authority}>{n.authority}</p><div className={styles.flowBranches}>{n.branches.map((b, j) => overview ? <div key={j}><b>{b.label}</b><p>{b.outcome ?? `Continue to step ${material.nodes.findIndex(n => n.id === b.next) + 1}`}</p></div> : <button key={j} aria-pressed={choices[n.id] === j} onClick={() => { setChoices(prev => Object.fromEntries([...path.slice(0, i).map(id => [id, prev[id]]), [n.id, j]])); setPath([...path.slice(0, i + 1), ...(b.next ? [b.next] : [])]); }}>{b.label}<ArrowRight size={18} /></button>)}</div>{!overview && n.branches[choices[n.id]]?.outcome && <p className={styles.flowOutcome} role="status">{n.branches[choices[n.id]].outcome}</p>}</section></React.Fragment>)}
   </div>;
 }
@@ -375,5 +375,5 @@ function SortingDrill({ material }: { material: Extract<StudyMaterial, { kind: "
 
 function HypotheticalView({ material, store }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; store: Store }) {
   const [revealed, setRevealed] = useState(false);
-  return <div className={styles.hypo}><p>{material.facts}</p><h3>{material.prompt}</h3><label>Your analysis<textarea value={store.record.notes[material.id] ?? ""} onChange={e => { const value = e.target.value; store.update(p => ({ ...p, notes: { ...p.notes, [material.id]: value } })); }} /></label><button className={styles.primary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div>;
+  return <div className={styles.hypo}><div className={styles.hypoFacts}><p>{material.facts}</p><h3>{material.prompt}</h3></div><div className={styles.hypoWork}><label>Your analysis<textarea value={store.record.notes[material.id] ?? ""} onChange={e => { const value = e.target.value; store.update(p => ({ ...p, notes: { ...p.notes, [material.id]: value } })); }} /></label><button className={styles.primary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div></div>;
 }

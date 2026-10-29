@@ -4,7 +4,7 @@ Austin’s law-school assistant: courses, study materials, and daily practice, w
 
 - Front end: React + Vite, hosted on GitHub Pages. Installs to the iPhone Home Screen and Mac Dock as a full-screen app.
 - Courses: International Law, Asylum Law, Professional Responsibility, Civil Clinic, and Civil Procedure Tutoring. Clinic and Tutoring have task lists, notes, and file links.
-- Study tools: flashcards, interactive flowcharts, rule review, comparison tables, sorting drills, and written hypotheticals, with search, checkoffs, highlights, confidence ratings, and printing.
+- Study tools: flashcards, interactive flowcharts, rule review, comparison tables, sorting drills, and written hypotheticals, with search, checkoffs, highlights, and confidence ratings.
 - Data: Supabase project `vbqfmgsrxurdazujbbuk`. Row-level security limits private reads and writes to Austin’s account. Verified study content lives in the Supabase tables `study_materials` and `study_runs`; private study progress syncs through namespaced rows in the existing `app_settings` table, with a local retry queue.
 - App logic lives in three database functions: `get_state`, `record_answer`, `mark_question` (see `supabase/schema.sql`).
 - New questions are written Tue/Thu/Sat mornings by a Claude scheduled task using the `daily-law-quiz` skill.

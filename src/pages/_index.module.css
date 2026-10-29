@@ -309,7 +309,6 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   .scrim { align-items: center; backdrop-filter: blur(8px); }
   .bsheet { border-radius: 24px; }
 }
-@media print { .tabbar,.navbar,.head { display: none; } .app,.panes,.paneOn { position: static; overflow: visible; } .pane:not(.paneOn) { display: none; } body:has([role="dialog"]) .app { display: none; } }
 
 /* To do card on the Study tab */
 /* 44pt hit area around a 22px circle; the color comes from the course. */

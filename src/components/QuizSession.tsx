@@ -5,6 +5,7 @@ import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCir
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
 import { AskPanel } from "./AskPanel";
+import { useWide } from "../helpers/useWide";
 import type { QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
 import { COURSES, ROLE_LABEL, type RoundItem } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
@@ -57,14 +58,8 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const [harder, setHarder] = useState<Record<string, "busy" | "added">>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const modalRef = useModalFocus<HTMLDivElement>();
-  // On a wide screen the review shows the fact pattern beside the explanations.
-  const [wide, setWide] = useState(() => window.matchMedia("(min-width: 1000px)").matches);
-  useEffect(() => {
-    const mq = window.matchMedia("(min-width: 1000px)");
-    const on = () => setWide(mq.matches);
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
+  // On a wide screen the review's fact pattern starts open beside the explanations.
+  const wide = useWide();
   const touch = useRef<{ x: number; y: number } | null>(null);
   const item = items[Math.min(i, items.length - 1)];
   const q = item.q;
@@ -221,27 +216,29 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
         {done ? (
           <Results items={items} results={results} picks={picks} mode={mode} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={reopen} />
         ) : !reviewing ? (
-          <div className={`${styles.body} ${animCls}`} key={`q-${i}-${q.id}`}>
+          <div className={`${styles.body} ${styles.split} ${animCls}`} key={`q-${i}-${q.id}`}>
             <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
             <div className={styles.meta}>
               <span className={styles.chip} style={{ color: course.color, background: `color-mix(in srgb, ${course.color} 14%, transparent)` }}>{course.short}</span>
               {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : mode === "exam" ? <span className={styles.pill}>Exam</span> : item.review ? <span className={styles.pill}>Review</span> : null}
               <span className={styles.topic}>{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ""}</span>
             </div>
-            <div className={styles.stem}>{paras(q.stem)}</div>
-            <p className={styles.ask}>{q.prompt}</p>
-            <div className={styles.choices} role="group" aria-label="Answer choices">
-              {q.choices.map((c) => (
-                <button key={c.id} className={`${styles.choice} ${c.id === shownPick ? styles.selected : ""}`} disabled={checked} aria-pressed={c.id === shownPick}
-                  onClick={() => { haptic(); setSel((cur) => (cur === c.id ? null : c.id)); }}>
-                  <span className={styles.letter}>{c.id}</span>
-                  <span className={styles.choiceText}>{c.text}</span>
-                </button>
-              ))}
+            <div className={styles.paneL}><div className={styles.stem}>{paras(q.stem)}</div></div>
+            <div className={styles.paneR}>
+              <p className={styles.ask}>{q.prompt}</p>
+              <div className={styles.choices} role="group" aria-label="Answer choices">
+                {q.choices.map((c) => (
+                  <button key={c.id} className={`${styles.choice} ${c.id === shownPick ? styles.selected : ""}`} disabled={checked} aria-pressed={c.id === shownPick}
+                    onClick={() => { haptic(); setSel((cur) => (cur === c.id ? null : c.id)); }}>
+                    <span className={styles.letter}>{c.id}</span>
+                    <span className={styles.choiceText}>{c.text}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         ) : (
-          <div className={`${styles.body} ${styles.review} ${wide ? styles.split : ""} ${animCls}`} key={`r-${i}-${q.id}`}>
+          <div className={`${styles.body} ${styles.review} ${styles.split} ${animCls}`} key={`r-${i}-${q.id}`}>
             <header className={styles.verdict}>
               <span className={`${styles.vBig} ${ok ? styles.vOk : styles.vBad}`}>{ok ? <Check size={20} strokeWidth={3} /> : <X size={20} strokeWidth={3} />}</span>
               <div>
@@ -344,7 +341,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
 
       {reviewing && (
         <div className={`${styles.foot} ${styles.footOn} ${styles.reviewFoot}`}>
-          <div className={`${styles.footIn} ${styles.actions}`}>
+          <div className={styles.footIn}><div className={styles.actions}>
             {!ai && (
               <>
                 <button className={`${styles.iconBtn} ${p?.starred ? styles.starOn : ""}`} aria-label={p?.starred ? "Unstar" : "Star"} onClick={() => { haptic(); onStar(q, !p?.starred); }}>
@@ -356,7 +353,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
               </>
             )}
             <Button className={`${styles.next} ${styles.cta}`} onClick={() => { haptic(); goNext(); }}>Next question</Button>
-          </div>
+          </div></div>
         </div>
       )}
 
@@ -431,7 +428,7 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
         })}
       </div>
       {mode === "exam" ? (
-        <div className={styles.card}>
+        <div className={`${styles.card} ${styles.resList}`}>
           {items.map((it, k) => {
             const pick = it.q.choices.find((x) => x.id === pk[k]);
             const right = it.q.choices.find((x) => x.id === it.q.answer)!;
@@ -455,7 +452,7 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
           })}
         </div>
       ) : missed.length > 0 ? (
-        <div className={styles.card}>
+        <div className={`${styles.card} ${styles.resList}`}>
           {missed.map((it) => (
             <button key={it.q.id} className={`${styles.row} ${styles.rowBtn}`} onClick={() => onOpen(all.indexOf(it))}>
               <span className={`${styles.mark} ${styles.markBad}`}><X size={13} strokeWidth={3} /></span>

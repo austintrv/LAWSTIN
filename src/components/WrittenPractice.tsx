@@ -103,14 +103,17 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
           )}
 
           {spot && (
-            <>
+            <div className={styles.spot}>
+              <div className={styles.paneL}>
               <div className={styles.meta}>
                 <span className={styles.chip} style={{ color: c.color, background: `color-mix(in srgb, ${c.color} 14%, transparent)` }}>{c.short}</span>
                 <span className={styles.topic}>{spot.topic}</span>
               </div>
               <div className={styles.facts}>{spot.facts.split(/\n\s*\n/).map((p, i) => <p key={i}>{p}</p>)}</div>
               <p className={styles.call}>{spot.call}</p>
+              </div>
 
+              <div className={styles.paneR}>
               {!result ? (
                 <div className={styles.answerBox}>
                   <Textarea className={styles.answer} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Your answer" disabled={grade.isPending} />
@@ -162,7 +165,8 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
                   </details>
                 </div>
               )}
-            </>
+              </div>
+            </div>
           )}
           {err && <p className={styles.err}>{err}</p>}
         </div>
@@ -170,7 +174,7 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
 
       {spot && (
         <div className={styles.foot}>
-          <div className={styles.footIn}>
+          <div className={styles.footIn}><div className={styles.footRow}>
             {!result ? (
               <>
                 <Button variant="secondary" className={styles.side} disabled={grade.isPending} onClick={newSpot}>New</Button>
@@ -182,7 +186,7 @@ export function WrittenPractice({ onClose, className }: { onClose: () => void; c
                 <Button className={`${styles.big} ${styles.cta}`} onClick={newSpot}>New fact pattern</Button>
               </>
             )}
-          </div>
+          </div></div>
         </div>
       )}
     </div>

@@ -81,3 +81,26 @@
   .val { transition: none; }
 }
 .start .big { flex: none; }
+
+/* Phone: one column. Mac: the fact pattern stays on the left while you write or read the grading on the right. */
+.spot, .paneL, .paneR { display: contents; }
+.footRow { flex: 1; display: flex; gap: 10px; }
+@media (min-width: 1000px) {
+  .top, .scroll, .foot { padding-left: 48px; padding-right: 48px; }
+  .top { padding-top: 18px; padding-bottom: 14px; }
+  .scroll { padding-top: 20px; }
+  .topIn, .body, .footIn { max-width: var(--study-width); }
+  .start { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 24px 16px; align-items: center; padding-top: 48px; }
+  .startTitle { grid-column: 1 / -1; font-size: 64px; }
+  .start .seg button { min-height: 48px; font-size: 16px; }
+  .spot { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 48px; align-items: start; }
+  .paneL { display: flex; flex-direction: column; gap: 18px; min-width: 0; position: sticky; top: 0; }
+  .paneR { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .facts { font-size: calc(20px * var(--reading-scale, 1)); line-height: 1.6; gap: 16px; }
+  .call { font-size: 19px; }
+  .answer { min-height: calc(100dvh - 260px); font-size: 17px; padding: 18px 20px 34px; }
+  .footIn { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); column-gap: 48px; }
+  .footIn > * { grid-column: 2; }
+  .item b, .item p, .summary { font-size: 16px; }
+  .modelBody { font-size: 18px; }
+}

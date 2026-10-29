@@ -47,3 +47,17 @@
 @media (prefers-reduced-motion: reduce) {
   .panel, .closing, .me, .tutor, .typing i { animation: none; }
 }
+
+/* Mac: a panel on the right, so the question and explanations stay in view on the left. */
+@media (min-width: 1000px) {
+  .panel { left: auto; width: min(520px, 44vw); border-left: 1px solid var(--border); box-shadow: -24px 0 60px rgba(0, 0, 0, 0.12); animation-name: inRight; }
+  .closing { animation-name: outRight; }
+  .head { padding: 18px 24px 14px; }
+  .scroll { padding: 20px 24px; }
+  .compose { padding: 12px 20px 16px; }
+  .headIn, .thread, .composeIn { max-width: none; }
+  .me, .tutor { font-size: 17px; }
+  .context p { font-size: 17px; }
+}
+@keyframes inRight { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes outRight { to { transform: translateX(100%); } }

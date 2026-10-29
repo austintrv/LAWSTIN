@@ -22,3 +22,12 @@
 .endActions { display: flex; flex-direction: column; gap: 6px; }
 @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .endMark { animation: none; } }
+
+@media (min-width: 1000px) {
+  .head h2 { font-size: 30px; }
+  .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; align-items: start; }
+  .rule { font-size: calc(19px * var(--reading-scale, 1)); }
+  .end { padding-top: 72px; }
+  .end h2 { font-size: 48px; }
+  div.endActions { grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 420px; }
+}

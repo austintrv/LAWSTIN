@@ -52,9 +52,14 @@ button.row:active:not(:disabled) { background: var(--fill); }
 /* Off switch tracks need contrast on the white card. */
 .card button[role="switch"][data-state="unchecked"]::before { background-color: color-mix(in srgb, var(--foreground) 16%, transparent); }
 
+/* Mac: the groups flow into two columns across the window. */
 @media (min-width: 1000px) {
-  .inner { padding-top: 24px; }
-  .title { font-size: 44px; letter-spacing: -0.04em; }
+  .bar { height: 64px; padding-inline: max(40px, calc((100% - 1144px) / 2 - 8px)); }
+  .inner { max-width: 1240px; padding: 24px 48px 64px; display: block; columns: 2; column-gap: 32px; }
+  .inner > * { break-inside: avoid; margin-bottom: 26px; }
+  .title, .profile { column-span: all; }
+  .title { font-size: 44px; letter-spacing: -0.04em; margin: 2px 4px 26px; }
+  .group h2 { font-size: 15px; }
 }
 /* Glows only behind the title and profile card. */
 .aura { bottom: auto; height: 340px; --fade-y: linear-gradient(#000 55%, transparent); }

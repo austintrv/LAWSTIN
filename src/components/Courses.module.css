@@ -165,9 +165,10 @@
 .drillResult[data-ok=true]>b{color:var(--success)}
 .drillScore{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px 16px;padding:16px 20px;background:var(--card);border:1px solid var(--border);border-radius:20px;font-size:17px;color:var(--muted-foreground)}
 .drillScore b{color:var(--foreground);font-weight:600}
-.hypo>label{display:flex;flex-direction:column;gap:12px;font-size:17px;font-weight:600}
+.hypo label{display:flex;flex-direction:column;gap:12px;font-size:17px;font-weight:600}
 .hypo textarea{resize:vertical;min-height:220px;font-size:18px;line-height:1.6;padding:20px;background:var(--card);border:1px solid var(--border);border-radius:16px;color:var(--foreground);outline-color:var(--uh-red);font-weight:400}
-.hypo>div{display:flex;flex-direction:column;gap:16px}
+.hypoFacts,.hypoWork{display:contents}
+.hypoWork>div{display:flex;flex-direction:column;gap:16px}
 .modelAnswer h3,.modelAnswer>p{margin-bottom:16px}
 .modelAnswer>p:last-child{margin-bottom:0}
 .highlights{font-size:17px}
@@ -190,19 +191,61 @@
  .methodGrid{grid-template-columns:repeat(6,minmax(0,1fr))}.methodGrid>button{min-height:180px}.runNote{display:grid;grid-template-columns:1fr 1.4fr;padding:36px;align-items:center}.courseWorkspace{grid-template-columns:250px minmax(0,1fr);gap:48px}.sidebar{position:sticky;top:32px}.sidebar nav{display:flex;flex-direction:column;overflow:visible;padding:0;gap:6px}.sidebar nav button{background:none;border-color:transparent;white-space:normal;text-align:left}.writingLink{border-top:1px solid var(--border);padding-top:24px;margin-top:24px;width:100%}.courseHero{padding-bottom:28px}.heroActions{display:flex;flex-wrap:wrap}.heroActions>button{justify-content:flex-start}.searchSection{padding-top:40px}
 }
 @media(prefers-reduced-motion:reduce){.courses *,.dialog *{animation:none!important;transition:none!important;scroll-behavior:auto!important}.courseCard:hover,.materialCard:hover{transform:none}.dialog{animation:none}}
-/* Phone: comparison rows become stacked cards, the footer buttons share a row, and Print is left to desktop. */
-@media(max-width:649px){.printButton{display:none!important}.readerFooter{display:grid;grid-template-columns:1fr 1fr}.readerFooter>button{justify-content:center;padding-inline:12px;white-space:nowrap}.readerFooter>.primary svg{display:none}.confidence>div{flex:1}.confidence button{flex:1}.tableScroll{display:none}}
-@media(min-width:650px){.compareCards{display:none}}
+/* Phone: comparison rows become stacked cards and the footer buttons share a row. */
+@media(max-width:649px){.readerFooter{display:grid;grid-template-columns:1fr 1fr}.readerFooter>button{justify-content:center;padding-inline:12px;white-space:nowrap}.readerFooter>.primary svg{display:none}.confidence>div{flex:1}.confidence button{flex:1}.tableScroll{display:none}}
 .compareCards{display:flex;flex-direction:column;gap:14px}
+@media(min-width:650px){.compareCards{display:none}}
 .compareCards section{background:var(--card);border:1px solid var(--border);border-radius:20px;overflow:hidden}
 .compareCards h3{padding:16px 20px 0;font:600 18px/1.4 var(--font-family-base)}
 .compareCards section>.authority{padding:4px 20px 14px;font-size:15px}
 .compareCards section>div{padding:14px 20px;border-top:1px solid var(--border)}
 .compareCards section>div>span{display:block;margin-bottom:4px;font:600 13px/1.4 var(--font-family-base);color:var(--muted-foreground);letter-spacing:.02em}
-@media print{.dialogBackdrop{position:absolute;background:white;display:block;backdrop-filter:none}.dialog{height:auto;max-height:none;max-width:none;overflow:visible;border-radius:0;box-shadow:none;animation:none}.reader{overflow:visible;padding:0}.dialogHeader,.readerToolbar,.readerFooter,.confidence,.sources,.flowControls,.highlights,.hypo textarea,.hypo>label,.hypo>button{display:none}.readerBody{font-size:12pt}.ruleSection,.flowNode,.modelAnswer,.drillItem{break-inside:avoid}.tableScroll{overflow:visible}.tableScroll table{min-width:0}.tableScroll td,.tableScroll th{padding:10px}.courses .sidebar,.courses .search{display:none}}
 .runChips{display:flex;flex-wrap:wrap;gap:8px}
 .runChips button{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px 0 12px;border-radius:999px;background:color-mix(in srgb,var(--course-color) 13%,transparent);color:var(--course-color);font-size:15px;font-weight:600;transition:transform .2s var(--ease-ios)}
 .runChips button:active{transform:scale(.95)}
 .runChips i{width:8px;height:8px;border-radius:50%;background:var(--course-color)}
 .runChips small{font-size:13px;font-weight:600;opacity:.7;font-variant-numeric:tabular-nums}
 .skel{display:block;height:14px;width:60%;border-radius:7px;background:var(--fill);margin-top:12px}
+
+/* Mac: study tools fill the window. The reader lays each format out across the width instead of one narrow column. */
+@media(min-width:1000px){
+ .dialogBackdrop{background:var(--background);backdrop-filter:none}
+ .dialog{max-width:none;max-height:none;height:100%;border-radius:0;box-shadow:none}
+ .dialogHeader{padding:16px max(48px,calc((100% - var(--study-width))/2))}
+ .reader{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:32px;row-gap:32px;align-content:start;padding:44px max(48px,calc((100% - var(--study-width))/2)) 56px}
+ .reader>*{grid-column:1/-1;min-width:0}
+ .reader>.readerTitle{grid-column:1}
+ .reader>.readerToolbar{grid-column:2;align-self:end;justify-self:end;flex-wrap:nowrap}
+ .readerTitle h2{font-size:52px}
+ .reader>.confidence{grid-column:1;border-top:1px solid var(--border);padding-top:24px;justify-content:flex-start;gap:24px}
+ .reader>.readerFooter{grid-column:2;margin-left:-32px;padding:24px 0 0 32px}
+ .readerBody[data-kind=outline]{columns:2;column-gap:24px}
+ .readerBody[data-kind=outline] .ruleSection{break-inside:avoid}
+ .flowControls{display:flex;width:auto;align-self:flex-start}
+ .flow{align-items:stretch}
+ .flowArrow{align-self:center}
+ .flowNode{padding:28px 32px}
+ .flowNode h3{font-size:24px}
+ .flow[data-overview]{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;align-items:start}
+ .flow[data-overview]>.flowControls{grid-column:1/-1;margin-bottom:0}
+ .flow[data-overview]>.flowArrow{display:none}
+ .flow[data-overview] .flowBranches{flex-direction:column}
+ .drill{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+ .drill>p,.drillScore{grid-column:1/-1}
+ .hypo{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:start}
+ .hypoFacts,.hypoWork{display:flex;flex-direction:column;gap:24px;min-width:0}
+ .hypoFacts{position:sticky;top:0}
+ .hypo textarea{min-height:360px}
+ .hypoWork>.primary{align-self:flex-start}
+ .cardSession{max-width:none;margin:0;padding:36px max(48px,calc((100% - var(--study-width))/2)) 48px;gap:24px}
+ .sessionMeta{font-size:18px}
+ .recallCard{flex:1 0 auto;min-height:max(440px,calc(100dvh - 400px));padding:56px 72px;border-radius:28px}
+ .recallCard h2{font-size:46px;max-width:30ch}
+ .recallCard>p{font-size:22px;max-width:60ch}
+ .recallCard .overline{font-size:18px}
+ .cardSession>.authority{font-size:17px}
+ .gradeActions{grid-template-columns:1fr 1fr;gap:16px}
+ .gradeActions>button{min-height:60px;font-size:18px}
+ .sessionDone h2{font-size:52px}
+}
+@media(min-width:1300px){.materialGrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
