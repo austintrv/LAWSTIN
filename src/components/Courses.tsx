@@ -88,14 +88,25 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
 
   const offline = store.syncStatus === "offline";
   useEffect(() => { if (offline) toast("Offline. Study progress will sync later."); }, [offline]);
-  const course = route.course;
+  // The list keeps showing where you came from while a material is open on top of it.
+  const view = route.item ? listRoute.current : route;
+  const course = view.course;
+  // Into a course slides from the right, back out from the left, a filter change fades. Fixed per
+  // view so a data refresh never restarts the animation.
+  const viewKey = `${view.course ?? "home"}/${view.kind ?? ""}`;
+  const anim = useRef({ key: viewKey, depth: view.course ? 1 : 0, dir: "fade" });
+  if (anim.current.key !== viewKey) {
+    const d = view.course ? 1 : 0;
+    anim.current = { key: viewKey, depth: d, dir: d > anim.current.depth ? "fwd" : d < anim.current.depth ? "back" : "fade" };
+  }
+  const dir = anim.current.dir;
   const materials = course ? store.materials.filter(m => m.course === course) : store.materials;
   const cards = materials.filter((m): m is Flashcard => m.kind === "flashcard");
   const queue = cardQueue(cards, store.record, state);
   const weak = weakMaterialTopics(state);
   const topics = [...new Set(materials.map(m => m.topic))];
   const terms = search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  const filtered = materials.filter(m => (!route.kind || m.kind === route.kind) && (topic === "all" || m.topic === topic)
+  const filtered = materials.filter(m => (!view.kind || m.kind === view.kind) && (topic === "all" || m.topic === topic)
     && terms.every(term => JSON.stringify(m).toLocaleLowerCase().includes(term)));
   const [again, setAgain] = useState(false);
   const startCards = (list = queue) => { if (list.length) { setAgain(false); setDeck(list.slice(0, 30)); } };
@@ -107,7 +118,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   }, [store.loading, route]);
   // Browsing a course shows its flashcards as one deck; the Flashcards filter and searches list each card.
   const deckCards = filtered.filter((m): m is Flashcard => m.kind === "flashcard");
-  const deckRow = deckCards.length > 1 && route.kind !== "flashcard" && !terms.length;
+  const deckRow = deckCards.length > 1 && view.kind !== "flashcard" && !terms.length;
   const open = (m: StudyMaterial) => {
     if (m.kind === "flashcard") startCards(cardQueue([m, ...cards.filter(c => c.id !== m.id)], store.record, state, dateKey.today(), true).sort((a, b) => Number(b.id === m.id) - Number(a.id === m.id)));
     else { openedHere.current = true; go(m.course, m.kind, m.id); }
@@ -119,6 +130,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   };
 
   return <div ref={root} className={styles.courses}>
+    <div key={viewKey} className={styles.view} data-dir={dir}>
     {!course ? <>
       <div className={styles.sectionHead}><h2>Your courses</h2><button className={`${styles.primary} ${styles.headButton}`} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button></div>
       <div className={styles.courseGrid}>
@@ -152,11 +164,11 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
         {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
       </section>
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
-        <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!route.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
-          const Icon = TOOLS[kind]; return <button key={kind} aria-current={route.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
+        <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!view.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
+          const Icon = TOOLS[kind]; return <button key={kind} aria-current={view.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
         })}</nav><button className={styles.writingLink} onClick={onWrite}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
         <div className={styles.materialsPanel}>
-          <div className={styles.sectionHead}><h3>{route.kind ? MATERIAL_LABELS[route.kind] : "Study materials"}</h3><button className={styles.iconButton} aria-label="Print course materials" onClick={() => window.print()}><Printer size={18} /></button></div>
+          <div className={styles.sectionHead}><h3>{view.kind ? MATERIAL_LABELS[view.kind] : "Study materials"}</h3><button className={styles.iconButton} aria-label="Print course materials" onClick={() => window.print()}><Printer size={18} /></button></div>
           <SearchField value={search} onChange={setSearch} />
           <label className={styles.topicSelect}><span>Topic</span><select value={topic} onChange={e => setTopic(e.target.value)}><option value="all">All topics</option>{topics.map(t => <option key={t}>{t}</option>)}</select></label>
           <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} />
@@ -165,6 +177,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
         </div>
       </div>}
     </>}
+    </div>
     {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store} onClose={() => setDeck(null)} onAgain={list => { setAgain(true); setDeck(list); }} />}
     {selected && <MaterialReader key={selected.id} material={selected} store={store} onQuiz={() => { openedHere.current = false; go(selected.course, listRoute.current.course === selected.course ? listRoute.current.kind : selected.kind); onQuiz(selected.course, selected.topic); }} onClose={() => closeReader(selected)} />}
   </div>;

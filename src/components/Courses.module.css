@@ -174,6 +174,12 @@
 .highlights summary{cursor:pointer;font-weight:600;padding:12px 0}
 .highlights>div{display:flex;align-items:center;gap:16px;padding:12px 0;font:18px/1.5 var(--font-family-reading)}
 .highlights>div>mark{flex:1}
+.view{display:flex;flex-direction:column;gap:inherit;animation:viewFade .28s var(--ease-ios)}
+.view[data-dir=fwd]{animation-name:viewFwd}
+.view[data-dir=back]{animation-name:viewBack}
+@keyframes viewFwd{from{opacity:0;transform:translateX(28px)}to{opacity:1;transform:none}}
+@keyframes viewBack{from{opacity:0;transform:translateX(-28px)}to{opacity:1;transform:none}}
+@keyframes viewFade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @keyframes dialogIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
 @media(min-width:650px){.courseGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.materialGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.methodGrid{grid-template-columns:repeat(3,minmax(0,1fr))}.dialog{max-width:1000px;height:calc(100% - 64px);max-height:1000px;border-radius:28px;box-shadow:0 30px 100px rgba(0,0,0,.25)}.dialogHeader{padding:16px 28px}.reader{padding:36px 40px 40px}.recallCard{padding:40px;min-height:380px}.cardSession{padding:32px 40px}.recallCard h2{font-size:34px}}
 @media(min-width:1000px){
