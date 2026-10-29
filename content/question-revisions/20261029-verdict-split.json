@@ -1,0 +1,177 @@
+{
+ "revision": "20261029-verdict-split",
+ "reason": "In five questions the correct choice was the only one with its verdict word; one wrong choice in each now reaches the same verdict for a reason the notes reject, so verdicts split two and two.",
+ "checks": {
+  "first": "independent Sonnet check: 5 PASS"
+ },
+ "questions": [
+  {
+   "id": "asy-20261027-03",
+   "answer": "D",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "It accepts it. Persecution for specific sexual conduct is not persecution for group membership, as the Eighth Circuit held in denying a gay applicant.",
+     "why": "Kimumwe (8th Cir.) turned on a finding that that applicant’s harm was for specific sexual misconduct rather than orientation. Karouni saw “no appreciable difference” between persecution for being gay and for homosexual acts, and Samir has already been named to his persecutors."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "It rejects it. Toboso-Alfonso already held that punishing particular homosexual acts is persecution of the group, so the BIA settled this before Karouni.",
+     "why": "Toboso-Alfonso turned on status, not acts. The evidence showed government action against his status as a homosexual, and the BIA said it was “not simply a case involving the enforcement of laws against particular homosexual acts.” Karouni is the case that carried protection from status to acts, seeing “no appreciable difference” between the two."
+    },
+    {
+     "id": "C",
+     "role": "bad",
+     "text": "It accepts it. Sexual orientation is a chosen trait rather than an innate one, so an applicant may be required to change it to avoid harm.",
+     "why": "Toboso-Alfonso treated homosexuality as immutable, and Hernandez-Montiel held that sexual orientation and identity are so fundamental that no one should be required to abandon them. Karouni carried that test over to sexual expression."
+    },
+    {
+     "id": "D",
+     "role": "correct",
+     "text": "It rejects it. Persecution for homosexual acts is persecution for being gay, and the INA does not force a choice between harm and a life of celibacy.",
+     "why": "This tracks Karouni v. Gonzales. The court said the government’s position forces a “Hobson’s choice” between persecution and “a life of celibacy,” relied on Lawrence v. Texas, and held the INA does not require changing so fundamental a characteristic. The evidence compelled a well-founded fear."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 PSG Pt I.docx (Asylum Class 18 notes) — Ch. 9(C), Karouni v. Gonzales (9th Cir. 2005): Reasoning (status vs. acts; Hobson’s choice; ten percent standard) and Notes (Kimumwe; Hernandez-Montiel)",
+    "DAY 18 10.26 PSG Pt I.docx (Asylum Class 18 notes) — Ch. 9(C), Matter of Toboso-Alfonso (BIA 1990)"
+   ]
+  },
+  {
+   "id": "il-20261027-01",
+   "answer": "B",
+   "choices": [
+    {
+     "id": "A",
+     "role": "average",
+     "text": "Yes. Arming rebels is a use of force under Article 2(4), and an unlawful use of force against a state permits collective self-defense on request.",
+     "why": "This treats every use of force as an armed attack. Article 51 is triggered only by an armed attack, the gravest form of force. A use of force that falls short of that is unlawful but gives neither the victim nor a state helping it a right of self-defense."
+    },
+    {
+     "id": "B",
+     "role": "correct",
+     "text": "No. Arming and funding rebels may be an unlawful use of force or intervention, but it is not an armed attack, so Article 51 is not triggered.",
+     "why": "This tracks Nicaragua. The ICJ held that supplying arms and other support to rebels is not an armed attack, though it may be a threat or use of force or unlawful intervention. Collective self-defense needs an armed attack first, then the victim’s declaration and request; the first condition fails here."
+    },
+    {
+     "id": "C",
+     "role": "sneaky",
+     "text": "Yes. Montaro declared itself the victim of an armed attack and formally requested Belmar’s help, which satisfies the Nicaragua conditions.",
+     "why": "These are two of the three Nicaragua conditions. The first, an actual armed attack, is missing, and a victim state’s declaration does not create one. The declaration and request matter only once an armed attack has occurred."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "No. Article 51 lets only the state that was attacked act in self-defense, so Belmar, never attacked itself, cannot use force to help Montaro.",
+     "why": "Article 51 expressly preserves “collective” self-defense, and under Nicaragua the assisting state does not need to have been attacked itself. Belmar’s problem is not that it is a third state; it is that arming and funding rebels is not an armed attack, so the first Nicaragua condition fails."
+    }
+   ],
+   "source_locations": [
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q2 (armed attack vs. use of force; Nicaragua on arming rebels) and Q3 (collective self-defense; the three Nicaragua conditions)",
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q4 (Armed Activities, “strict confines”)"
+   ]
+  },
+  {
+   "id": "il-20261027-02",
+   "answer": "D",
+   "choices": [
+    {
+     "id": "A",
+     "role": "sneaky",
+     "text": "Lawful. Article 51 calls self-defense an “inherent” right, preserving the customary right of anticipatory self-defense recognized in the Caroline.",
+     "why": "This is the proponents’ argument, and it fails twice here. The Caroline test requires a necessity “instant, overwhelming, leaving no choice of means, and no moment for deliberation,” and a threat years away is not that. Brownlie also says the custom that matters is the position in 1945, not the 1838–42 correspondence."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "Lawful. Striking an unfinished reactor before it operates is a necessary and proportionate measure that keeps harm to civilians low.",
+     "why": "Necessity and proportionality limit a self-defense response that is otherwise allowed; they do not supply the trigger. With no armed attack and no imminent one, there is no right of self-defense for the strike to be necessary or proportionate to."
+    },
+    {
+     "id": "C",
+     "role": "bad",
+     "text": "Unlawful. Article 51 allows self-defense only once the Security Council authorizes it, and Kestria went to the Council only after the strike.",
+     "why": "Self-defense needs no Security Council authorization. Article 51 preserves the “inherent” right “until the Security Council has taken measures,” so Council action ends the right rather than unlocking it. The strike is unlawful because there was no armed attack and none was imminent, not because Kestria skipped the Council."
+    },
+    {
+     "id": "D",
+     "role": "correct",
+     "text": "Unlawful. A threat years away is not imminent, so this is preventive self-defense, which lacks any legal basis and is not generally accepted.",
+     "why": "This tracks Israel’s 1981 strike on an Iraqi reactor, which the Security Council unanimously condemned as a “clear violation of the Charter” (S.C. Res. 487). Removing imminence turns pre-emptive into preventive self-defense, which Brownlie says “lacks any legal basis and is not generally accepted.”"
+    }
+   ],
+   "source_locations": [
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q4 (anticipatory self-defense; proponents’ arguments; S.C. Res. 487) and Q5 (Caroline test; preventive self-defense “lacks any legal basis”)",
+    "DAY 17 10.21 Use of Force & Jus ad Bellum.docx (IL Class 17 notes) — Focus On Q1 (Art. 51 text; necessity and proportionality)"
+   ]
+  },
+  {
+   "id": "il-20261027-03",
+   "answer": "A",
+   "choices": [
+    {
+     "id": "A",
+     "role": "correct",
+     "text": "Yes. “Purpose” in AP I art. 52(2) covers future intended use, and destroying a plant built to power a port and naval base offers a definite military advantage.",
+     "why": "This tracks the Eritrea-Ethiopia Claims Commission’s Hirgigo Power Station award. Power stations usually qualify as military objectives; the majority read “purpose” as future intended use, so a state need not wait until a plant is running, and destroying a large new plant built to power a port and naval facility offered a definite military advantage."
+    },
+    {
+     "id": "B",
+     "role": "average",
+     "text": "No. Under art. 52(2), an object’s contribution must come from its current use, and a plant not yet producing power makes no effective contribution.",
+     "why": "This reads “purpose” out of art. 52(2), which lists nature, location, purpose, or use. The majority held that purpose means future intended use, so an unfinished plant can make an effective contribution before it operates."
+    },
+    {
+     "id": "C",
+     "role": "sneaky",
+     "text": "No. Tessaly bore the burden of specifying how Kalo contributed to military action, and bombing it without a prior proportionality assessment was itself unlawful.",
+     "why": "This is President van Houtte’s separate opinion, not the majority. He put the burden on the attacking state and found the bombing disproportionate (“International law does not permit bombing first and justification later”). The majority dismissed the claim."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "Yes. Power stations are military objectives in themselves, so art. 52(2) did not require Tessaly to show Kalo would contribute to military action.",
+     "why": "There is no per se category. Every object must meet both parts of art. 52(2): an effective contribution to military action and a definite military advantage. The majority said power stations usually qualify, not always; one cut off from the grid and supplying only humanitarian uses would not. Kalo qualified because its intended purpose was to power the port and naval base."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Laws of War Pt I.docx (IL Class 18 notes) — Focus On Q8 (AP I art. 52(2); never-attacked list; purpose includes future intended use) and Q9 (Eritrea-Ethiopia Claims Commission, Hirgigo: majority and van Houtte separate opinion)"
+   ]
+  },
+  {
+   "id": "pr-20261027-02",
+   "answer": "A",
+   "choices": [
+    {
+     "id": "A",
+     "role": "correct",
+     "text": "Kim violated the rule. Disclosure was due as soon as practicable, and an admission made after a witness exposed the photo does not suffice.",
+     "why": "This tracks Matter of Larsen (Utah 2016), which upheld a six-month suspension. Timeliness means disclosure as soon as practicable so the defense can prepare. An after-the-fact admission may mitigate the sanction, but counting it as disclosure would make the rule “practically toothless.”"
+    },
+    {
+     "id": "B",
+     "role": "sneaky",
+     "text": "No violation. The defense learned of the photo in time to use it at trial, which satisfies Brady, so the disclosure was timely under Rule 3.8(d) as well.",
+     "why": "This was Larsen’s own argument, and the court rejected it. Brady asks whether nondisclosure undermined the verdict; Rule 3.8(d) sets an ethical duty meant to avoid the problem in the first place, so disclosure in time for use at trial does not satisfy it."
+    },
+    {
+     "id": "C",
+     "role": "average",
+     "text": "No violation. Rule 3.8(d) reaches evidence that is material, meaning a reasonable probability that disclosing it would have changed the verdict.",
+     "why": "Rule 3.8(d) has no materiality limit. It covers evidence that “tends to negate” guilt even if it is not important enough to put a guilty verdict in doubt (ABA Formal Op. 09-454; NYC Bar Op. 2016-3)."
+    },
+    {
+     "id": "D",
+     "role": "bad",
+     "text": "Kim violated the rule. Withholding the photo violated Brady, and any Brady violation is automatically a Rule 3.8(d) violation as well.",
+     "why": "Brady and Rule 3.8(d) are distinct (Larsen). Brady can be violated without fault, even over evidence the prosecutor never knew of, while 3.8(d) reaches only evidence “known to the prosecutor.” And since the defense used the photo at trial, there may have been no Brady violation at all. Kim violated 3.8(d) because the photo showing was not disclosed as soon as practicable."
+    }
+   ],
+   "source_locations": [
+    "DAY 18 10.26 Prosecutor Disclosure & Judicial Conduct.docx (Pro Res Class 18 notes) — Rule 3.8(d) (pp. 550–51: compared with Brady; NYC Bar Op. 2016-3; ABA Op. 09-454); Matter of Larsen, 2016 UT 26 (pp. 552–53); limits on enforcement, Hudson and absolute immunity (pp. 554–55)"
+   ]
+  }
+ ]
+}
