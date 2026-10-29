@@ -18,6 +18,7 @@ import { toast } from "../helpers/toast";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
+import { isNetworkError } from "../helpers/offlineCache";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
 import { SCHOOL_COURSES, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
@@ -45,7 +46,7 @@ const saveRecent = (g: string) => {
 const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
 export default function LawstinApp({ userId, email }: { userId: string; email: string | null }) {
-  const { query, answer, mark } = useLawstinData();
+  const { query, answer, queueAnswer, mark } = useLawstinData();
   const { harder } = useLawstinAi();
   const settings = useLawstinSettings();
   const goal = settings.query.data?.settings.dailyGoal ?? DAILY_GOAL;
@@ -185,12 +186,22 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     start((eng) => [...(eng.questions.some((x) => x.id === q.id) ? [{ q, review: !!eng.prog(q.id)?.seen }] : []), ...eng.buildRound("all").filter((it) => it.q.id !== q.id)]);
   }, [deepLink, state]);
 
+  const offlineNoted = useRef(false);
   const onAnswer = async (q: QuestionDTO, choice: string) => {
     if (q.id.startsWith("ai-")) return choice === q.answer;
+    const input = { questionId: q.id, choice: choice as "A" | "B" | "C" | "D", localDate: dateKey.today() };
+    const queue = () => {
+      queueAnswer(input, choice === q.answer);
+      if (!offlineNoted.current) { offlineNoted.current = true; toast("Offline. Answers will sync when you’re back online."); }
+      return choice === q.answer;
+    };
+    if (!navigator.onLine) return queue();
     try {
-      const res = await answer.mutateAsync({ questionId: q.id, choice: choice as "A" | "B" | "C" | "D", localDate: dateKey.today() });
+      const res = await answer.mutateAsync(input);
+      offlineNoted.current = false;
       return res.correct;
-    } catch {
+    } catch (err) {
+      if (isNetworkError(err)) return queue();
       toast.error("Couldn’t save that answer");
       return choice === q.answer;
     }
@@ -206,8 +217,9 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     }
   };
 
+  // A query waiting for a connection is paused rather than fetching or failed.
   const loading = !state && query.isFetching;
-  const failed = !state && query.isError;
+  const failed = !state && (query.isError || query.fetchStatus === "paused");
 
   return (
     <div className={styles.app}>

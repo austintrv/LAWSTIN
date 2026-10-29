@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { clearCaches } from "../helpers/offlineCache";
 import { Bell, ChevronLeft, Download, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
 import { Switch } from "./Switch";
 import { Spinner } from "./Spinner";
@@ -248,7 +249,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
                 <span className={`${styles.label} ${styles.link}`}>Export my data</span>
                 {busy === "export" && <Spinner size="sm" />}
               </button>
-              <button className={styles.row} onClick={() => { haptic(); supabase.auth.signOut(); }}>
+              <button className={styles.row} onClick={() => { haptic(); clearCaches(); supabase.auth.signOut(); }}>
                 <Icon color="#ff3b30"><LogOut size={16} /></Icon>
                 <span className={`${styles.label} ${styles.danger}`}>Sign out</span>
               </button>

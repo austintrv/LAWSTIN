@@ -80,6 +80,8 @@ export function useStudyMaterials(userId: string) {
     return () => { window.removeEventListener("online", onOnline); document.removeEventListener("visibilitychange", onFocus); };
   }, [flush, remote.refetch]);
   const update = useCallback((fn: (prev: StudyRecord) => StudyRecord) => commit(changeStudyRecord(current.current, fn(current.current.record))), [commit]);
-  return { materials: library.data?.materials ?? NONE, runs: library.data?.runs ?? NO_RUNS, loading: library.isLoading, record: cache.record, update,
+  return { materials: library.data?.materials ?? NONE, runs: library.data?.runs ?? NO_RUNS, loading: library.isLoading,
+    // No copy on this device and no connection: say so instead of showing an empty library.
+    unavailable: !library.data && (library.isError || library.fetchStatus === "paused"), record: cache.record, update,
     syncStatus: syncError || remote.isError ? "offline" : Object.keys(cache.pending).length ? "pending" : "synced" };
 }

@@ -87,7 +87,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
 
   return <div ref={root} className={styles.courses}>
     {!course ? <>
-      <div className={styles.sectionHead}><h2>Your courses</h2><button className={styles.primary} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} flashcards` : "Flashcards up to date"}</button></div>
+      <div className={styles.sectionHead}><h2>Your courses</h2><button className={styles.primary} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} flashcards` : store.unavailable ? "Flashcards unavailable offline" : "Flashcards up to date"}</button></div>
       <div className={styles.courseGrid}>
         {SCHOOL_ORDER.map((key, index) => {
           const c = SCHOOL_COURSES[key], Icon = ICONS[key];
@@ -95,7 +95,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
           const due = cardQueue(list.filter((m): m is Flashcard => m.kind === "flashcard"), store.record, state).length;
           return <button key={key} className={`${styles.courseCard} ${isStudyCourse(key) ? "" : styles.workspaceCard}`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
             <div className={styles.courseCardTop}><span className={styles.courseIcon}><Icon size={26} strokeWidth={1.6} /></span><ArrowRight size={22} /></div>
-            <h3>{c.name}</h3>{isStudyCourse(key) ? (store.loading ? <span className={styles.skel} /> : <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>) : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}
+            <h3>{c.name}</h3>{isStudyCourse(key) ? (store.loading ? <span className={styles.skel} /> : store.unavailable ? <p>Unavailable offline</p> : <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>) : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}
             {isStudyCourse(key) && <div className={styles.courseTools}><span><GitBranch size={18} />Flowcharts</span><span><Layers3 size={18} />Flashcards</span></div>}
           </button>;
         })}
@@ -111,7 +111,7 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
       <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
       <section className={styles.courseHero} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
         <h2>{SCHOOL_COURSES[course].name}</h2>
-        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : "Flashcards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
+        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Flashcards unavailable offline" : "Flashcards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
       </section>
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!route.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {

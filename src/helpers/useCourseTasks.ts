@@ -2,6 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 import { dateKey } from "./dateKey";
 import { toast } from "./toast";
+import { readCache, writeCache } from "./offlineCache";
+import { useEffect } from "react";
 
 export type TaskCourse = "clinic" | "tutoring";
 export type CourseTask = {
@@ -35,8 +37,11 @@ export function useCourseTasks() {
       if (error) throw error;
       return (data ?? []) as CourseTask[];
     },
+    initialData: () => readCache<CourseTask[]>("tasks"),
+    initialDataUpdatedAt: 0,
     staleTime: 60 * 1000,
   });
+  useEffect(() => { if (query.data) writeCache("tasks", query.data); }, [query.data]);
   const set = (fn: (list: CourseTask[]) => CourseTask[]) => qc.setQueryData<CourseTask[]>(KEY, (old) => fn(old ?? []));
   const settle = () => qc.invalidateQueries({ queryKey: KEY });
 

@@ -17,6 +17,8 @@
 ## Where things live
 - Live app: https://austintrv.github.io/LAWSTIN/
 - Code (live source): GitHub repo `austintrv/LAWSTIN`, branch `main`. Pushing to `main` builds and publishes through GitHub Actions (`.github/workflows/deploy.yml`). React 18 + Vite + TypeScript, CSS modules; `npm run build` type-checks and builds.
+- Offline: `public/sw.js` (registered at startup) serves the page network-first with a cached fallback and caches hashed `/assets/` files. Questions, the study library and to-dos are cached in localStorage (`lawstin-cache:*`, `src/helpers/offlineCache.ts`); answers given offline wait in `lawstin-answer-queue` and are sent when the connection returns. Sign out clears both.
+- Back: `src/helpers/useBackClose.ts` gives the quiz, sheets, flashcards, Written practice and Ask one shared history entry so the system Back closes the top overlay.
 - `Desktop/LAWSTIN/app/` is a copy of the repo, not a git checkout. Make code changes in the repo, then refresh the copy.
 - `Desktop/LAWSTIN/floot-export/` is the original Floot export (code + data JSON). The original icon and launch-screen PNGs are in `Desktop/LAWSTIN/`.
 - `skills/`: content-writing skills (`skills/daily-law-quiz/SKILL.md`, `skills/lawstin-study-materials/SKILL.md`) and `skills/README.md`, which lists the standards every content task follows and maps Claude’s tool names for other AIs. Also in `Desktop/LAWSTIN/skills/`.
