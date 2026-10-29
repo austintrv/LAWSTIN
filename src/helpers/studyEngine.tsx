@@ -11,6 +11,8 @@ export const COURSES: Record<CourseCode, { name: string; short: string; color: s
   pr: { name: "Professional Responsibility", short: "Pro Res", color: "var(--course-pr)" },
 };
 export const COURSE_KEYS: CourseCode[] = ["il", "asy", "pr"];
+/** Fall 2026 final exam dates, from Austin. */
+export const FINALS: Record<CourseCode, string> = { il: "2026-12-02", asy: "2026-12-07", pr: "2026-12-09" };
 export const ROLE_LABEL: Record<string, string> = {
   correct: "Correct answer",
   sneaky: "Sneaky distractor",

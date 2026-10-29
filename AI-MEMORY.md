@@ -16,6 +16,7 @@
 
 ## Where things live
 - Live app: https://austintrv.github.io/LAWSTIN/
+- Finals (from Austin): International Law Dec 2, Asylum Dec 7, Pro Res Dec 9, 2026 (`FINALS` in `src/helpers/studyEngine.tsx`). The Study tab shows a countdown per course with % seen and % correct; each tile hides after its date.
 - Code (live source): GitHub repo `austintrv/LAWSTIN`, branch `main`. Pushing to `main` builds and publishes through GitHub Actions (`.github/workflows/deploy.yml`). React 18 + Vite + TypeScript, CSS modules; `npm run build` type-checks and builds.
 - Offline: `public/sw.js` (registered at startup) serves the page network-first with a cached fallback and caches hashed `/assets/` files. Questions, the study library and to-dos are cached in localStorage (`lawstin-cache:*`, `src/helpers/offlineCache.ts`); answers given offline wait in `lawstin-answer-queue` and are sent when the connection returns. Sign out clears both.
 - Back: `src/helpers/useBackClose.ts` gives the quiz, sheets, flashcards, Written practice and Ask one shared history entry so the system Back closes the top overlay.

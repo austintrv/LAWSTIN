@@ -57,5 +57,5 @@ button.row:active:not(:disabled) { background: var(--fill); }
   .title { font-size: 44px; letter-spacing: -0.04em; }
 }
 /* Glows only behind the title and profile card. */
-.aura { bottom: auto; height: 340px; -webkit-mask-image: linear-gradient(#000 55%, transparent); mask-image: linear-gradient(#000 55%, transparent); }
+.aura { bottom: auto; height: 340px; --fade-y: linear-gradient(#000 55%, transparent); }
 @media (prefers-reduced-motion: reduce) { .page, .closing { animation: none; } }

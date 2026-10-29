@@ -27,7 +27,7 @@ import { MATERIAL_LABELS, SCHOOL_COURSES, type MaterialKind, type StudyMaterial,
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
 import { useReadyCards } from "../helpers/useStudyMaterials";
 import { dueLabel } from "../components/TaskList";
-import { COURSES, COURSE_KEYS, DAILY_GOAL, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
+import { COURSES, COURSE_KEYS, DAILY_GOAL, FINALS, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import styles from "./_index.module.css";
 
@@ -367,6 +367,35 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
 type Engine = ReturnType<typeof studyEngine>;
 
+const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 864e5);
+
+/** Days to each final, soonest first, with how much of that course's bank is seen and answered correctly. */
+function FinalsCard({ e, onCourse }: { e: Engine; onCourse: (c: CourseCode) => void }) {
+  const today = dateKey.today();
+  const list = COURSE_KEYS.map((k) => ({ k, date: FINALS[k], days: dayDiff(today, FINALS[k]) }))
+    .filter((f) => f.days >= 0).sort((a, b) => a.days - b.days);
+  if (!list.length) return null;
+  return (
+    <section className={`${styles.sec} ${styles.finals}`}>
+      <div className={styles.secH}><h2>Finals</h2></div>
+      <div className={styles.finalTiles}>
+        {list.map(({ k, date, days }) => {
+          const c = COURSES[k], s = e.courseStats(k);
+          return (
+            <button key={k} className={`${styles.card} ${styles.finalTile}`} style={{ "--course-color": c.color } as React.CSSProperties} onClick={() => onCourse(k)}>
+              <span className={styles.finalCourse}><i />{c.short}</span>
+              <b>{days === 0 ? "Today" : days}</b>
+              <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
+              <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
+              <span className={styles.finalStats}>{pct(s.seen, s.n)}% seen{s.seen ? ` · ${s.acc}% correct` : ""}</span>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 const KIND_ICON: Record<MaterialKind, typeof Layers3> = { flashcard: Layers3, flowchart: GitBranch, outline: BookOpen, comparison: Columns3, drill: ListChecks, hypothetical: PenLine };
 
 /** The topic's study materials from Courses, with its flashcards as one row. Hidden when there are none. */
@@ -520,6 +549,8 @@ function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, o
           <span>Last 7 days</span>
         </div>
       </div>
+
+      <FinalsCard e={e} onCourse={onCourse} />
 
       {/* Two independent columns from tablet width up; on a phone the wrappers vanish and `order` keeps the list order. */}
       <div className={styles.studyCols}>
