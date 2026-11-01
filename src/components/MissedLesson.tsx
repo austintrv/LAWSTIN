@@ -6,7 +6,6 @@ import type { ProgressDTO, QuestionDTO } from "../endpoints/state_GET.schema";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { useWide } from "../helpers/useWide";
 import q from "./QuizSession.module.css";
 import styles from "./MissedLesson.module.css";
 
@@ -31,8 +30,10 @@ const paras = (t: string) => t.split(/\n\s*\n/).map((p, i) => <p key={i}>{p.trim
  * A short lesson on topics with missed questions, built from those questions' own rules and
  * explanations: the rule, where each miss went wrong, then one question to try again.
  */
-export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
+export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose, tools }: {
   topics: LessonTopic[];
+  /** A study tool opened from the lesson is on top: stay mounted at the same step, hidden and inactive. */
+  away?: boolean;
   onAnswer: (q: QuestionDTO, choice: string) => Promise<boolean>;
   onDrill: (questions: QuestionDTO[]) => void;
   onClose: () => void;
@@ -52,7 +53,6 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
   }, [topics]);
 
   const [at, setAt] = useState(0);
-  const wide = useWide();
   const [dir, setDir] = useState<"in" | "back">("in");
   const [closing, setClosing] = useState(false);
   const [picks, setPicks] = useState<Record<number, string>>({});
@@ -63,7 +63,8 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
   const step = steps[at];
 
   const close = useCallback(() => { setClosing(true); setTimeout(onClose, 380); }, [onClose]);
-  useBackClose(close);
+  useBackClose(close, !away);
+  useEffect(() => { if (!away) modalRef.current?.focus({ preventScroll: true }); }, [away]);
   const go = useCallback((n: number) => {
     if (n < 0 || n >= steps.length) return;
     haptic();
@@ -84,6 +85,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
   };
 
   useEffect(() => {
+    if (away) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
       if (e.key === "Escape") close();
@@ -92,7 +94,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [at, step, checked, close, go]);
+  }, [at, step, checked, close, go, away]);
 
   const checks = steps.map((s, k) => (s.kind === "check" ? k : -1)).filter((k) => k >= 0);
   const fixed = checks.filter((k) => right[k]).length;
@@ -103,7 +105,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
   };
 
   return (
-    <div ref={modalRef} tabIndex={-1} className={`${q.modal} ${closing ? q.closing : ""}`} role="dialog" aria-modal="true" aria-label="Missed topics lesson">
+    <div ref={modalRef} tabIndex={-1} className={`${q.modal} ${closing ? q.closing : ""}`} style={away ? { display: "none" } : undefined} role="dialog" aria-modal="true" aria-label="Missed topics lesson">
       <div className={q.top}>
         <div className={q.topIn}>
           <button className={q.x} onClick={() => go(at - 1)} disabled={at === 0} aria-label="Previous step"><ChevronLeft size={18} strokeWidth={2.4} /></button>
@@ -136,7 +138,7 @@ export function MissedLesson({ topics, onAnswer, onDrill, onClose, tools }: {
               <div className={styles.head}>{label(step.t)}<h2>Where you slipped{step.of > 1 ? ` · ${step.n} of ${step.of}` : ""}</h2>
                 {!chosen && <span className={styles.note}>{p.lastCorrect ? "Missed before, right last time" : "Marked as a guess"}</span>}</div>
               <div className={q.paneL}>
-              <details className={q.rc} open={wide}>
+              <details className={q.rc}>
                 <summary className={q.factHead}>
                   <span className={q.strong}>{qq.prompt}</span>
                   <span className={q.factToggle}>Fact pattern <ChevronRight size={15} /></span>

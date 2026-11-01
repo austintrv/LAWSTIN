@@ -86,6 +86,22 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   };
   const [writing, setWriting] = useState(false);
   const [lesson, setLesson] = useState<LessonTopic[] | null>(null);
+  // A study tool opened from the lesson: the lesson stays where it was, hidden, until Back returns to it.
+  const [lessonAway, setLessonAway] = useState(false);
+  const openLessonTool = (hash: string) => {
+    haptic();
+    setLessonAway(true);
+    afterOverlayClose(() => { window.location.hash = hash; });
+  };
+  const endLesson = () => { setLesson(null); setLessonAway(false); };
+  // Back (the tool's button or the system gesture) steps back to the tab the lesson was opened on.
+  const lessonReturn = useMemo(() => ({ back: () => afterOverlayClose(() => history.back()), end: endLesson }), []);
+  useEffect(() => {
+    if (!lessonAway) return;
+    const sync = () => { if (!window.location.hash.startsWith("#/courses")) setLessonAway(false); };
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [lessonAway]);
   const openLesson = (list: MissedTopic[]) => {
     haptic();
     setLesson(list.map((t) => {
@@ -306,7 +322,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                     return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
                   })} />
               )}
-              {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses userId={userId} state={state} onWrite={() => setWriting(true)} onQuiz={(course, topic) => start((eng) => topic ? eng.topicRound(course, topic) : eng.buildRound(course))} /></Suspense>}
+              {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses userId={userId} state={state} lesson={lessonAway ? lessonReturn : undefined} onWrite={() => setWriting(true)} onQuiz={(course, topic) => start((eng) => topic ? eng.topicRound(course, topic) : eng.buildRound(course))} /></Suspense>}
             </div>
           </div>
         ))}
@@ -352,9 +368,9 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
       {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(false)} /></Suspense>}
 
-      {lesson && <Suspense fallback={null}><MissedLesson topics={lesson} onAnswer={onAnswer} onClose={() => setLesson(null)}
-        onDrill={(qs) => { setLesson(null); start((eng) => { const ids = new Set(eng.questions.map((q) => q.id)); return eng.listRound(qs.filter((q) => ids.has(q.id))); }); }}
-        tools={(course, topic) => <TopicTools course={course} topic={topic} onGo={(hash) => { haptic(); afterOverlayClose(() => { window.location.hash = hash; }); setLesson(null); }} />} /></Suspense>}
+      {lesson && <Suspense fallback={null}><MissedLesson topics={lesson} away={lessonAway} onAnswer={onAnswer} onClose={endLesson}
+        onDrill={(qs) => { endLesson(); start((eng) => { const ids = new Set(eng.questions.map((q) => q.id)); return eng.listRound(qs.filter((q) => ids.has(q.id))); }); }}
+        tools={(course, topic) => <TopicTools course={course} topic={topic} topicCards onGo={openLessonTool} />} /></Suspense>}
 
       {session && (
         <Suspense fallback={null}><QuizSession
@@ -451,11 +467,13 @@ function FinalsCard({ e, onCourse }: { e: Engine; onCourse: (c: CourseCode) => v
 const KIND_ICON: Record<MaterialKind, typeof Layers3> = { flashcard: Layers3, flowchart: GitBranch, outline: BookOpen, comparison: Columns3, drill: ListChecks, hypothetical: PenLine };
 
 /** The topic's study materials from Courses, with its flashcards as one row. Hidden when there are none. */
-function TopicTools({ course, topic, onGo }: { course: CourseCode; topic: string; onGo: (hash: string) => void }) {
+/** topicCards: the flashcard row opens a session of this topic's cards instead of the course's card list. */
+function TopicTools({ course, topic, onGo, topicCards }: { course: CourseCode; topic: string; onGo: (hash: string) => void; topicCards?: boolean }) {
   const library = useStudyLibrary();
   const mats = (library.data?.materials ?? []).filter((m) => m.course === course && m.topic === topic);
   if (!mats.length) return null;
   const cards = mats.filter((m) => m.kind === "flashcard").length;
+  const cardsHash = topicCards ? `/courses/review/${course}/${encodeURIComponent(topic)}` : `/courses/${course}/flashcard`;
   const row = (key: string, kind: MaterialKind, title: string, sub: string, hash: string) => {
     const Icon = KIND_ICON[kind];
     return (
@@ -469,7 +487,7 @@ function TopicTools({ course, topic, onGo }: { course: CourseCode; topic: string
   return (
     <div className={`${styles.card} ${styles.list}`}>
       {mats.filter((m) => m.kind !== "flashcard").map((m) => row(m.id, m.kind, m.title, MATERIAL_LABELS[m.kind], `/courses/${course}/${m.kind}/${m.id}`))}
-      {cards > 0 && row("cards", "flashcard", MATERIAL_LABELS.flashcard, `${cards} cards`, `/courses/${course}/flashcard`)}
+      {cards > 0 && row("cards", "flashcard", MATERIAL_LABELS.flashcard, `${cards} cards`, cardsHash)}
     </div>
   );
 }

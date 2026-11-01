@@ -3,7 +3,7 @@ import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { readPrefs, writePrefs, type ReadingSize } from "../helpers/prefs";
 const SIZES: ReadingSize[] = ["s", "m", "l", "xl"];
-import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, ClipboardList, Columns3, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, RotateCcw, Scale, Search, Star, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, BookOpen, Check, ChevronLeft, ChevronRight, ClipboardList, Columns3, GitBranch, GraduationCap, Highlighter, Layers3, ListChecks, PenLine, RotateCcw, Scale, Search, Star, X } from "lucide-react";
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
@@ -20,7 +20,9 @@ import styles from "./Courses.module.css";
 const ICONS = { il: Scale, asy: BookOpen, pr: GraduationCap, clinic: ClipboardList, tutoring: PenLine };
 const TOOLS = { flashcard: Layers3, flowchart: GitBranch, outline: BookOpen, comparison: Columns3, drill: ListChecks, hypothetical: PenLine };
 const KINDS = Object.keys(MATERIAL_LABELS) as MaterialKind[];
-type Props = { userId: string; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: () => void };
+/** Set while a Missed lesson waits behind a study tool opened from it: back returns to the lesson, end closes it. */
+export type LessonReturn = { back: () => void; end: () => void };
+type Props = { userId: string; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: () => void; lesson?: LessonReturn };
 type Store = ReturnType<typeof useStudyMaterials>;
 type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string };
 const readRoute = (): Route => {
@@ -46,7 +48,7 @@ const LINKS: Record<"clinic" | "tutoring", WorkspaceLink[]> = {
 };
 const isStudyCourse = (c: SchoolCourse): c is CourseCode => c === "il" || c === "asy" || c === "pr";
 
-export function Courses({ userId, state, onQuiz, onWrite }: Props) {
+export function Courses({ userId, state, onQuiz, onWrite, lesson }: Props) {
   const store = useStudyMaterials(userId);
   const { tasks } = useCourseTasks();
   const [route, setRoute] = useState(readRoute);
@@ -63,7 +65,8 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
   const openedHere = useRef(false);
   useEffect(() => {
     const sync = () => {
-      if (!window.location.hash.startsWith("#/courses")) return;
+      // Leaving the tab with a material open (Back to a Missed lesson) closes the material.
+      if (!window.location.hash.startsWith("#/courses")) { setRoute(r => (r.item ? { ...listRoute.current, item: undefined } : r)); return; }
       const next = readRoute(), prev = listRoute.current;
       if (!next.item) {
         if (next.course !== prev.course || next.kind !== prev.kind) { setTopic("all"); setSearch(""); setHomeKind(null); }
@@ -111,11 +114,16 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
     && terms.every(term => JSON.stringify(m).toLocaleLowerCase().includes(term)));
   const [again, setAgain] = useState(false);
   const startCards = (list = queue) => { if (list.length) { setAgain(false); setDeck(list.slice(0, 30)); } };
-  // #/courses/review (from the Study tab) opens a flashcard session as soon as the library is ready.
+  // #/courses/review (from the Study tab) opens a flashcard session as soon as the library is ready;
+  // #/courses/review/<course>/<topic> (from a Missed lesson) opens that topic's cards.
   useEffect(() => {
-    if (window.location.hash !== "#/courses/review" || store.loading) return;
+    const [, section, review, c, t] = window.location.hash.split("/");
+    if (section !== "courses" || review !== "review" || store.loading) return;
     history.replaceState(null, "", "#/courses");
-    startCards();
+    if (!c) { startCards(); return; }
+    const topicCards = store.materials.filter((m): m is Flashcard => m.kind === "flashcard" && m.course === c && m.topic === decodeURIComponent(t ?? ""));
+    const ready = cardQueue(topicCards, store.record, state);
+    startCards(ready.length ? ready : cardQueue(topicCards, store.record, state, dateKey.today(), true));
   }, [store.loading, route]);
   // Browsing a course shows its flashcards as one deck; the Flashcards filter and searches list each card.
   const deckCards = filtered.filter((m): m is Flashcard => m.kind === "flashcard");
@@ -180,8 +188,12 @@ export function Courses({ userId, state, onQuiz, onWrite }: Props) {
       </div>}
     </>}
     </div>
-    {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store} onClose={() => setDeck(null)} onAgain={list => { setAgain(true); setDeck(list); }} />}
-    {selected && <MaterialReader key={selected.id} material={selected} store={store} onQuiz={() => { openedHere.current = false; go(selected.course, listRoute.current.course === selected.course ? listRoute.current.kind : selected.kind); onQuiz(selected.course, selected.topic); }} onClose={() => closeReader(selected)} />}
+    {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store}
+      onClose={() => { setDeck(null); lesson?.end(); }} onAgain={list => { setAgain(true); setDeck(list); }}
+      onBack={lesson && (() => { setDeck(null); lesson.back(); })} />}
+    {selected && <MaterialReader key={selected.id} material={selected} store={store}
+      onQuiz={() => { openedHere.current = false; go(selected.course, listRoute.current.course === selected.course ? listRoute.current.kind : selected.kind); lesson?.end(); onQuiz(selected.course, selected.topic); }}
+      onClose={() => { closeReader(selected); lesson?.end(); }} onBack={lesson && (() => { haptic(); lesson.back(); })} />}
   </div>;
 }
 
@@ -215,7 +227,7 @@ function StudyPlan({ materials, record, weak, onOpen }: { materials: StudyMateri
   return <details className={styles.plan}><summary>Next to review<span>{next.length}</span></summary>{next.map(m => <button key={m.id} onClick={() => onOpen(m)}><span>{m.title}</span>{weak.has(`${m.course}|${m.topic}`) && <span>Weak topic</span>}<ArrowRight size={19} /></button>)}</details>;
 }
 
-function StudyDialog({ title, children, onClose, actions }: { title: string; children: React.ReactNode; onClose: () => void; actions?: React.ReactNode }) {
+function StudyDialog({ title, children, onClose, onBack, actions }: { title: string; children: React.ReactNode; onClose: () => void; onBack?: () => void; actions?: React.ReactNode }) {
   const ref = useModalFocus<HTMLDivElement>();
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
@@ -234,7 +246,7 @@ function StudyDialog({ title, children, onClose, actions }: { title: string; chi
   }, []);
   // The dialog is portalled so that the underlying scrolling pane can be inert.
   return <DialogPortal><div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose(); }}><div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={styles.dialog}>
-    <header className={styles.dialogHeader}><div>{actions}</div><span>{title}</span><div><button className={styles.iconButton} aria-label="Close" onClick={onClose}><X size={17} strokeWidth={2.4} /></button></div></header>{children}
+    <header className={styles.dialogHeader}><div>{onBack && <button className={styles.iconButton} aria-label="Back to lesson" onClick={onBack}><ChevronLeft size={18} strokeWidth={2.4} /></button>}{actions}</div><span>{title}</span><div><button className={styles.iconButton} aria-label="Close" onClick={onClose}><X size={17} strokeWidth={2.4} /></button></div></header>{children}
   </div></div></DialogPortal>;
 }
 
@@ -242,11 +254,11 @@ import { createPortal } from "react-dom";
 function DialogPortal({ children }: { children: React.ReactNode }) { return createPortal(children, document.body); }
 
 // An again round goes back over missed cards without moving their review dates a second time.
-function FlashcardSession({ cards, again, store, onClose, onAgain }: { cards: Flashcard[]; again: boolean; store: Store; onClose: () => void; onAgain: (cards: Flashcard[]) => void }) {
+function FlashcardSession({ cards, again, store, onClose, onAgain, onBack }: { cards: Flashcard[]; again: boolean; store: Store; onClose: () => void; onAgain: (cards: Flashcard[]) => void; onBack?: () => void }) {
   const log = useLogStudy();
   const [index, setIndex] = useState(0), [flipped, setFlipped] = useState(false), [missed, setMissed] = useState<Flashcard[]>([]);
   const card = cards[index];
-  useBackClose(onClose);
+  useBackClose(onBack ?? onClose);
   const grade = (correct: boolean) => {
     if (!flipped || !card) return;
     haptic();
@@ -267,7 +279,7 @@ function FlashcardSession({ cards, again, store, onClose, onAgain }: { cards: Fl
     };
     window.addEventListener("keydown", onKey); return () => window.removeEventListener("keydown", onKey);
   }, [card, flipped]);
-  return <StudyDialog title="Flashcards" onClose={onClose} actions={card && <StarButton material={card} store={store} />}>
+  return <StudyDialog title="Flashcards" onClose={onClose} onBack={onBack} actions={card && <StarButton material={card} store={store} />}>
     {card ? <div className={styles.cardSession}>
       <div className={styles.sessionMeta}><span style={{ color: SCHOOL_COURSES[card.course].color }}>{SCHOOL_COURSES[card.course].name}</span><span aria-live="polite">{index + 1} of {cards.length}</span></div>
       <progress max={cards.length} value={index} aria-label="Flashcard session progress" />
@@ -289,7 +301,7 @@ function SourceList({ material }: { material: StudyMaterial }) {
   return <details className={styles.sources}><summary>Sources<ChevronRight size={18} /></summary>{material.sources.map((s, i) => <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"><span>{s.title}</span><span>{s.section}</span><ArrowRight size={18} /></a>)}</details>;
 }
 
-function MaterialReader({ material: m, store, onQuiz, onClose }: { material: StudyMaterial; store: Store; onQuiz: () => void; onClose: () => void }) {
+function MaterialReader({ material: m, store, onQuiz, onClose, onBack }: { material: StudyMaterial; store: Store; onQuiz: () => void; onClose: () => void; onBack?: () => void }) {
   // Text size is the app-wide reading size from Settings, so it matches the quiz.
   const [size, setSize] = useState<ReadingSize>(() => readPrefs().reading);
   const step = (d: number) => { const next = SIZES[Math.min(SIZES.length - 1, Math.max(0, SIZES.indexOf(size) + d))]; haptic(); setSize(next); writePrefs({ reading: next }); };
@@ -310,7 +322,7 @@ function MaterialReader({ material: m, store, onQuiz, onClose }: { material: Stu
     return text.split(new RegExp(`(${escaped.join("|")})`, "g")).map((part, i) => terms.includes(part) ? <mark key={i}>{part}</mark> : part);
   };
   const complete = (key: string) => store.update(p => ({ ...p, completed: { ...p.completed, [key]: !p.completed[key] } }));
-  return <StudyDialog title={SCHOOL_COURSES[m.course].name} onClose={onClose} actions={<StarButton material={m} store={store} />}>
+  return <StudyDialog title={SCHOOL_COURSES[m.course].name} onClose={onClose} onBack={onBack} actions={<StarButton material={m} store={store} />}>
     <div className={styles.reader}>
       <div className={styles.readerTitle}><p className={styles.overline}>{MATERIAL_LABELS[m.kind]} · {m.topic}</p><h2>{m.title}</h2></div>
       <div className={styles.readerToolbar}><button onClick={() => step(-1)} disabled={size === SIZES[0]} aria-label="Smaller reading text">A−</button><button onClick={() => step(1)} disabled={size === SIZES[SIZES.length - 1]} aria-label="Larger reading text">A+</button><button onClick={highlight}><Highlighter size={20} />Highlight</button></div>

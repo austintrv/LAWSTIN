@@ -5,7 +5,6 @@ import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCir
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
 import { AskPanel } from "./AskPanel";
-import { useWide } from "../helpers/useWide";
 import type { QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
 import { COURSES, ROLE_LABEL, type RoundItem } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
@@ -58,8 +57,6 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const [harder, setHarder] = useState<Record<string, "busy" | "added">>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const modalRef = useModalFocus<HTMLDivElement>();
-  // On a wide screen the review's fact pattern starts open beside the explanations.
-  const wide = useWide();
   const touch = useRef<{ x: number; y: number } | null>(null);
   const item = items[Math.min(i, items.length - 1)];
   const q = item.q;
@@ -248,7 +245,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
             </header>
 
             <div className={styles.paneL}>
-            <details className={styles.rc} open={wide}>
+            <details className={styles.rc}>
               <summary className={styles.factHead}>
                 <span className={styles.label}><i style={{ background: course.color }} />{course.short} · {q.subtopic ?? q.topic}</span>
                 <span className={styles.strong}>{q.prompt}</span>
