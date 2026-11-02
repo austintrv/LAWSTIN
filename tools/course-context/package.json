@@ -1,0 +1,17 @@
+{
+  "name": "lawstin-course-context",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test *.test.mjs",
+    "package": "node build-package.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.2",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

@@ -11,7 +11,11 @@
     "study:check": "tsx scripts/validate-study-materials.ts",
     "study:preflight": "tsx scripts/study-preflight.ts",
     "study:publish": "tsx scripts/publish-study-batch.ts",
-    "sync:desktop": "node scripts/sync-desktop.mjs"
+    "sync:desktop": "node scripts/sync-desktop.mjs",
+    "context:test": "npm --prefix tools/course-context test",
+    "context:package": "npm --prefix tools/course-context run package",
+    "context:setup": "npm run context:package && node '.context-build/LAWSTIN Course Setup/setup.cjs'",
+    "context:check": "node tools/course-context/cli.mjs doctor"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",
