@@ -1,8 +1,8 @@
 # Shared course context
 
-A local MCP server for the five existing school course `AI & CLOUD` folders. Google Drive remains the source of truth. LAWSTIN contains the integration code only. Private course context and Git history never belong in this public repository. Work is excluded.
+Local and hosted MCP servers for the five existing school course `AI & CLOUD` folders. The hosted connection also quizzes from LAWSTIN's saved question bank and records answers through the existing progress rules. Google Drive remains the source of truth for course memories. LAWSTIN contains the integration code only. Private course context and history never belong in this public repository. Work is excluded.
 
-Read [MAC-SETUP.md](MAC-SETUP.md) for the Mac workflow and connection checks.
+Read [CLOUD-SETUP.md](CLOUD-SETUP.md) for phone/cloud access, or [MAC-SETUP.md](MAC-SETUP.md) for the existing Mac workflow. The sections below describe the local server; cloud history uses private Supabase snapshots separately from Mac Git.
 
 ## Develop and package
 

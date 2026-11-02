@@ -4,11 +4,17 @@ on:
   pull_request:
     paths:
       - 'tools/course-context/**'
+      - 'supabase/functions/course-cloud/**'
+      - 'supabase/migrations/*cloud*'
+      - 'scripts/prepare-cloud-function.mjs'
       - '.github/workflows/course-context.yml'
   push:
     branches: [main]
     paths:
       - 'tools/course-context/**'
+      - 'supabase/functions/course-cloud/**'
+      - 'supabase/migrations/*cloud*'
+      - 'scripts/prepare-cloud-function.mjs'
       - '.github/workflows/course-context.yml'
 
 permissions:

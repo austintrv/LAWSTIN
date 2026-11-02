@@ -4,6 +4,8 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { COURSES, CONTEXT_FILES } from "./courses.mjs";
+import { replaceCurrentWork, appendFact } from "./memory.mjs";
+export { replaceCurrentWork } from "./memory.mjs";
 
 export const DEFAULT_STATE = path.join(os.homedir(), "Library", "Application Support", "LAWSTIN", "course-context");
 export const DEFAULT_CONFIG = path.join(DEFAULT_STATE, "config.json");
@@ -54,17 +56,6 @@ async function lock(directory, action) {
     } finally { await fs.rm(directory, { recursive: true, force: true }); }
   }
   throw new Error("Another course-context process is saving. Retry after it finishes. A lock without a pid may need removal after a crashed process.");
-}
-
-export function replaceCurrentWork(memory, currentWork) {
-  const section = /^## Current work\s*\r?$/m;
-  const match = section.exec(memory);
-  if (!match) throw new Error("AI-MEMORY.md has no '## Current work' section. Add it before saving a handoff.");
-  if (/^#{1,2}\s/m.test(currentWork)) throw new Error("Use plain text or bullets inside the handoff, not top-level headings.");
-  const start = match.index + match[0].length;
-  const next = /^## /m.exec(memory.slice(start));
-  const end = next ? start + next.index : memory.length;
-  return memory.slice(0, start).trimEnd() + "\n" + currentWork.trim() + "\n\n" + memory.slice(end);
 }
 
 export class ContextStore {
@@ -160,13 +151,8 @@ export class ContextStore {
   async recordFact(id, expectedRevision, fact, actor) {
     if (typeof fact !== "string" || !fact.trim() || fact.length > 2000 || /[\r\n]/.test(fact)) throw new Error("Provide one factual paragraph of at most 2,000 characters.");
     return this.saveMemory(id, expectedRevision, actor, old => {
-      const match = /^## Log\s*\r?$/m.exec(old);
-      if (!match) throw new Error("AI-MEMORY.md has no '## Log' section.");
       const date = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-      const entry = `- ${date} (${actor}): ${fact.trim()}`;
-      if (old.includes(entry)) return old;
-      const end = match.index + match[0].length;
-      return old.slice(0, end).trimEnd() + "\n" + entry + "\n" + old.slice(end).replace(/^\s*\n/, "");
+      return appendFact(old, fact, actor, date);
     }, "Fact");
   }
 

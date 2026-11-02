@@ -7,6 +7,28 @@ import { execFileSync } from "node:child_process";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 
+test("cloud package preserves identity and prompts while replacing the local runtime with OAuth", async () => {
+  execFileSync(process.execPath, [path.join(import.meta.dirname, "build-cloud-package.mjs")], { stdio: "pipe", timeout: 30_000 });
+  const archive = path.resolve(import.meta.dirname, "../../.context-build/lawstin-course-context-cloud-plugin.zip");
+  const entries = execFileSync("unzip", ["-Z1", archive], { encoding: "utf8" }).trim().split("\n").filter(file => !file.endsWith("/"));
+  const root = "lawstin-course-context-cloud/";
+  assert.deepEqual(entries.sort(), ["plugin.json", ".codex-plugin/plugin.json", "mcp.json", "skills/course-handoff/SKILL.md", "skills/lawstin-quiz/SKILL.md"].map(file => root + file).sort());
+  const read = file => execFileSync("unzip", ["-p", archive, root + file], { encoding: "utf8" });
+  const manifest = JSON.parse(read("plugin.json")), legacy = JSON.parse(read(".codex-plugin/plugin.json"));
+  assert.equal(manifest.name, "lawstin-course-context");
+  assert.equal(manifest.version, "2.0.0");
+  assert.equal(legacy.name, manifest.name);
+  assert.equal(legacy.version, manifest.version);
+  assert.deepEqual(legacy.interface, manifest.extensions["com.openai"].interface);
+  assert.equal(legacy.interface.defaultPrompt, "Read my course's latest shared handoff before we continue.");
+  const server = JSON.parse(read("mcp.json")).mcpServers["lawstin-courses"];
+  assert.equal(server.type, "streamable-http");
+  assert.equal(server.url, "https://vbqfmgsrxurdazujbbuk.supabase.co/functions/v1/course-cloud/mcp");
+  assert.deepEqual(server.extensions["com.openai"].auth.client, { mode: "dcr" });
+  assert.equal(server.command, undefined);
+  assert.match(read("skills/lawstin-quiz/SKILL.md"), /saved:true/);
+});
+
 test("packaged desktop plugin starts through its real launcher with a pinned Node runtime", async t => {
   execFileSync(process.execPath, [path.join(import.meta.dirname, "build-package.mjs")], { stdio: "pipe", timeout: 30_000 });
   const output = path.resolve(import.meta.dirname, "../../.context-build");

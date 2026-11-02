@@ -15,7 +15,9 @@
     "context:test": "npm --prefix tools/course-context test",
     "context:package": "npm --prefix tools/course-context run package",
     "context:setup": "npm run context:package && node '.context-build/LAWSTIN Course Setup/setup.cjs'",
-    "context:check": "node tools/course-context/cli.mjs doctor"
+    "context:check": "node tools/course-context/cli.mjs doctor",
+    "context:cloud-prepare": "node scripts/prepare-cloud-function.mjs",
+    "context:cloud-package": "node tools/course-context/build-cloud-package.mjs"
   },
   "dependencies": {
     "@radix-ui/react-slot": "^1.1.0",

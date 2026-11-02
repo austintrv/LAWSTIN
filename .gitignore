@@ -11,3 +11,5 @@ src/data/study-materials.json.tmp
 # Generated local MCP packages; never commit private course configuration/history
 .context-build/
 .course-context/
+supabase/functions/course-cloud/*.mjs
+.supabase/
