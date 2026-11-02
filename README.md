@@ -23,3 +23,5 @@ Pushing to `main` rebuilds and publishes the site through GitHub Actions.
 The library started with 45 checked materials from the October 26 classes. `content/fall-review-inventory.json` records the original review library for further source-checked backfill. Its entries are not published legal content.
 
 On Austin’s Mac, `npm run sync:desktop` refreshes the Desktop memory and skill copies. The command stops without writing when `Desktop/LAWSTIN` is not mounted.
+
+The five courses can share their existing Drive handoffs across Claude Code, Claude Desktop, Codex, and ChatGPT Desktop through the local [course-context tools](tools/course-context/README.md). See the [Mac setup guide](tools/course-context/MAC-SETUP.md). The tools keep separate private Git histories on the Mac; course memories are never committed to this public repository. Work is excluded.

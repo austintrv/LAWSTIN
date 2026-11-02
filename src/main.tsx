@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { lazy, Suspense, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
@@ -9,6 +9,7 @@ import { Toaster } from "./components/Toaster";
 import { SignIn } from "./components/SignIn";
 import { supabase } from "./helpers/supabase";
 import LawstinApp from "./pages/_index";
+const CloudConnections = lazy(() => import("./components/CloudConnections").then(module => ({ default: module.CloudConnections })));
 
 // Safari ignores user-scalable=no; block pinch zoom so the installed app behaves like a native one.
 // Double-tap zoom is already off through touch-action: manipulation in base.css.
@@ -41,6 +42,12 @@ class Boundary extends React.Component<{ children: React.ReactNode }, { failed: 
 
 function Root() {
   const [session, setSession] = useState<Session | null | undefined>(undefined);
+  const [connecting, setConnecting] = useState(() => window.location.hash === "#/connect" || new URLSearchParams(window.location.search).has("authorization_id"));
+  useEffect(() => {
+    const sync = () => setConnecting(window.location.hash === "#/connect" || new URLSearchParams(window.location.search).has("authorization_id"));
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => setSession(data.session));
@@ -52,6 +59,7 @@ function Root() {
   }, []);
 
   if (session === undefined) return null;
+  if (session && connecting) return <Suspense fallback={null}><CloudConnections /></Suspense>;
   return session ? <LawstinApp key={session.user.id} userId={session.user.id} email={session.user.email ?? null} /> : <SignIn />;
 }
 

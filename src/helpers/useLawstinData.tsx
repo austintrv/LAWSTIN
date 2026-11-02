@@ -45,7 +45,8 @@ export function useLawstinData() {
     initialData: () => readCache<StateType>("state"),
     initialDataUpdatedAt: 0,
     placeholderData: (prev) => prev,
-    refetchOnWindowFocus: true,
+    // Chat/voice quizzes can save answers while this app is in the background.
+    refetchOnWindowFocus: "always",
   });
   useEffect(() => { if (query.data) writeCache("state", query.data); }, [query.data]);
 

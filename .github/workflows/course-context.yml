@@ -1,0 +1,34 @@
+name: Course context tools
+
+on:
+  pull_request:
+    paths:
+      - 'tools/course-context/**'
+      - 'supabase/functions/course-cloud/**'
+      - 'supabase/migrations/*cloud*'
+      - 'scripts/prepare-cloud-function.mjs'
+      - '.github/workflows/course-context.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'tools/course-context/**'
+      - 'supabase/functions/course-cloud/**'
+      - 'supabase/migrations/*cloud*'
+      - 'scripts/prepare-cloud-function.mjs'
+      - '.github/workflows/course-context.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/course-context/package-lock.json
+      - run: npm ci --prefix tools/course-context
+      - run: npm run context:test

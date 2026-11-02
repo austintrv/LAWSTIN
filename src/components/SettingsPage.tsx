@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { clearCaches } from "../helpers/offlineCache";
-import { Bell, ChevronLeft, Download, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Download, Link2, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
 import { Switch } from "./Switch";
 import { Spinner } from "./Spinner";
 import { useLawstinSettings } from "../helpers/useLawstinSettings";
@@ -154,6 +154,11 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
           <section className={styles.group}>
             <h2>Study</h2>
             <div className={styles.card}>
+              <button className={styles.row} style={{ width: "100%", textAlign: "left" }} onClick={() => { window.location.hash = "/connect"; }}>
+                <Icon color="var(--course-il)"><Link2 size={16} /></Icon>
+                <span className={styles.label}>Connected apps</span>
+                <ChevronRight size={18} />
+              </button>
               <div className={styles.row}>
                 <Icon color="var(--uh-red)"><Target size={16} /></Icon>
                 <span className={styles.label}>Daily goal</span>
