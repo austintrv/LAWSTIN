@@ -115,7 +115,8 @@ export function createCloudHandler({ supabaseUrl, publicUrl, setupUrl, authentic
       if (path !== "/mcp") return json(request, { error: "Not found." }, 404);
       if (request.method !== "POST") return json(request, { error: "Use MCP Streamable HTTP POST." }, 405, { Allow: "POST" });
       const body = await limitedJson(request);
-      if (body?.method === "server/discover") return json(request, { jsonrpc: "2.0", id: body.id, result: { supportedVersions: ["2026-07-28", "2025-11-25"], capabilities: { tools: {} } } });
+      // Let the SDK negotiate the revisions it actually implements. A fabricated
+      // modern discovery response prevents clients from falling back to initialize.
       const server = new McpServer({ name: "lawstin-cloud", version: "2.0.0" }, { instructions: "LAWSTIN's cloud connector serves five existing Drive course handoffs and saved multiple-choice quizzes. Work is excluded. For a quiz, present one returned question, wait for a clear answer, then save it and use the returned explanation. Never invent questions, assume an unheard answer, expose an answer key before submission, or claim progress saved without saved:true. Skips/repeats do not count. Direct Drive setup may be pending independently of quizzes. Private cloud history and Mac Git history are separate." });
       registerCloudTools(server, { client, context, connectionStatus });
       const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 200000, keepAliveMs: 0 });

@@ -147,6 +147,17 @@ test("real HTTP MCP client discovers cloud tools and sends quiz answers to the e
   const client = new Client({ name: "cloud-test", version: "1.0.0" });
   t.after(() => client.close());
   const transport = new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.address().port}/functions/v1/course-cloud/mcp`), { requestInit: { headers: { Authorization: "Bearer owner-fixture" } } });
+  // Modern clients probe before using the legacy initialize handshake. The SDK
+  // implements 2025 revisions, so the probe must fail with a legacy error rather
+  // than falsely advertise modern support and strand the client in modern mode.
+  const probe = await fetch(`http://127.0.0.1:${server.address().port}/functions/v1/course-cloud/mcp`, {
+    method: "POST", headers: { Authorization: "Bearer owner-fixture", "Content-Type": "application/json", Accept: "application/json, text/event-stream", "MCP-Protocol-Version": "2026-07-28" },
+    body: JSON.stringify({ jsonrpc: "2.0", id: "modern-probe", method: "server/discover", params: {} }),
+  });
+  assert.equal(probe.status, 400);
+  const rejected = await probe.json();
+  assert.equal(rejected.error.code, -32000);
+  assert.equal(rejected.result, undefined);
   await client.connect(transport);
   const tools = (await client.listTools()).tools;
   assert.equal(tools.length, 12);
