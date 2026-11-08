@@ -255,6 +255,9 @@ PY
 3. Run the contents of `write.sql` with one `mcp__Supabase__execute_sql` call. If the SQL is over about 150,000 characters, split the questions into two files and two calls, with the runs insert last.
 4. Confirm with one query: `SELECT count(*) FROM questions WHERE batch = '<today>'` and the run row for today.
 
+### Step 6b — Voice questions
+After the multiple-choice questions are written, follow `skills/lawstin-voice-questions/SKILL.md` to add the run’s voice questions from the same passages (default 3, one per course). A failure there never blocks or undoes the multiple-choice update.
+
 ### Step 7 — Finish
 Reply with two or three lines: how many questions were added per course, which topics, and the check result (passed / fixed / dropped). If a step failed (Drive or Supabase unreachable, write refused), say what failed in one line and leave the run row unwritten so the app does not claim an update that did not happen.
 

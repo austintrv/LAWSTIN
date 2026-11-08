@@ -160,7 +160,7 @@ test("real HTTP MCP client discovers cloud tools and sends quiz answers to the e
   assert.equal(rejected.result, undefined);
   await client.connect(transport);
   const tools = (await client.listTools()).tools;
-  assert.equal(tools.length, 12);
+  assert.equal(tools.length, 17);
   const answer = tools.find(tool => tool.name === "answer_lawstin_question");
   assert.equal(answer.annotations.idempotentHint, true);
   await client.callTool({ name: "start_lawstin_quiz", arguments: { request_key: "voice-fixture", course: "il", mode: "due" } });
@@ -171,5 +171,42 @@ test("real HTTP MCP client discovers cloud tools and sends quiz answers to the e
   ]);
   const bad = await client.callTool({ name: "answer_lawstin_question", arguments: { attempt_id: OWNER, choice: "Maybe B" } });
   assert.equal(bad.isError, true); assert.equal(f.calls.length, 2);
+  await client.close();
+});
+
+test("voice quiz tools send short-answer verdicts and topic lookups to their own database functions", async t => {
+  const f = fixtureHandler();
+  const server = http.createServer(async (req, res) => {
+    try {
+      const chunks = []; for await (const chunk of req) chunks.push(chunk);
+      const request = new Request(`http://127.0.0.1:${server.address().port}${req.url}`, { method: req.method, headers: req.headers, ...(["GET", "HEAD"].includes(req.method) ? {} : { body: Buffer.concat(chunks) }) });
+      const response = await f.handler(request);
+      res.writeHead(response.status, Object.fromEntries(response.headers)); res.end(Buffer.from(await response.arrayBuffer()));
+    } catch (error) { res.writeHead(500); res.end(error.message); }
+  });
+  await new Promise(resolve => server.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const client = new Client({ name: "voice-test", version: "1.0.0" });
+  t.after(() => client.close());
+  await client.connect(new StreamableHTTPClientTransport(new URL(`http://127.0.0.1:${server.address().port}/functions/v1/course-cloud/mcp`), { requestInit: { headers: { Authorization: "Bearer owner-fixture" } } }));
+  const tools = (await client.listTools()).tools;
+  for (const name of ["start_lawstin_voice_quiz", "next_lawstin_voice_question", "grade_lawstin_voice_answer", "end_lawstin_voice_quiz", "get_lawstin_topic_notes"]) assert.ok(tools.some(tool => tool.name === name), name);
+  assert.equal(tools.find(tool => tool.name === "get_lawstin_topic_notes").annotations.readOnlyHint, true);
+  await client.callTool({ name: "start_lawstin_voice_quiz", arguments: { request_key: "spoken-1", course: "asy", topic: "social group" } });
+  await client.callTool({ name: "next_lawstin_voice_question", arguments: { session_id: OWNER, skip_attempt_id: OWNER } });
+  await client.callTool({ name: "grade_lawstin_voice_answer", arguments: { attempt_id: OWNER, verdict: "partial", heard: "Said no, not visibility, but no case." } });
+  await client.callTool({ name: "end_lawstin_voice_quiz", arguments: { session_id: OWNER } });
+  await client.callTool({ name: "get_lawstin_topic_notes", arguments: { course: "asy", topic: "M-E-V-G-" } });
+  assert.deepEqual(f.calls, [
+    { name: "start_voice_quiz", args: { p_request_key: "spoken-1", p_course: "asy", p_mode: "mixed", p_topic: "social group" } },
+    { name: "next_voice_quiz_question", args: { p_session_id: OWNER, p_skip_attempt_id: OWNER } },
+    { name: "answer_voice_quiz", args: { p_attempt_id: OWNER, p_verdict: "partial", p_heard: "Said no, not visibility, but no case.", p_guessed: false } },
+    { name: "end_voice_quiz", args: { p_session_id: OWNER } },
+    { name: "voice_topic_notes", args: { p_course: "asy", p_topic: "M-E-V-G-" } },
+  ]);
+  const bad = await client.callTool({ name: "grade_lawstin_voice_answer", arguments: { attempt_id: OWNER, verdict: "mostly right" } });
+  assert.equal(bad.isError, true); assert.equal(f.calls.length, 5);
+  const work = await client.callTool({ name: "get_lawstin_topic_notes", arguments: { course: "clinic", topic: "Benson" } });
+  assert.equal(work.isError, true); assert.equal(f.calls.length, 5);
   await client.close();
 });

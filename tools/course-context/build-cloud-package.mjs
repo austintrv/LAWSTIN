@@ -11,12 +11,12 @@ await fs.mkdir(path.join(plugin, ".codex-plugin"), { recursive: true });
 const description = "Quiz from LAWSTIN, save study progress, and share five courses' existing Drive handoffs through a cloud connection.";
 const presentation = {
   displayName: "LAWSTIN Course Context", shortDescription: "Course handoffs and quizzes",
-  longDescription: "Ask LAWSTIN's saved questions in chat or Work voice and record answers in the usual progress and review schedule. Read and update the five existing Drive course handoffs with private cloud version history. Cloud sign-in and the optional Google handoff bridge need one-time setup. Work projects and course source documents are excluded.",
+  longDescription: "Ask LAWSTIN's saved questions in chat, or short open-ended voice questions in voice mode, and record answers in the usual progress and review schedule. Read and update the five existing Drive course handoffs with private cloud version history. Cloud sign-in and the optional Google handoff bridge need one-time setup. Work projects and course source documents are excluded.",
   developerName: "Austin", category: "Productivity", capabilities: [],
   defaultPrompt: "Read my course's latest shared handoff before we continue.",
 };
 const author = { name: "Austin", email: "trevinoaustin10@gmail.com" };
-const identity = { name: "lawstin-course-context", version: "2.0.0", description, author };
+const identity = { name: "lawstin-course-context", version: "2.1.0", description, author };
 if (presentation.shortDescription.length > 30) throw new Error("Plugin subtitle exceeds 30 characters.");
 const json = (file, value) => fs.writeFile(path.join(plugin, file), JSON.stringify(value, null, 2) + "\n");
 await json("plugin.json", {

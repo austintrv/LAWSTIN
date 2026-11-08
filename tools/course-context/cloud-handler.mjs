@@ -19,7 +19,7 @@ const toolResult = action => async args => {
 export function registerCloudTools(server, { client, context, connectionStatus }) {
   const rpc = async (name, args) => dbResult(client.rpc(name, args));
   server.registerTool("get_lawstin_connection_status", { description: "Check whether the saved-question quiz and the five-course Drive connection are ready. Work projects are excluded.", inputSchema: {}, annotations: readonly }, toolResult(connectionStatus));
-  server.registerTool("list_courses", { description: "List the five school courses. Saved multiple-choice quizzes cover International Law, Asylum Law, and Professional Responsibility.", inputSchema: {}, annotations: readonly }, toolResult(() => context.list()));
+  server.registerTool("list_courses", { description: "List the five school courses. Saved multiple-choice and voice quizzes cover International Law, Asylum Law, and Professional Responsibility.", inputSchema: {}, annotations: readonly }, toolResult(() => context.list()));
   server.registerTool("read_course_context", { description: "Read this course's actual shared Drive Markdown files and record private cloud version history. Returns the revision needed to save a handoff. If Drive setup is pending, report it; do not invent context.", inputSchema: { course }, annotations: readonly }, toolResult(args => context.read(args.course)));
   server.registerTool("write_course_handoff", { description: "Replace only Current work in the existing Drive AI-MEMORY.md. Read first; use its revision and merge newer work if a stale edit is refused. Include relevant goal, completed work, next steps, blockers, and verification.", inputSchema: { course, expected_revision: revision, current_work: z.string().trim().min(1).max(16000), actor }, annotations: write }, toolResult(args => context.writeHandoff(args.course, args.expected_revision, args.current_work, args.actor)));
   server.registerTool("record_course_fact", { description: "Add one durable current fact to this course's existing memory Log, dated in America/Chicago. Read first and provide the revision. Keep private facts within their authorized course context.", inputSchema: { course, expected_revision: revision, fact: z.string().trim().min(1).max(2000), actor }, annotations: write }, toolResult(args => context.recordFact(args.course, args.expected_revision, args.fact, args.actor)));
@@ -43,6 +43,29 @@ export function registerCloudTools(server, { client, context, connectionStatus }
     description: "End a quiz and return its saved score. Any unanswered question is left uncounted. Use when the user asks to stop; saved answers already remain in LAWSTIN.",
     inputSchema: { session_id: z.string().uuid() }, annotations: { ...write, idempotentHint: true },
   }, toolResult(args => rpc("end_chat_quiz", { p_session_id: args.session_id })));
+
+  // Voice questions: short open-ended prompts with a stored answer key. The assistant
+  // judges the spoken answer against the key; LAWSTIN records the verdict.
+  server.registerTool("start_lawstin_voice_quiz", {
+    description: "Start a spoken quiz from LAWSTIN's short-answer voice questions (no answer choices). Use this instead of start_lawstin_quiz in voice mode or whenever Austin asks for short, spoken, or open-ended questions. Create a unique request_key and reuse it on retries. Optional topic narrows to a topic, doctrine, or case name. Returns the first question plus answer_key_private: ask only question.prompt aloud, keep the key to yourself until he answers.",
+    inputSchema: { request_key: z.string().min(1).max(120), course: studyCourse.optional(), topic: z.string().trim().min(1).max(120).optional(), mode: z.enum(["mixed", "due", "new"]).default("mixed") }, annotations: { ...write, idempotentHint: true },
+  }, toolResult(args => rpc("start_voice_quiz", { p_request_key: args.request_key, p_course: args.course || null, p_mode: args.mode, p_topic: args.topic || null })));
+  server.registerTool("next_lawstin_voice_question", {
+    description: "Get the next voice question in this session, with its private answer key (model answer, key points, partial-credit line, likely mistakes, and a follow-up bank of rule, cases, and notes). Ask only the prompt; never read or hint at the key before Austin answers. An ungraded question is returned again; to skip it, pass its attempt ID as skip_attempt_id.",
+    inputSchema: { session_id: z.string().uuid(), skip_attempt_id: z.string().uuid().optional() }, annotations: { ...write, idempotentHint: true },
+  }, toolResult(args => rpc("next_voice_quiz_question", { p_session_id: args.session_id, p_skip_attempt_id: args.skip_attempt_id || null })));
+  server.registerTool("grade_lawstin_voice_answer", {
+    description: "Save your verdict on Austin's spoken answer to a voice question. Judge meaning, not wording: correct = every key point is there in substance; partial = some key points or the right conclusion without the reason; missed = wrong conclusion, a listed wrong turn, or no real answer. Repeats, clarifying questions, and silence are not answers. heard = a one-sentence summary of what he said. Set guessed only if he says he guessed. Only saved:true confirms recording; then tell him the verdict, give the model answer in a sentence or two, and answer any follow-up from the key's context.",
+    inputSchema: { attempt_id: z.string().uuid(), verdict: z.enum(["correct", "partial", "missed"]), heard: z.string().trim().max(1500).optional(), guessed: z.boolean().default(false) }, annotations: { ...write, idempotentHint: true },
+  }, toolResult(args => rpc("answer_voice_quiz", { p_attempt_id: args.attempt_id, p_verdict: args.verdict, p_heard: args.heard || null, p_guessed: args.guessed })));
+  server.registerTool("end_lawstin_voice_quiz", {
+    description: "End a voice quiz and return its saved totals (correct, partial, missed) and the topics to review. Use when Austin says to stop. An ungraded question is left uncounted.",
+    inputSchema: { session_id: z.string().uuid() }, annotations: { ...write, idempotentHint: true },
+  }, toolResult(args => rpc("end_voice_quiz", { p_session_id: args.session_id })));
+  server.registerTool("get_lawstin_topic_notes", {
+    description: "For a follow-up the current answer key does not cover: return LAWSTIN's verified study notes, saved-question rules, and voice answer keys for one topic, doctrine, or case name in a course. Reads LAWSTIN's database only (no Drive search). If nothing is returned, say so rather than guess.",
+    inputSchema: { course: studyCourse, topic: z.string().trim().min(1).max(120) }, annotations: readonly,
+  }, toolResult(args => rpc("voice_topic_notes", { p_course: args.course, p_topic: args.topic })));
 }
 
 export function createCloudHandler({ supabaseUrl, publicUrl, setupUrl, authenticate, adminClient, fetcher = fetch }) {
@@ -117,7 +140,7 @@ export function createCloudHandler({ supabaseUrl, publicUrl, setupUrl, authentic
       const body = await limitedJson(request);
       // Let the SDK negotiate the revisions it actually implements. A fabricated
       // modern discovery response prevents clients from falling back to initialize.
-      const server = new McpServer({ name: "lawstin-cloud", version: "2.0.0" }, { instructions: "LAWSTIN's cloud connector serves five existing Drive course handoffs and saved multiple-choice quizzes. Work is excluded. For a quiz, present one returned question, wait for a clear answer, then save it and use the returned explanation. Never invent questions, assume an unheard answer, expose an answer key before submission, or claim progress saved without saved:true. Skips/repeats do not count. Direct Drive setup may be pending independently of quizzes. Private cloud history and Mac Git history are separate." });
+      const server = new McpServer({ name: "lawstin-cloud", version: "2.1.0" }, { instructions: "LAWSTIN's cloud connector serves five existing Drive course handoffs, saved multiple-choice quizzes, and short-answer voice quizzes. Work is excluded. In voice mode, or when Austin asks for short or spoken questions, use the voice quiz tools: ask only the prompt, judge his spoken answer by meaning against the private answer key, save the verdict, give a brief model answer, and answer follow-ups from the key's context before reaching for get_lawstin_topic_notes. For a multiple-choice quiz, present one returned question, wait for a clear answer, then save it and use the returned explanation. Never invent questions, assume an unheard answer, reveal an answer key before he answers, or claim progress saved without saved:true. Skips/repeats do not count. Direct Drive setup may be pending independently of quizzes. Private cloud history and Mac Git history are separate." });
       registerCloudTools(server, { client, context, connectionStatus });
       const transport = new WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true, maxRequestBodySize: 200000, keepAliveMs: 0 });
       await server.connect(transport);

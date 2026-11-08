@@ -1,6 +1,6 @@
 ---
 name: lawstin-quiz
-description: Use when Austin asks ChatGPT or Claude to quiz him from LAWSTIN, including Work voice on his phone, and save answers to LAWSTIN progress.
+description: Use when Austin asks ChatGPT or Claude to quiz him from LAWSTIN, including in voice mode on his phone, and save answers to LAWSTIN progress. Voice mode uses short open-ended questions; text chat can use the saved multiple-choice questions.
 ---
 
 # LAWSTIN quizzes
@@ -20,3 +20,21 @@ On a skip, call next_lawstin_question with skip_attempt_id set to the current pe
 After grading, give a brief explanation and continue at the user's pace. On stop, call end_lawstin_quiz and give its actual saved totals. Ending does not submit a pending answer. If the session expires, report it and start a new session when the user wants to continue.
 
 If tools are unavailable or sign-in is pending, use get_lawstin_connection_status if available and direct the user to LAWSTIN → Settings → Connected apps. Do not claim answers were saved or silently switch to an untracked quiz. Work voice availability must be checked in the user's actual mobile account after connecting.
+
+## Voice quizzes (short answers, no choices)
+
+Use the voice tools whenever the conversation is spoken (Claude or ChatGPT voice mode) or Austin asks for short, spoken, rapid-fire, or open-ended questions. The multiple-choice questions are long to hear read aloud; do not read lettered choices in voice.
+
+Call start_lawstin_voice_quiz with a new request_key, the course if he named one, and a topic if he named a topic, doctrine, or case. Each question arrives with answer_key_private. Say only question.prompt, in a natural voice. Keep the key private: no hints, no reading the model answer, before he answers.
+
+Judge the answer by meaning, not wording, against key_points:
+- correct: every key point is there in substance, even in his own phrasing or a different order.
+- partial: the right conclusion without the reason, or some key points missing (partial_credit describes the line).
+- missed: the wrong conclusion, one of the listed wrong_turns, or no real answer.
+If his answer is cut off or unclear, ask him to finish before grading. A repeat request, a clarifying question, or silence is not an answer.
+
+Call grade_lawstin_voice_answer with the attempt_id, your verdict, a one-sentence summary of what he said as heard, and guessed only if he says he guessed. Confirm the verdict only after saved:true. Then reply in one to three spoken sentences: the verdict, what he got right, and the missing piece or correction from the key. Do not reread the whole key.
+
+Follow-ups: answer from the key's context (rule, cases, notes) first; it was built from his class notes. If the follow-up goes beyond it, call get_lawstin_topic_notes for that course and topic or case name. Search the Drive course context only if both come up empty, and say when an answer is not in his materials instead of filling the gap from general knowledge. When he is ready, call next_lawstin_voice_question.
+
+On a skip, pass the pending attempt_id as skip_attempt_id. On stop, call end_lawstin_voice_quiz and give its totals and the topics to review in a sentence. Voice answers count toward his streak and daily goal and come back on their own review schedule.
