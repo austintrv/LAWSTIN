@@ -207,3 +207,16 @@ details[open] > .factHead .factToggle svg { transform: rotate(90deg); }
   .ring { width: 240px; height: 240px; }
   .resTitle { font-size: 44px; }
 }
+
+/* Recall cards and answer-first practice */
+.cardFront { display: flex; flex-direction: column; gap: 10px; padding: 8px 0; }
+.cardFront h2 { margin: 0; font-family: var(--font-family-reading); font-size: calc(26px * var(--reading-scale, 1)); font-weight: 600; line-height: 1.28; letter-spacing: -0.01em; }
+.recall { min-height: 132px; font-size: calc(16px * var(--reading-scale, 1)); line-height: 1.5; border-radius: var(--radius); }
+.fb { display: flex; gap: 10px; align-items: flex-start; }
+.fb .mark { margin-top: 2px; }
+.vMid { background: var(--warning); box-shadow: 0 6px 16px -6px var(--warning); }
+.countLow { color: var(--error); }
+@media (min-width: 1000px) {
+  .cardFront h2 { font-size: calc(32px * var(--reading-scale, 1)); }
+  .recall { min-height: 220px; }
+}

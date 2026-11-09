@@ -25,16 +25,23 @@ import { afterOverlayClose, useBackClose } from "../helpers/useBackClose";
 import { useSwipeDown } from "../helpers/useSwipeDown";
 import { isNetworkError } from "../helpers/offlineCache";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
-import { MATERIAL_LABELS, SCHOOL_COURSES, type MaterialKind, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
+import { MATERIAL_LABELS, SCHOOL_COURSES, reviewCard, type Flashcard, type Hypothetical, type MaterialKind, type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
-import { useReadyCards } from "../helpers/useStudyMaterials";
+import { useStudyMaterials } from "../helpers/useStudyMaterials";
+import { useSyllabus } from "../helpers/useSyllabus";
+import { useWritten } from "../helpers/useWritten";
+import { useLogStudy } from "../helpers/useLogStudy";
+import { finalsPlan, mixRound, readyCards, type PlanCourse } from "../helpers/studySession";
+import { readPrefs } from "../helpers/prefs";
 import { dueLabel } from "../components/TaskList";
-import { COURSES, COURSE_KEYS, DAILY_GOAL, FINALS, studyEngine, makeGreeting, type Filter, type RoundItem, type CourseCode } from "../helpers/studyEngine";
+import { COURSES, COURSE_KEYS, DAILY_GOAL, EXAMS, EXAM_PACE, FINALS, STATUS_LABEL, studyEngine, makeGreeting, type CoverageStatus, type Filter, type RoundItem, type CourseCode, type SessionCard, type Syllabus } from "../helpers/studyEngine";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import styles from "./_index.module.css";
 
 type Tab = "progress" | "study" | "activity" | "courses";
-type Source = (eng: ReturnType<typeof studyEngine>) => RoundItem[];
+/** Builds a session's items. `exclude` holds what the running session already has (questions are also removed from the engine). */
+type Source = (eng: ReturnType<typeof studyEngine>, exclude: Set<string>) => RoundItem[];
+const NONE = new Set<string>();
 const TABS = ["study", "courses", "progress", "activity"] as const;
 const tabFromHash = (): Tab => {
   const t = window.location.hash.split("/")[1];
@@ -52,16 +59,29 @@ const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
 
 export default function LawstinApp({ userId, email }: { userId: string; email: string | null }) {
   const { query, answer, queueAnswer, mark } = useLawstinData();
-  const { harder } = useLawstinAi();
+  const { harder, explain } = useLawstinAi();
   const settings = useLawstinSettings();
-  const goal = settings.query.data?.settings.dailyGoal ?? DAILY_GOAL;
   const state = query.data;
-  const e = useMemo(() => studyEngine(state), [state]);
-  const readyCards = useReadyCards(userId, state);
+  // One study-progress store for the whole app: sessions here and the Courses tab share it.
+  const store = useStudyMaterials(userId);
+  const written = useWritten();
+  const syllabus = useSyllabus();
+  const log = useLogStudy();
+  const e = useMemo(() => studyEngine(state, undefined, { weakExtra: written.weak }), [state, written.weak]);
+  const flashcards = useMemo(() => store.materials.filter((m): m is Flashcard => m.kind === "flashcard"), [store.materials]);
+  const hypos = useMemo(() => store.materials.filter((m): m is Hypothetical => m.kind === "hypothetical"), [store.materials]);
+  const cardsFor = (f: Filter) => readyCards(flashcards, e.ruleCards(f), store.record, state, f);
+  const plan = useMemo(() => finalsPlan(e, {
+    cards: Object.fromEntries(COURSE_KEYS.map((k) => { const c = readyCards(flashcards, e.ruleCards(k), store.record, state, k); return [k, { due: c.due.length, fresh: c.fresh.length }]; })) as Record<CourseCode, { due: number; fresh: number }>,
+    lastEssay: written.lastEssay, fallbackGoal: settings.query.data?.settings.dailyGoal ?? DAILY_GOAL,
+  }), [e, flashcards, store.record, state, written.lastEssay, settings.query.data]);
+  const [prefs, setPrefs] = useState(readPrefs);
+  const planOn = prefs.plan && plan.active;
+  const goal = planOn ? plan.goal : settings.query.data?.settings.dailyGoal ?? DAILY_GOAL;
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>("all");
-  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot } | null>(null);
+  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot; seconds?: number } | null>(null);
   // The last practice session closed partway, so starting the same one again within a few hours resumes it.
   const lastPractice = useRef<{ key: string; snap: QuizSnapshot; at: number } | null>(null);
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
@@ -71,7 +91,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   useEffect(() => {
     const sync = () => {
       const on = window.location.hash === "#/settings";
-      if (!on) settingsFromApp.current = false;
+      if (!on) { settingsFromApp.current = false; setPrefs(readPrefs()); }
       setSettingsOpen(on);
     };
     window.addEventListener("hashchange", sync);
@@ -84,7 +104,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     if (settingsFromApp.current) { settingsFromApp.current = false; history.back(); }
     else window.location.hash = `/${tab}`;
   };
-  const [writing, setWriting] = useState(false);
+  const [writing, setWriting] = useState<{ course?: CourseCode; full?: boolean; hypo?: Hypothetical } | null>(null);
   const [lesson, setLesson] = useState<LessonTopic[] | null>(null);
   // A study tool opened from the lesson: the lesson stays where it was, hidden, until Back returns to it.
   const [lessonAway, setLessonAway] = useState(false);
@@ -193,11 +213,30 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   // Sources take an engine so a running session can ask for more while skipping what it already holds.
   const latest = useRef(state);
   latest.current = state;
-  const engineFor = (exclude?: Set<string>) => {
+  const engineFor = (exclude: Set<string> = NONE) => {
     const s = latest.current;
-    return studyEngine(s && exclude ? { ...s, questions: s.questions.filter((q) => !exclude.has(q.id)) } : s);
+    return studyEngine(s && exclude.size ? { ...s, questions: s.questions.filter((q) => !exclude.has(q.id)) } : s, undefined, { weakExtra: written.weak });
   };
-  const start = (source: Source, mode: QuizMode = "practice", resumeKey?: string) => {
+  // The everyday session: questions with recall cards mixed in, read from the latest card progress.
+  const cardState = useRef({ flashcards, record: store.record });
+  cardState.current = { flashcards, record: store.record };
+  const mixed = (f: Filter): Source => (eng, exclude) => {
+    const { flashcards: fc, record } = cardState.current;
+    const cards = readyCards(fc, eng.ruleCards(f), record, latest.current, f).list.filter((c) => !exclude.has(c.id));
+    return mixRound(eng.buildRound(f), cards, record);
+  };
+  const onCard = (card: SessionCard, correct: boolean) => {
+    store.update((prev) => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
+    log("card", card.id, correct);
+  };
+  const onExplain = async (card: SessionCard, answer: string) => {
+    try {
+      const r = await explain.mutateAsync({ course: card.course, topic: card.topic, prompt: card.rule ? `State the rule: ${card.front}` : card.front,
+        reference: [card.back, card.reason, card.authority].filter(Boolean).join("\n"), answer });
+      return r.explain;
+    } catch { return null; }
+  };
+  const start = (source: Source, mode: QuizMode = "practice", resumeKey?: string, seconds?: number) => {
     const last = lastPractice.current;
     if (mode === "practice" && resumeKey && last?.key === resumeKey && Date.now() - last.at < 3 * 3600 * 1000) {
       haptic();
@@ -206,11 +245,11 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       setSession({ items: last.snap.items, mode, key: Date.now(), source, resumeKey, resume: last.snap });
       return;
     }
-    const items = source(engineFor());
+    const items = source(engineFor(), NONE);
     if (!items.length) { toast("Nothing to study here yet"); return; }
     haptic();
     setExamSheet(false); setTopicSheet(null);
-    setSession({ items, mode, key: Date.now(), source, resumeKey });
+    setSession({ items, mode, key: Date.now(), source, resumeKey, seconds });
   };
 
   // A question notification opens #/q/<id>: answer that question first, then keep going with the usual queue.
@@ -300,20 +339,21 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               )}
 
               {state && k === "study" && (
-                <StudyView e={e} state={state} goal={goal} readyCards={readyCards} filter={filter} setFilter={setFilter} celebrate={celebrate}
-                  onStart={() => start((eng) => eng.buildRound(filter), "practice", `round:${filter}`)}
-                  onCourse={(c) => start((eng) => eng.buildRound(c), "practice", `round:${c}`)}
+                <StudyView e={e} state={state} goal={goal} cards={cardsFor(filter)} plan={planOn ? plan.courses : []} filter={filter} setFilter={setFilter} celebrate={celebrate}
+                  onStart={() => start(mixed(filter), "practice", `round:${filter}`)}
+                  onCourse={(c) => start(mixed(c), "practice", `round:${c}`)}
+                  onEssay={(c) => { haptic(); setWriting({ course: c }); }}
                   onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed), "practice", `missed:${filter}`)}
                   onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred), "practice", `starred:${filter}`)}
                   onExam={() => { haptic(); setExamSheet(true); }}
-                  onWrite={() => { haptic(); setWriting(true); }}
+                  onWrite={() => { haptic(); setWriting({}); }}
                   onUpdate={(list, c) => start((eng) => {
                     const ids = new Set(eng.questions.map((q) => q.id));
                     const left = list.filter((q) => ids.has(q.id) && !eng.prog(q.id)?.seen);
                     return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
                   })} />
               )}
-              {state && k === "progress" && <ProgressView e={e} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
+              {state && k === "progress" && <ProgressView e={e} syllabus={syllabus} materials={store.materials} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
               {state && k === "activity" && (
                 <ActivityView e={e} state={state} onLesson={openLesson}
                   onStudy={(list, c) => start((eng) => {
@@ -322,7 +362,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                     return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
                   })} />
               )}
-              {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses userId={userId} state={state} lesson={lessonAway ? lessonReturn : undefined} onWrite={() => setWriting(true)} onQuiz={(course, topic) => start((eng) => topic ? eng.topicRound(course, topic) : eng.buildRound(course))} /></Suspense>}
+              {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses store={store} state={state} lesson={lessonAway ? lessonReturn : undefined} onWrite={(hypo) => setWriting(hypo ? { hypo } : {})} onQuiz={(course, topic) => start((eng) => topic ? eng.topicRound(course, topic) : eng.buildRound(course))} /></Suspense>}
             </div>
           </div>
         ))}
@@ -360,13 +400,18 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
       {examSheet && (
         <BottomSheet onClose={() => setExamSheet(false)} title="Practice exam">
-          <ExamPicker e={e} onStart={(f, n) => start((eng) => eng.examRound(f, n), "exam")} />
+          <ExamPicker e={e} onStart={(f, n, timed) => start((eng) => eng.examRound(f, n), "exam", undefined, timed ? n * EXAM_PACE : undefined)}
+            onEssay={(c) => { haptic(); setExamSheet(false); setWriting({ course: c, full: true }); }} />
         </BottomSheet>
       )}
 
       {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} /></Suspense>}
 
-      {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(false)} /></Suspense>}
+      {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(null)} course={writing.course} full={writing.full} hypo={writing.hypo}
+        hypos={hypos} weak={new Set(e.weakTopics().map((t) => `${t.course}|${t.topic}`))} written={written}
+        // An essay counts as five answers (ten at exam length), scored in proportion to its grade.
+        onGraded={(entry, len) => { const n = len === "full" ? 10 : 5; log("written", entry.id, entry.grade.score >= 7, n, Math.round((entry.grade.score / 10) * n)); }}
+        onTopic={(course, topic) => { setWriting(null); start((eng) => eng.topicRound(course, topic)); }} /></Suspense>}
 
       {lesson && <Suspense fallback={null}><MissedLesson topics={lesson} away={lessonAway} onAnswer={onAnswer} onClose={endLesson}
         onDrill={(qs) => { endLesson(); start((eng) => { const ids = new Set(eng.questions.map((q) => q.id)); return eng.listRound(qs.filter((q) => ids.has(q.id))); }); }}
@@ -379,12 +424,17 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           mode={session.mode}
           getProgress={(id) => e.prog(id)}
           onAnswer={onAnswer}
+          onCard={onCard}
+          onExplain={onExplain}
+          recallFirst={prefs.recall}
+          seconds={session.seconds}
+          after={session.mode === "practice" && planOn ? plan.courses.filter((c) => c.essay).map((c) => ({ label: `Write an ${COURSES[c.course].short} essay`, onGo: () => { setSession(null); setWriting({ course: c.course }); } })) : undefined}
           onHarder={session.mode === "practice" ? onHarder : undefined}
           onStar={(q, starred) => mark.mutate({ action: "star", questionId: q.id, starred })}
           onGuess={(q) => mark.mutate({ action: "guess", questionId: q.id, localDate: dateKey.today() })}
           onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
-          onMore={(exclude) => session.source(engineFor(exclude))}
-          onAnother={() => { const items = session.source(engineFor()); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now(), resume: undefined }); }}
+          onMore={(exclude) => session.source(engineFor(exclude), exclude)}
+          onAnother={() => { const items = session.source(engineFor(), NONE); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now(), resume: undefined }); }}
           onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: session.source })}
           resume={session.resume}
           onClose={(snap) => {
@@ -438,7 +488,7 @@ function MissedTopics({ topics, onLesson }: { topics: MissedTopic[]; onLesson: (
 }
 
 /** Days to each final, soonest first, with how much of that course's bank is seen and answered correctly. */
-function FinalsCard({ e, onCourse }: { e: Engine; onCourse: (c: CourseCode) => void }) {
+function FinalsCard({ e, plan, onCourse }: { e: Engine; plan: PlanCourse[]; onCourse: (c: CourseCode) => void }) {
   const today = dateKey.today();
   const list = COURSE_KEYS.map((k) => ({ k, date: FINALS[k], days: dayDiff(today, FINALS[k]) }))
     .filter((f) => f.days >= 0).sort((a, b) => a.days - b.days);
@@ -448,14 +498,14 @@ function FinalsCard({ e, onCourse }: { e: Engine; onCourse: (c: CourseCode) => v
       <div className={styles.secH}><h2>Finals</h2></div>
       <div className={styles.finalTiles}>
         {list.map(({ k, date, days }) => {
-          const c = COURSES[k], s = e.courseStats(k);
+          const c = COURSES[k], s = e.courseStats(k), today = plan.find((x) => x.course === k)?.target;
           return (
             <button key={k} className={`${styles.card} ${styles.finalTile}`} style={{ "--course-color": c.color } as React.CSSProperties} onClick={() => onCourse(k)}>
               <span className={styles.finalCourse}><i />{c.short}</span>
               <b>{days === 0 ? "Today" : days}</b>
               <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
               <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
-              <span className={styles.finalStats}>{pct(s.seen, s.n)}% seen{s.seen ? ` · ${s.acc}% correct` : ""}</span>
+              <span className={styles.finalStats}>{today ? `${today} today` : `${pct(s.seen, s.n)}% seen${s.seen ? ` · ${s.acc}% correct` : ""}`}</span>
             </button>
           );
         })}
@@ -551,9 +601,13 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, onStart, onCourse, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, onStart, onCourse, onEssay, onMissed, onStarred, onExam, onWrite, onUpdate }: {
   goal: number;
-  readyCards: number;
+  /** Recall cards ready now for the chosen filter. */
+  cards: ReturnType<typeof readyCards>;
+  /** Today's plan per course while finals are ahead; empty when the plan is off. */
+  plan: PlanCourse[];
+  onEssay: (c: CourseCode) => void;
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
   onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
@@ -563,8 +617,9 @@ function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, o
   const qs = e.queues(filter);
   const today = e.todayCount?.answered ?? 0;
   const week = e.lastNDays(7).reduce((a, d) => ({ a: a.a + d.answered, c: a.c + d.correct }), { a: 0, c: 0 });
-  const avail = qs.due.length + qs.fresh.length + qs.ahead.length;
-  const ready = qs.due.length + qs.fresh.length;
+  const avail = qs.due.length + qs.fresh.length + qs.ahead.length + cards.list.length;
+  const ready = qs.due.length + qs.fresh.length + cards.list.length;
+  const essays = plan.filter((c) => c.essay && (filter === "all" || filter === c.course));
   const roundLabel = !avail ? "All caught up" : !ready ? "Review ahead" : today > 0 ? "Keep going" : "Start studying";
   const run = state.runs[0];
   const goalPct = Math.min(1, today / goal);
@@ -581,13 +636,20 @@ function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, o
           ))}
         </div>
         <div className={styles.split}>
-          <div><b><Num v={qs.due.length} /></b><span>Reviews due</span></div>
-          <div><b><Num v={qs.fresh.length} /></b><span>New</span></div>
+          <div><b><Num v={qs.due.length + cards.due.length} /></b><span>Reviews due</span></div>
+          <div><b><Num v={qs.fresh.length + cards.fresh.length} /></b><span>New</span></div>
           <div><b><Num v={qs.missed.length} /></b><span>Missed</span></div>
         </div>
         <Button className={`${styles.big} ${styles.cta}`} disabled={!avail} onClick={onStart}>
           {roundLabel}
         </Button>
+        {essays.length > 0 && (
+          <div className={styles.essays}>
+            {essays.map((c) => (
+              <Button key={c.course} variant="secondary" className={styles.big} onClick={() => onEssay(c.course)}><PenLine size={16} />{COURSES[c.course].short} essay</Button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className={styles.tiles}>
@@ -620,7 +682,7 @@ function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, o
         </div>
       </div>
 
-      <FinalsCard e={e} onCourse={onCourse} />
+      <FinalsCard e={e} plan={plan} onCourse={onCourse} />
 
       {/* Two independent columns from tablet width up; on a phone the wrappers vanish and `order` keeps the list order. */}
       <div className={styles.studyCols}>
@@ -634,10 +696,10 @@ function StudyView({ e, state, goal, readyCards, filter, setFilter, celebrate, o
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
                     <ChevronRight size={18} className={styles.chev} />
                   </button>
-                  <button className={styles.row} onClick={() => { haptic(); window.location.hash = "/courses/review"; }} disabled={!readyCards}>
+                  <button className={styles.row} onClick={() => { haptic(); window.location.hash = "/courses/review"; }} disabled={!cards.list.length}>
                     <span className={styles.dot} style={{ background: "#5e5ce6" }}><Layers3 size={12} color="#fff" strokeWidth={2.4} /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Flashcards</span></span>
-                    <span className={styles.rowEnd}>{readyCards}</span>
+                    <span className={styles.rowEnd}>{cards.list.length}</span>
                     <ChevronRight size={18} className={styles.chev} />
                   </button>
                   <button className={styles.row} onClick={onWrite}>
@@ -733,10 +795,12 @@ function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
   );
 }
 
-function ProgressView({ e, onTopic }: { e: Engine; onTopic: (c: CourseCode, t: string) => void }) {
+const STATUS_COLOR: Record<CoverageStatus, string> = { none: "var(--faint-foreground)", unseen: "var(--muted-foreground)", shaky: "var(--error)", learning: "var(--warning)", solid: "var(--success)" };
+function ProgressView({ e, syllabus, materials, onTopic }: { e: Engine; syllabus: Syllabus; materials: StudyMaterial[]; onTopic: (c: CourseCode, t: string) => void }) {
   const m = e.missProfile();
   const misses = m.sneaky + m.average + m.bad;
-  const ts = e.topicStats();
+  const byTopic = new Map<string, number>();
+  for (const x of materials) byTopic.set(`${x.course}|${x.topic}`, (byTopic.get(`${x.course}|${x.topic}`) ?? 0) + 1);
   const roleRow = (label: string, n: number, color: string) => (
     <div className={styles.row}>
       <span className={styles.rowMain}>
@@ -763,30 +827,31 @@ function ProgressView({ e, onTopic }: { e: Engine; onTopic: (c: CourseCode, t: s
         </div>
       </section>
       {COURSE_KEYS.map((k) => {
-        const rows = ts.filter((t) => t.course === k).sort((a, b) => {
-          const aa = a.c + a.w ? a.c / (a.c + a.w) : 2, bb = b.c + b.w ? b.c / (b.c + b.w) : 2;
-          return aa - bb;
-        });
+        // The course as taught, in class order: what is covered, and how well each unit is known.
+        const rows = e.coverage(k, syllabus[k], byTopic);
         if (!rows.length) return null;
-        const s = e.courseStats(k), c = COURSES[k];
+        const c = COURSES[k];
+        const covered = rows.filter((r) => r.n > 0).length;
         return (
           <section key={k} className={styles.sec}>
-            <div className={styles.secH}><h2>{c.name}</h2><small>{s.seen ? `${s.acc}% correct` : "Not started"}</small></div>
+            <div className={styles.secH}><h2>{c.name}</h2><small>{covered} of {rows.length} covered</small></div>
             <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
               {rows.map((t) => {
-                const a = t.c + t.w, acc = pct(t.c, a);
-                const col = !a ? "var(--faint-foreground)" : acc >= 80 ? "var(--success)" : acc >= 60 ? c.color : "var(--error)";
-                return (
-                  <button key={t.topic} className={styles.row} onClick={() => onTopic(k, t.topic)}>
+                const a = t.c + t.w, acc = pct(t.c, a), col = STATUS_COLOR[t.status];
+                const body = (
+                  <>
                     <span className={styles.rowMain}>
                       <span className={`${styles.rowTitle} ${styles.wrap}`}>{t.topic}</span>
-                      <span className={styles.rowSub}>{t.seen} of {t.n} seen</span>
-                      <span className={styles.meter}><i style={{ width: `${a ? acc : 0}%`, background: col }} /></span>
+                      <span className={styles.rowSub}>{t.n ? `${t.seen} of ${t.n} seen${a ? ` · ${acc}%` : ""}` : t.materials ? `${t.materials} materials` : "No questions"}</span>
+                      <span className={styles.meter}><i style={{ width: `${t.n ? pct(t.seen, t.n) : 0}%`, background: col }} /></span>
                     </span>
-                    <span className={styles.rowEnd} style={{ color: col, fontWeight: 600 }}>{a ? `${acc}%` : "—"}</span>
-                    <ChevronRight size={18} className={styles.chev} />
-                  </button>
+                    <span className={`${styles.status} ${t.status === "none" ? styles.statusNone : ""}`} style={{ color: col, background: `color-mix(in srgb, ${col} 13%, transparent)` }}>{STATUS_LABEL[t.status]}</span>
+                    {t.n > 0 && <ChevronRight size={18} className={styles.chev} />}
+                  </>
                 );
+                return t.n > 0
+                  ? <button key={t.topic} className={styles.row} onClick={() => onTopic(k, t.topics[0])}>{body}</button>
+                  : <div key={t.topic} className={styles.row}>{body}</div>;
               })}
             </div>
           </section>
@@ -795,7 +860,6 @@ function ProgressView({ e, onTopic }: { e: Engine; onTopic: (c: CourseCode, t: s
     </>
   );
 }
-
 function ActivityView({ e, state, onStudy, onLesson }: { e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void; onLesson: (topics: MissedTopic[]) => void }) {
   const days = e.lastNDays(14);
   const max = Math.max(10, ...days.map((d) => d.answered));
@@ -977,9 +1041,12 @@ function StudyNote({ today, run, materials }: { today: string; run: StudyRun; ma
   );
 }
 
-function ExamPicker({ e, onStart }: { e: Engine; onStart: (f: Filter, n: number) => void }) {
+/** Pro Res is tested by timed multiple choice; the essay courses by a timed essay. */
+function ExamPicker({ e, onStart, onEssay }: { e: Engine; onStart: (f: Filter, n: number, timed: boolean) => void; onEssay: (c: CourseCode) => void }) {
   const [f, setF] = useState<Filter>("pr");
   const [n, setN] = useState(20);
+  const [timed, setTimed] = useState(true);
+  const essay = f !== "all" && EXAMS[f].format === "essay";
   const available = e.queues(f).total;
   // Only offer lengths the bank can fill; the last option is always "every question" for this course.
   const lengths = [10, 20, 30].filter((k) => k < available);
@@ -992,18 +1059,28 @@ function ExamPicker({ e, onStart }: { e: Engine; onStart: (f: Filter, n: number)
           <button key={k} aria-pressed={f === k} className={f === k ? styles.segOn : ""} onClick={() => { haptic(); setF(k); }}>{l}</button>
         ))}
       </div>
-      {lengths.length > 1 && (
-        <div className={styles.seg} role="group" aria-label="Exam length">
-          {lengths.map((k) => (
-            <button key={k} aria-pressed={size === k} className={size === k ? styles.segOn : ""} onClick={() => { haptic(); setN(k); }}>
-              {k === available ? `All ${k}` : k}
-            </button>
-          ))}
-        </div>
+      {essay ? (
+        <Button className={`${styles.big} ${styles.cta}`} onClick={() => onEssay(f as CourseCode)}>Start 45-minute essay</Button>
+      ) : (
+        <>
+          {lengths.length > 1 && (
+            <div className={styles.seg} role="group" aria-label="Exam length">
+              {lengths.map((k) => (
+                <button key={k} aria-pressed={size === k} className={size === k ? styles.segOn : ""} onClick={() => { haptic(); setN(k); }}>
+                  {k === available ? `All ${k}` : k}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className={styles.seg} role="group" aria-label="Timing">
+            <button aria-pressed={timed} className={timed ? styles.segOn : ""} onClick={() => { haptic(); setTimed(true); }}>{size ? `${Math.round((size * EXAM_PACE) / 60)} minutes` : "Timed"}</button>
+            <button aria-pressed={!timed} className={!timed ? styles.segOn : ""} onClick={() => { haptic(); setTimed(false); }}>Untimed</button>
+          </div>
+          <Button className={`${styles.big} ${styles.cta}`} disabled={!size} onClick={() => onStart(f, size, timed)}>
+            {size ? `Start ${size}-question exam` : "No questions yet"}
+          </Button>
+        </>
       )}
-      <Button className={`${styles.big} ${styles.cta}`} disabled={!size} onClick={() => onStart(f, size)}>
-        {size ? `Start ${size}-question exam` : "No questions yet"}
-      </Button>
     </div>
   );
 }

@@ -9,5 +9,6 @@ export function useLawstinAi() {
   const harder = useMutation({ mutationFn: (b: Omit<Of<"harder">, "action">) => postAi<"harder">({ action: "harder", ...b }) });
   const spotter = useMutation({ mutationFn: (b: Omit<Of<"spotter">, "action">) => postAi<"spotter">({ action: "spotter", ...b }) });
   const grade = useMutation({ mutationFn: (b: Omit<Of<"grade">, "action">) => postAi<"grade">({ action: "grade", ...b }) });
-  return { ask, harder, spotter, grade };
+  const explain = useMutation({ mutationFn: (b: Omit<Of<"explain">, "action">) => postAi<"explain">({ action: "explain", ...b }) });
+  return { ask, harder, spotter, grade, explain };
 }

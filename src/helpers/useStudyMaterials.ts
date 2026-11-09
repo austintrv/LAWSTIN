@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { cardQueue, type Flashcard, type StudyMaterial, type StudyRecord, type StudyRun } from "./studyMaterials";
-import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
+import type { StudyMaterial, StudyRecord, StudyRun } from "./studyMaterials";
 import { acknowledgeStudyRows, changeStudyRecord, emptyStudyCache, mergeStudyRows, restoreStudyCache, PROGRESS_PREFIX, type ProgressRow, type StudyCache } from "./studyProgressStore";
 import { supabase } from "./supabase";
 import { toast } from "./toast";
@@ -27,18 +26,6 @@ async function fetchProgressRows() {
     rows.push(...(data ?? [])); if ((data?.length ?? 0) < 500) break;
   }
   return rows;
-}
-
-/** Flashcards ready now, for the Study tab, read without taking over the Courses tab's sync. */
-export function useReadyCards(userId: string, state: QuestionState | undefined) {
-  const library = useStudyLibrary();
-  const remote = useQuery({ queryKey: ["lawstin-material-progress", userId], queryFn: fetchProgressRows, refetchOnWindowFocus: true });
-  return useMemo(() => {
-    const cards = (library.data?.materials ?? NONE).filter((m): m is Flashcard => m.kind === "flashcard");
-    if (!cards.length) return 0;
-    const record = mergeStudyRows(loadCache(`lawstin-study-materials-v1:${userId}`), remote.data ?? []).record;
-    return cardQueue(cards, record, state).length;
-  }, [library.data, remote.data, state, userId]);
 }
 
 export function useStudyMaterials(userId: string) {

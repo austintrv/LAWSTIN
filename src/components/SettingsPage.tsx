@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { clearCaches } from "../helpers/offlineCache";
-import { Bell, ChevronLeft, ChevronRight, Download, Link2, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
+import { Bell, CalendarCheck, PenLine, ChevronLeft, ChevronRight, Download, Link2, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
 import { Switch } from "./Switch";
 import { Spinner } from "./Spinner";
 import { useLawstinSettings } from "../helpers/useLawstinSettings";
@@ -11,6 +11,7 @@ import { readPrefs, writePrefs, type Appearance, type ReadingSize } from "../hel
 import { getState } from "../endpoints/state_GET.schema";
 import { supabase } from "../helpers/supabase";
 import { dateKey } from "../helpers/dateKey";
+import { COURSE_KEYS, FINALS } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
 import { toast } from "../helpers/toast";
 import styles from "./SettingsPage.module.css";
@@ -63,6 +64,8 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
   });
 
   const pref = (patch: Parameters<typeof writePrefs>[0]) => setPrefs(writePrefs(patch));
+  // While a final is ahead, the plan sets the daily goal; the stepper returns when it is off or finals are over.
+  const finalsAhead = COURSE_KEYS.some((k) => FINALS[k] >= dateKey.today());
   const togglePush = async (next: boolean) => {
     haptic();
     setPushBusy(true);
@@ -159,11 +162,25 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
                 <span className={styles.label}>Connected apps</span>
                 <ChevronRight size={18} />
               </button>
-              <div className={styles.row}>
-                <Icon color="var(--uh-red)"><Target size={16} /></Icon>
-                <span className={styles.label}>Daily goal</span>
-                <Stepper label="daily goal" value={goal} min={5} max={100} step={5} onChange={(v) => setNumber("daily_goal", v)} />
-              </div>
+              {finalsAhead && (
+                <label className={styles.row}>
+                  <Icon color="var(--uh-red)"><CalendarCheck size={16} /></Icon>
+                  <span className={styles.label}>Finals plan</span>
+                  <Switch checked={prefs.plan} onCheckedChange={(v) => pref({ plan: v })} aria-label="Finals plan" />
+                </label>
+              )}
+              {!(finalsAhead && prefs.plan) && (
+                <div className={styles.row}>
+                  <Icon color="var(--uh-red)"><Target size={16} /></Icon>
+                  <span className={styles.label}>Daily goal</span>
+                  <Stepper label="daily goal" value={goal} min={5} max={100} step={5} onChange={(v) => setNumber("daily_goal", v)} />
+                </div>
+              )}
+              <label className={styles.row}>
+                <Icon color="var(--course-asy)"><PenLine size={16} /></Icon>
+                <span className={styles.label}>Answer before choices</span>
+                <Switch checked={prefs.recall} onCheckedChange={(v) => pref({ recall: v })} aria-label="Answer before choices" />
+              </label>
               <div className={`${styles.row} ${styles.stack}`}>
                 <div className={styles.rowHead}><Icon color="#5e5ce6"><Type size={16} /></Icon><span className={styles.label}>Question text size</span></div>
                 <Segments<ReadingSize> label="Question text size" value={prefs.reading} onChange={(v) => pref({ reading: v })} options={[["s", "Small"], ["m", "Default"], ["l", "Large"], ["xl", "Larger"]]} />

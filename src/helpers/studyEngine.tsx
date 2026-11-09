@@ -3,7 +3,14 @@ import { dateKey } from "./dateKey";
 
 export type CourseCode = "il" | "asy" | "pr";
 export type Filter = "all" | CourseCode;
-export type RoundItem = { q: QuestionDTO; review: boolean };
+/** A recall card in a study session: a library flashcard, or a rule to state from memory. */
+export type SessionCard = { id: string; course: CourseCode; topic: string; front: string; back: string; reason: string; authority: string; rule?: boolean };
+export type QuestionItem = { q: QuestionDTO; review: boolean; card?: undefined };
+export type CardItem = { card: SessionCard; review: boolean; q?: undefined };
+export type RoundItem = QuestionItem | CardItem;
+export const itemId = (it: RoundItem) => (it.card ? it.card.id : it.q.id);
+export const itemCourse = (it: RoundItem): CourseCode => (it.card ? it.card.course : it.q.course);
+export const itemTopic = (it: RoundItem) => (it.card ? it.card.topic : it.q.topic);
 
 export const COURSES: Record<CourseCode, { name: string; short: string; color: string }> = {
   il: { name: "International Law", short: "Intl Law", color: "var(--course-il)" },
@@ -13,6 +20,30 @@ export const COURSES: Record<CourseCode, { name: string; short: string; color: s
 export const COURSE_KEYS: CourseCode[] = ["il", "asy", "pr"];
 /** Fall 2026 final exam dates, from Austin. */
 export const FINALS: Record<CourseCode, string> = { il: "2026-12-02", asy: "2026-12-07", pr: "2026-12-09" };
+/** How each final is given. Closed-book multiple choice rewards recall; open-note essays reward analysis. */
+export const EXAMS: Record<CourseCode, { format: "mc" | "essay"; notes: "closed" | "open" }> = {
+  il: { format: "essay", notes: "open" }, asy: { format: "essay", notes: "open" }, pr: { format: "mc", notes: "closed" },
+};
+/** Exam pace for timed multiple choice, in seconds per question. */
+export const EXAM_PACE = 120;
+/** A unit of a course as taught: the topic string questions use, the class dates, and older topic strings that belong to it. */
+export type SyllabusUnit = { topic: string; dates: string[]; also?: string[] };
+export type Syllabus = Partial<Record<CourseCode, SyllabusUnit[]>>;
+export type CoverageStatus = "none" | "unseen" | "shaky" | "learning" | "solid";
+export const STATUS_LABEL: Record<CoverageStatus, string> = { none: "Not covered", unseen: "New", shaky: "Shaky", learning: "Learning", solid: "Solid" };
+
+/**
+ * The review date that counts before a final: anything whose next review would land on or after
+ * the exam comes back in the last five days instead, unless it was already reviewed in that window.
+ */
+export function examDue(due: string | null | undefined, lastDay: string | null | undefined, final: string | undefined, today: string): string | null {
+  if (!due) return null;
+  if (!final || today > final || due < final) return due;
+  const open = dateKey.addDays(final, -5);
+  return lastDay && lastDay >= open ? due : open;
+}
+const dayOf = (iso: string | null | undefined) => (iso ? dateKey.today(new Date(iso)) : null);
+
 export const ROLE_LABEL: Record<string, string> = {
   correct: "Correct answer",
   sneaky: "Sneaky distractor",
@@ -38,14 +69,14 @@ function interleave<T>(lists: T[][]): T[] {
   return out;
 }
 
-function byCourse<T extends { q: QuestionDTO }>(items: T[]): T[][] {
+function byCourse<T extends RoundItem>(items: T[]): T[][] {
   const m: Record<string, T[]> = {};
-  for (const it of items) (m[it.q.course] ||= []).push(it);
+  for (const it of items) (m[itemCourse(it)] ||= []).push(it);
   return shuffle(Object.values(m));
 }
 
 /** Pure study logic over the loaded state. */
-export function studyEngine(state: State | undefined, todayKey?: string) {
+export function studyEngine(state: State | undefined, todayKey?: string, opts?: { weakExtra?: string[] }) {
   const questions = state?.questions ?? [];
   const pmap = new Map<string, ProgressDTO>((state?.progress ?? []).map((p) => [p.questionId, p]));
   const days = new Map((state?.days ?? []).map((d) => [d.date, d]));
@@ -62,7 +93,7 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
       if (p?.starred) starred.push(q);
       if (!p || !p.seen) { fresh.push(q); continue; }
       if (p.lastCorrect === false) missed.push(q);
-      if ((p.due ?? today) <= today) due.push(q); else ahead.push(q);
+      if ((examDue(p.due, dayOf(p.lastAt), FINALS[q.course], today) ?? today) <= today) due.push(q); else ahead.push(q);
     }
     const order = (a: QuestionDTO, b: QuestionDTO) => {
       const pa = prog(a.id)!, pb = prog(b.id)!;
@@ -85,8 +116,10 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
     return [...m.values()];
   }
 
+  /** Under 70% with at least two answers, or a recent essay on the topic that scored low. */
   function weakTopics() {
-    return topicStats().filter((t) => t.c + t.w >= 2 && t.c / (t.c + t.w) < 0.7);
+    const extra = new Set(opts?.weakExtra ?? []);
+    return topicStats().filter((t) => (t.c + t.w >= 2 && t.c / (t.c + t.w) < 0.7) || extra.has(`${t.course}|${t.topic}`));
   }
 
   /**
@@ -134,30 +167,73 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
     return interleave(lists).slice(0, n);
   }
 
-  function buildRound(f: Filter): RoundItem[] {
+  function buildRound(f: Filter): QuestionItem[] {
     const { due, fresh, ahead } = queues(f);
     let rev = due.slice(0, Math.ceil(ROUND_SIZE / 2));
     const nw = pickFresh(fresh, ROUND_SIZE - rev.length);
     if (rev.length + nw.length < ROUND_SIZE) rev = due.slice(0, ROUND_SIZE - nw.length);
-    const items: RoundItem[] = [...rev.map((q) => ({ q, review: true })), ...nw.map((q) => ({ q, review: false }))];
+    const items: QuestionItem[] = [...rev.map((q) => ({ q, review: true })), ...nw.map((q) => ({ q, review: false }))];
     if (items.length < ROUND_SIZE) items.push(...ahead.slice(0, ROUND_SIZE - items.length).map((q) => ({ q, review: true })));
     return interleave(byCourse(items));
   }
 
-  function listRound(list: QuestionDTO[]): RoundItem[] {
+  function listRound(list: QuestionDTO[]): QuestionItem[] {
     return interleave(byCourse(shuffle(list).slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) }))));
   }
 
-  function topicRound(course: CourseCode, topic: string): RoundItem[] {
+  function topicRound(course: CourseCode, topic: string): QuestionItem[] {
     const list = questions.filter((q) => q.course === course && q.topic === topic);
     const unseen = list.filter((q) => !seen(q.id));
     const rest = list.filter((q) => seen(q.id)).sort((a, b) => (prog(a.id)!.lastCorrect ? 1 : 0) - (prog(b.id)!.lastCorrect ? 1 : 0));
     return [...shuffle(unseen), ...rest].slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) }));
   }
 
-  function examRound(f: Filter, size: number): RoundItem[] {
-    const list = shuffle(questions.filter((q) => inFilter(q, f))).slice(0, size);
-    return interleave(byCourse(list.map((q) => ({ q, review: seen(q.id) }))));
+  /** Unseen questions first, then the ones answered longest ago, so an exam is not a memory test of recent answers. */
+  function examRound(f: Filter, size: number): QuestionItem[] {
+    const rank = (q: QuestionDTO) => (seen(q.id) ? 1 : 0);
+    const pool = shuffle(questions.filter((q) => inFilter(q, f)))
+      .sort((a, b) => rank(a) - rank(b) || (prog(a.id)?.lastAt ?? "").localeCompare(prog(b.id)?.lastAt ?? ""));
+    return interleave(byCourse(shuffle(pool.slice(0, size)).map((q) => ({ q, review: seen(q.id) }))));
+  }
+
+  /**
+   * Rules to state from memory, one per doctrine, for closed-book courses. Only rules from questions
+   * already answered, so a card never gives away a question that is still new.
+   */
+  function ruleCards(f: Filter = "all"): SessionCard[] {
+    const done = new Set<string>();
+    const out: SessionCard[] = [];
+    for (const q of questions) {
+      if (!inFilter(q, f) || EXAMS[q.course].notes !== "closed" || !q.rule || !seen(q.id)) continue;
+      const key = `${q.course}|${q.subtopic ?? q.rule}`;
+      if (done.has(key)) continue;
+      done.add(key);
+      out.push({ id: `rule:${q.id}`, course: q.course, topic: q.topic, front: q.subtopic ?? q.topic, back: q.rule, reason: "", authority: q.authority ?? "", rule: true });
+    }
+    return out;
+  }
+
+  /**
+   * The course as taught, unit by unit, against what the bank holds. Units whose first class has
+   * not happened are left out; question topics outside the syllabus get their own rows.
+   */
+  function coverage(course: CourseCode, units: SyllabusUnit[] | undefined, materials?: Map<string, number>) {
+    const weak = new Set(weakTopics().filter((t) => t.course === course).map((t) => t.topic));
+    const stats = topicStats().filter((t) => t.course === course);
+    const used = new Set<string>();
+    const row = (topic: string, names: string[], dates: string[]) => {
+      const mine = stats.filter((t) => names.includes(t.topic));
+      mine.forEach((t) => used.add(t.topic));
+      const n = mine.reduce((a, t) => a + t.n, 0), sn = mine.reduce((a, t) => a + t.seen, 0);
+      const c = mine.reduce((a, t) => a + t.c, 0), w = mine.reduce((a, t) => a + t.w, 0);
+      const m = names.reduce((a, t) => a + (materials?.get(`${course}|${t}`) ?? 0), 0);
+      const acc = c + w ? c / (c + w) : 0;
+      const status: CoverageStatus = !n ? "none" : !sn ? "unseen" : names.some((t) => weak.has(t)) ? "shaky" : sn < n || acc < 0.85 ? "learning" : "solid";
+      return { topic, topics: mine.map((t) => t.topic), dates, n, seen: sn, c, w, materials: m, status };
+    };
+    const rows = (units ?? []).filter((u) => u.dates[0] && u.dates[0] <= today).map((u) => row(u.topic, [u.topic, ...(u.also ?? [])], u.dates));
+    for (const t of stats) if (!used.has(t.topic)) rows.push(row(t.topic, [t.topic], []));
+    return rows;
   }
 
   function streak() {
@@ -200,7 +276,7 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
     return out;
   }
 
-  return { questions, prog, today, queues, topicStats, weakTopics, missedTopics, courseStats, buildRound, listRound, topicRound, examRound, streak, lastNDays, missProfile, topicRules, todayCount: days.get(today) };
+  return { questions, prog, today, queues, topicStats, weakTopics, missedTopics, courseStats, buildRound, listRound, topicRound, examRound, streak, lastNDays, missProfile, topicRules, ruleCards, coverage, todayCount: days.get(today) };
 }
 
 /** A greeting picked once per app open. Context lines only when the data supports them. */

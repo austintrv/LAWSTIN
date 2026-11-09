@@ -3,10 +3,11 @@ import { switchToAutoMode, switchToDarkMode, switchToLightMode } from "./themeMo
 /** Per-device preferences (appearance, reading size, haptics), kept in this browser's storage. */
 export type Appearance = "auto" | "light" | "dark";
 export type ReadingSize = "s" | "m" | "l" | "xl";
-type Prefs = { appearance: Appearance; reading: ReadingSize; haptics: boolean };
+/** `plan`: the daily goal follows the finals plan. `recall`: practice asks for your answer before showing choices. */
+type Prefs = { appearance: Appearance; reading: ReadingSize; haptics: boolean; plan: boolean; recall: boolean };
 
 const KEY = "lawstin-prefs";
-const DEFAULTS: Prefs = { appearance: "auto", reading: "m", haptics: true };
+const DEFAULTS: Prefs = { appearance: "auto", reading: "m", haptics: true, plan: true, recall: true };
 const SCALE: Record<ReadingSize, number> = { s: 0.92, m: 1, l: 1.1, xl: 1.22 };
 
 export function readPrefs(): Prefs {

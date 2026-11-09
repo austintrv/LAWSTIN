@@ -104,3 +104,29 @@
   .item b, .item p, .summary { font-size: 16px; }
   .modelBody { font-size: 18px; }
 }
+
+/* Clock, essay history, rubric */
+.clock { min-width: 36px; font-size: 15px; font-weight: 600; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.clockOver { color: var(--error); }
+.histH { margin: 0; padding-inline: 4px; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.hist { width: 100%; display: flex; align-items: center; gap: 14px; padding: 13px 16px; min-height: 60px; text-align: left; cursor: pointer; }
+.hist + .hist { border-top: 0.5px solid var(--border); }
+.hist > svg { color: var(--faint-foreground); flex-shrink: 0; }
+.hist:active { background: var(--fill); }
+.histMain { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.histMain b { font-size: 16px; font-weight: 600; line-height: 1.3; }
+.histMain span { font-size: 13px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.score { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; color: #fff; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.scoreOk { background: var(--success); }
+.scoreMid { background: var(--warning); }
+.scoreBad { background: var(--error); }
+.bars { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.barRow { display: grid; grid-template-columns: 96px minmax(0, 1fr) 20px; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.barRow > span:last-child { text-align: right; color: var(--muted-foreground); }
+.barRow i { height: 8px; border-radius: 4px; background: var(--uh-red-soft); overflow: hidden; }
+.barRow i b { display: block; height: 100%; border-radius: 4px; background: var(--uh-red); transition: width 0.8s var(--ease-ios); }
+.cite { color: var(--muted-foreground); font-size: 0.86em; }
+.modelBody b { font-weight: 600; }
+@media (min-width: 1000px) {
+  .start > .big { grid-column: 1 / -1; }
+}

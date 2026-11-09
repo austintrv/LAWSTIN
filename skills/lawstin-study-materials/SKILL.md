@@ -9,11 +9,26 @@ Read `AI-MEMORY.md`, `skills/README.md`, and `skills/daily-law-quiz/SKILL.md` fi
 
 Repository: `austintrv/LAWSTIN`, production branch `main`. App: `https://austintrv.github.io/LAWSTIN/`. Supabase project: `vbqfmgsrxurdazujbbuk`. All dates and run decisions use **America/Chicago**, including daylight saving time. The scheduled task runs Tuesday, Thursday, and Saturday at **9:15 a.m.**, after Claude’s 7:45 a.m. update.
 
+## What the materials are for
+
+Finals: International Law Dec 2, Asylum Law Dec 7, Professional Responsibility Dec 9, 2026. Stop adding materials for a course once its final has passed.
+
+| Course | Final | What to build |
+|---|---|---|
+| Professional Responsibility | Closed-book multiple choice | Recall: atomic flashcards for every rule element and exception, sorting drills, comparisons of rules that are easy to confuse. Hypotheticals are a low priority. |
+| International Law | Essay, printed notes allowed | Understanding and writing: hypotheticals first (short and exam length), then flowcharts that give the order of analysis, comparisons, and rule reviews he can use as an attack outline. Flashcards ask why a rule exists, how it applies, or how two doctrines differ, never for wording he could look up. |
+| Asylum Law | Essay, open book | Same as International Law. |
+
+How the app uses them:
+- **Flashcards** are mixed into the daily session between questions. He can type an explanation in his own words and the tutor checks it against the card’s `back` and `reason`, so both must be complete and correct on their own; `reason` should say why, not repeat the answer.
+- **Hypotheticals** open in Written practice: he writes against a clock, and the tutor grades his answer against the hypothetical’s `answer` (the issue-by-issue analysis), then shows that analysis as the model answer. The app serves an unwritten verified hypothetical before it asks the tutor to invent a prompt, so these are the trusted essay practice. A hypothetical with `minutes` of 30 or more is exam length; one without `minutes` is a 15-minute short.
+- **Coverage:** the Progress tab lists every unit taught from the `syllabus:v1:<course>` rows of `app_settings` (maintained by Claude’s question task). Material topics come from the question taxonomy, so a unit with no questions yet cannot receive materials; it waits for the question task.
+
 ## Storage and scope
 
 - The app reads verified content from the Supabase tables `public.study_materials` (one row per item; the full item is in `data`) and `public.study_runs` (one row per run, with the item-level `checks`). Types and structural checks are in `src/helpers/studyMaterials.ts`. The exact topic/subtopic pairs come from the brief’s `coverage`. Publication goes through `public.publish_study_batch`; content runs never commit to Git. `content/study-checks/` holds only the audit for the first run, published before the move.
 - Content is created for `il`, `asy`, and `pr`. The five-course directory also includes Civil Clinic and Civil Procedure Tutoring; their task features are deferred. Do not generate client work or clinic/tutoring tasks.
-- Private study progress is stored by the app in the existing protected `app_settings` table under `study:v1:cards:`, `study:v1:confidence:`, `study:v1:completed:`, `study:v1:notes:`, `study:v1:highlights:`, and `study:v1:starred:` keys. **Read only** from these rows. The app owns them. Do not alter notification settings.
+- Private study progress is stored by the app in the existing protected `app_settings` table under `study:v1:cards:`, `study:v1:confidence:`, `study:v1:completed:`, `study:v1:notes:`, `study:v1:highlights:`, and `study:v1:starred:` keys, graded essays under `written:v1:`, and the syllabus under `syllabus:v1:`. Card keys that begin `study:v1:cards:rule:` belong to rule cards the app derives from questions, not to library flashcards. **Read only** from these rows. The app owns them. Do not alter notification settings.
 - Do not create a new table or edit `study_materials`/`study_runs` rows directly. If a future change needs one, save SQL under `supabase/migrations/` and explain it under Current work for Claude. No credentials, answer history, source extracts, or unpublished drafts belong in Git. Use an ignored `.study-work/` directory or a private execution directory.
 - `content/fall-review-inventory.json` is a migration inventory, not verified app content. Fall review’s own “complete” labels are not independent verification. Recover its features and selected study items, then verify the legal substance against Drive before publishing. Do not bulk copy its old quiz questions into Claude’s bank.
 
@@ -52,6 +67,8 @@ SELECT jsonb_build_object(
   ) x),
   'answers_since_last_study_run', (SELECT count(*) FROM public.answers,cutoff
     WHERE answered_at>cutoff.since),
+  'written_material_ids', (SELECT coalesce(jsonb_agg(DISTINCT value::jsonb->>'materialId'), '[]'::jsonb)
+    FROM public.app_settings WHERE key LIKE 'written:v1:%' AND value::jsonb->>'materialId' IS NOT NULL),
   'library', jsonb_build_object(
     'materials', (SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'course',course,'kind',kind,
       'topic',data->>'topic','subtopic',data->>'subtopic','class_date',data->>'class_date')), '[]'::jsonb)
@@ -71,11 +88,16 @@ The brief must be complete and less than 24 hours old. A missing history connect
 
 The preflight compares question coverage with already published material and reads topic accuracy, sneaky misses, guessed answers, and unseen-card backlog. Weak means **under 70% with at least two answers**. Sneaky misses and correct answers marked “I guessed” identify half-known rules even before that sample size.
 
-If there are no uncovered taught classes/subtopics, no new answer evidence requiring a weak-rule addition, and no specific source correction to make, **write nothing and stop**. Do not open Drive files, append a zero-addition run, update a date, commit, or notify. An unchanged weak score alone does not justify duplicate cards every run. A pending inventory item can justify a bounded older-material addition only if the course’s backlog permits it; record that decision before source reads.
+The preflight also reports `essays` per course: how many hypotheticals International Law and Asylum need to keep four unwritten ones in stock. Essay stock is counted apart from the flashcard backlog and the no-answers cap.
+
+If there are no uncovered taught classes/subtopics, no new answer evidence requiring a weak-rule addition, no essay stock to refill, and no specific source correction to make, **write nothing and stop**. Do not open Drive files, append a zero-addition run, update a date, commit, or notify. An unchanged weak score alone does not justify duplicate cards every run. A pending inventory item can justify a bounded older-material addition only if the course’s backlog permits it; record that decision before source reads.
 
 ## 2. Pick a bounded batch
 
-- Routine target: at most **24 items**, roughly eight per study course. Typically four to six atomic flashcards, one decision tree if the rule needs one, and one rule review, comparison, sorting drill, or hypothetical. Never create a diagram merely to fill an allotment.
+- Routine target: at most **24 items**, roughly eight per study course, plus the hypotheticals the preflight asks for under `essays`. Never create a diagram merely to fill an allotment.
+  - **Professional Responsibility:** six to eight atomic flashcards and one sorting drill or comparison. A hypothetical only when a rule cannot be drilled another way.
+  - **International Law and Asylum:** the `essays` hypotheticals first, at least one of them exam length when the course has no unwritten exam-length one; then one flowchart, comparison, or rule review; then three or four flashcards.
+- Hypotheticals go to the topics with the weakest essay or question results first, then to topics with no hypothetical yet, and an exam-length one crosses two or three topics the way a final does (file it under its main topic).
 - A course with at least 20 unseen flashcards receives at most two weak-rule items. At 35 unseen cards, add nothing unless new answer evidence identifies a weak rule, then at most one. If there have been no answers since the last successful study update, cap the entire batch at six. An explicit one-time library setup or requested backfill may use the user’s scope instead of the routine cap.
 - Allocate about 60% to classes taught since the last covered class, newest first; about 30% to weak and half-known rules, prioritizing the exact subtopics with sneaky misses or guesses; about 10% to thin older coverage. Saturday and weeks without new classes shift the recent-class share to weak rules and thin older material. Do not manufacture percentages for topics with no answers.
 - Compare front/prompt/rule meaning against the published library; a changed title or new ID is not new content. Avoid repeating a subtopic in one run unless it is weak. A source correction should retire/replace an item explicitly with a new verified revision and a preserved audit trail; do not silently overwrite a published item.
@@ -109,7 +131,9 @@ All six formats use the discriminated union in `src/helpers/studyMaterials.ts`.
 - **Rule review:** short, organized sections, each with a literal rule and its authority. Preserve qualifications. The UI supports section checkoffs and confidence ratings.
 - **Comparisons:** identify the axis of comparison in each row and cite its authority. Do not collapse distinct constitutional, ethical, jurisdictional, or procedural standards.
 - **Sorting drills:** realistic statements, explicit categories, one defensible category per statement, and an explanation identifying the decisive rule. Do not copy casebook questions.
-- **Hypotheticals:** new realistic facts applying the sourced rules, a specific analytical question, and a compact issue-by-issue model analysis. Do not present a contested outcome as settled. The student writes before revealing the model answer.
+- **Hypotheticals:** new realistic facts applying the sourced rules, a specific analytical question, and an issue-by-issue model analysis. Do not present a contested outcome as settled. The student writes under a clock, the tutor grades the answer against `answer`, and `answer` is shown as the model answer, so every issue a strong answer would raise needs its own entry, and each `analysis` applies the rule to the facts and argues both sides of a close call before concluding.
+  - *Short* (omit `minutes`): facts of 150 to 300 words, two to four issues, at least one close call.
+  - *Exam length* (`"minutes": 45`; any whole number from 30 to 90 is allowed): facts of 450 to 650 words in paragraphs, five to seven issues across two or three topics, at least two close calls, and one fact that looks important but changes nothing. Each `analysis` runs three to six sentences.
 
 Plain, literal language. Curly quotes and apostrophes. No filler, encouragement, jokes, or unsupported claims. Match Lawstin’s Apple-style UI, red accent, readable text, and existing screen conventions; no small helper captions. Item text states the rule and cites legal authority; it never refers to the source documents or the drafting process (no “the notes,” “Day 18 notes,” question numbers, paragraph numbers, or instructions such as “check the state analogue”). Do not change UI during a routine content run.
 

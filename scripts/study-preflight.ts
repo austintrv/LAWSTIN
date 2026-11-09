@@ -5,7 +5,7 @@ type Coverage = { course: string; topic: string; subtopic: string; latest: strin
 type Topic = { course: string; topic: string; right: number; answered: number; sneaky_misses: number; guessed: number };
 type Published = { id: string; course: string; kind: string; topic: string; subtopic: string; class_date: string };
 type Library = { materials: Published[]; last_run_date: string | null };
-type Brief = { captured_at: string; coverage: Coverage[]; topics: Topic[]; half_known: unknown[]; card_progress: Record<string, { seen: number; due: string }>; answers_since_last_study_run: number; flags: unknown[]; library: Library };
+type Brief = { captured_at: string; coverage: Coverage[]; topics: Topic[]; half_known: unknown[]; card_progress: Record<string, { seen: number; due: string }>; answers_since_last_study_run: number; flags: unknown[]; library: Library; written_material_ids?: string[] };
 const input = process.argv[2];
 if (!input) throw new Error("Pass a private JSON task brief from the read-only SQL in the study skill. Do not open Drive sources before preflight.");
 const brief = JSON.parse(fs.readFileSync(input, "utf8")) as Brief;
@@ -15,6 +15,11 @@ if (!brief.captured_at || !Number.isFinite(Date.parse(brief.captured_at)) || Dat
   || !Number.isFinite(brief.answers_since_last_study_run) || !Array.isArray(brief.flags) || !Array.isArray(brief.half_known)
   || !brief.card_progress || typeof brief.card_progress !== "object" || !brief.library || !Array.isArray(brief.library.materials)) throw new Error("A current complete question-history brief is required. No Drive reads or writes.");
 const courses = ["il", "asy", "pr"];
+// International Law and Asylum are examined by open-note essay. The app serves an unwritten
+// hypothetical before it asks the tutor for a prompt, so each keeps a few in stock.
+const essayCourses = ["il", "asy"];
+const ESSAY_STOCK = 4;
+const written = new Set(Array.isArray(brief.written_material_ids) ? brief.written_material_ids : []);
 const weak = brief.topics.filter(t => courses.includes(t.course) && ((t.answered >= 2 && t.right / t.answered < .7) || t.sneaky_misses > 0 || t.guessed > 0));
 const library = brief.library;
 const latest = library.last_run_date ?? "1970-01-01";
@@ -26,8 +31,12 @@ const targets = courses.map(course => {
   const hasWeak = weak.some(w => w.course === course);
   const hasGap = gaps.some(g => g.course === course);
   const hasNewAnswers = brief.answers_since_last_study_run > 0;
-  return { course, target: !hasGap && !(hasWeak && hasNewAnswers) ? 0 : backlog >= 35 ? hasWeak && hasNewAnswers ? 1 : 0 : backlog >= 20 ? 2 : 8 };
+  const unwritten = library.materials.filter(m => m.course === course && m.kind === "hypothetical" && !written.has(m.id)).length;
+  // Essays are counted apart from the card backlog: unseen flashcards never hold back essay practice.
+  const essays = essayCourses.includes(course) ? Math.max(0, ESSAY_STOCK - unwritten) : 0;
+  return { course, target: !hasGap && !(hasWeak && hasNewAnswers) ? 0 : backlog >= 35 ? hasWeak && hasNewAnswers ? 1 : 0 : backlog >= 20 ? 2 : 8, essays };
 });
-const total = targets.reduce((n, t) => n + t.target, 0);
-console.log(JSON.stringify({ should_run: total > 0, today, last_study_run: latest, targets, total_cap: brief.answers_since_last_study_run === 0 ? Math.min(6, total) : total,
-  gaps, weak_topics: weak, half_known: brief.half_known, flags: brief.flags, reason: total ? "Verified coverage gaps or new evidence of weak recall" : "No uncovered classes or new weak-topic evidence; write nothing and stop" }, null, 2));
+const essays = targets.reduce((n, t) => n + t.essays, 0);
+const total = targets.reduce((n, t) => n + t.target, 0) + essays;
+console.log(JSON.stringify({ should_run: total > 0, today, last_study_run: latest, targets, total_cap: brief.answers_since_last_study_run === 0 ? Math.min(6 + essays, total) : total,
+  gaps, weak_topics: weak, half_known: brief.half_known, flags: brief.flags, reason: total ? "Verified coverage gaps, new evidence of weak recall, or essay stock below four for an essay course" : "No uncovered classes or new weak-topic evidence; write nothing and stop" }, null, 2));

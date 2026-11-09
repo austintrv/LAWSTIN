@@ -1,7 +1,7 @@
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
 import { dateKey } from "./dateKey";
 import { reviewSchedule } from "./reviewSchedule";
-import { COURSES, type CourseCode } from "./studyEngine";
+import { COURSES, FINALS, examDue, type CourseCode } from "./studyEngine";
 
 export type SchoolCourse = CourseCode | "clinic" | "tutoring";
 export const SCHOOL_COURSES = {
@@ -28,7 +28,8 @@ export type Flowchart = MaterialBase & { kind: "flowchart"; start: string; nodes
 export type Outline = MaterialBase & { kind: "outline"; sections: { heading: string; text: string; authority: string }[] };
 export type Comparison = MaterialBase & { kind: "comparison"; columns: string[]; rows: { label: string; cells: string[]; authority: string }[] };
 export type Drill = MaterialBase & { kind: "drill"; prompt: string; categories: string[]; items: { statement: string; answer: string; why: string; authority: string }[] };
-export type Hypothetical = MaterialBase & { kind: "hypothetical"; facts: string; prompt: string; answer: { issue: string; analysis: string; authority: string }[] };
+/** `minutes` is the writing time an exam-length hypothetical is built for; short ones leave it out. */
+export type Hypothetical = MaterialBase & { kind: "hypothetical"; facts: string; prompt: string; answer: { issue: string; analysis: string; authority: string }[]; minutes?: number };
 export type StudyMaterial = Flashcard | Flowchart | Outline | Comparison | Drill | Hypothetical;
 export type StudyRun = {
   id: string; run_date: string; created_at: string; added: number; by_course: Record<string, number>; by_kind: Record<string, number>;
@@ -70,7 +71,8 @@ export function materialErrors(value: unknown, today = dateKey.today()): string[
       if (!text(m.prompt) || !array(m.categories) || !m.categories.every(text) || new Set(m.categories as unknown[]).size !== (m.categories as unknown[]).length || !array(m.items)
         || !m.items.every(i => obj(i) && text(i.statement) && text(i.why) && text(i.authority) && (m.categories as unknown[]).includes(i.answer))) errors.push("Invalid sorting drill"); break;
     case "hypothetical":
-      if (!text(m.facts) || !text(m.prompt) || !array(m.answer) || !m.answer.every(a => obj(a) && text(a.issue) && text(a.analysis) && text(a.authority))) errors.push("Invalid hypothetical"); break;
+      if (!text(m.facts) || !text(m.prompt) || !array(m.answer) || !m.answer.every(a => obj(a) && text(a.issue) && text(a.analysis) && text(a.authority))) errors.push("Invalid hypothetical");
+      if (m.minutes !== undefined && (!Number.isInteger(m.minutes) || Number(m.minutes) < 5 || Number(m.minutes) > 180)) errors.push("Invalid hypothetical minutes"); break;
     case "flowchart": {
       if (!text(m.start) || !array(m.nodes)) { errors.push("Missing flowchart nodes"); break; }
       const nodes = m.nodes as Record<string, unknown>[];
@@ -149,7 +151,9 @@ export function weakMaterialTopics(state?: QuestionState): Set<string> {
 /** Reviews first; interleave courses within each priority tier without pulling future cards into due review. */
 export function cardQueue(cards: Flashcard[], record: StudyRecord, state?: QuestionState, today = dateKey.today(), includeAhead = false): Flashcard[] {
   const weak = weakMaterialTopics(state);
-  const priority = (c: Flashcard) => record.cards[c.id] ? record.cards[c.id].due <= today ? 0 : 2 : 1;
+  // Before a final, a card pushed past the exam comes back in the last five days (examDue).
+  const dueOf = (c: Flashcard) => examDue(record.cards[c.id].due, dateKey.today(new Date(record.cards[c.id].last_at)), FINALS[c.course], today) ?? today;
+  const priority = (c: Flashcard) => record.cards[c.id] ? dueOf(c) <= today ? 0 : 2 : 1;
   const score = (c: Flashcard) => (weak.has(`${c.course}|${c.topic}`) ? 4 : 0) + (dateKey.diff(c.class_date, today) <= 7 ? 2 : 0);
   const out: Flashcard[] = [];
   for (const tier of [0, 1, ...(includeAhead ? [2] : [])]) {

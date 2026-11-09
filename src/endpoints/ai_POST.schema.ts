@@ -10,10 +10,15 @@ export type QuestionInput = Pick<QuestionDTO, "id" | "course" | "topic" | "subto
 export type InputType =
   | { action: "ask"; question: QuestionInput; picked: Letter | null; messages: Msg[] }
   | { action: "harder"; question: QuestionInput }
-  | { action: "spotter"; course: Course }
-  | { action: "grade"; course: Course; topic: string; facts: string; call: string; issues: string[]; answer: string };
+  | { action: "spotter"; course: Course; length?: "short" | "full" }
+  | { action: "grade"; course: Course; topic: string; facts: string; call: string; issues: string[]; answer: string; reference?: Reference[]; openNote?: boolean; length?: "short" | "full" }
+  | { action: "explain"; course: Course; topic: string; prompt: string; reference: string; answer: string };
 
-export type SpotterDTO = { course: Course; topic: string; facts: string; call: string; issues: string[] };
+/** A verified issue-by-issue analysis the grader holds the answer against. */
+export type Reference = { issue: string; analysis: string; authority: string };
+/** `minutes` is the writing time the prompt is built for. `materialId` and `reference` are set when it is a verified hypothetical. */
+export type SpotterDTO = { course: Course; topic: string; facts: string; call: string; issues: string[]; minutes?: number; materialId?: string; reference?: Reference[] };
+export type ExplainDTO = { verdict: "solid" | "partial" | "off"; got: string[]; gaps: string[]; note: string };
 export type GradeDTO = {
   score: number;
   summary: string;
@@ -21,13 +26,16 @@ export type GradeDTO = {
   missed: { issue: string; rule: string }[];
   errors: string[];
   modelAnswer: string;
+  /** 0–10 each. Absent on essays graded before the rubric existed. */
+  rubric?: { issues: number; rules: number; application: number };
 };
 
 export type OutputType =
   | { action: "ask"; reply: string }
   | { action: "harder"; question: QuestionDTO }
   | { action: "spotter"; spotter: SpotterDTO }
-  | { action: "grade"; grade: GradeDTO };
+  | { action: "grade"; grade: GradeDTO }
+  | { action: "explain"; explain: ExplainDTO };
 
 export class AiRequestError extends Error {
   code?: string;

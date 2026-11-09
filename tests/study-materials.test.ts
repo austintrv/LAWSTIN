@@ -100,9 +100,18 @@ test("scheduled preflight writes nothing when the taught coverage already exists
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "lawstin-preflight-"));
   try {
     const brief = { captured_at: new Date().toISOString(), coverage: [{ course: card.course, topic: card.topic, subtopic: card.subtopic, latest: card.class_date, n: 1 }], topics: [], half_known: [], card_progress: {}, answers_since_last_study_run: 1, flags: [], library: publishedSummary };
-    const input = path.join(dir, "history.brief.json"); fs.writeFileSync(input, JSON.stringify(brief));
-    const result = spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"), path.resolve("scripts/study-preflight.ts"), input], { cwd: dir, encoding: "utf8" });
+    // Four unwritten hypotheticals per essay course is a full stock, so nothing is asked for.
+    const stock = ["il", "asy"].flatMap(course => [1, 2, 3, 4].map(n => ({ id: `${course}-hypothetical-20261001-0${n}`, course, kind: "hypothetical", topic: "T", subtopic: "S", class_date: "2026-10-01" })));
+    const stocked = { ...brief, library: { ...publishedSummary, materials: [...publishedSummary.materials.filter(m => m.kind !== "hypothetical"), ...stock] } };
+    const input = path.join(dir, "history.brief.json"); fs.writeFileSync(input, JSON.stringify(stocked));
+    const run = () => spawnSync(process.execPath, ["--import", import.meta.resolve("tsx"), path.resolve("scripts/study-preflight.ts"), input], { cwd: dir, encoding: "utf8" });
+    const result = run();
     assert.equal(result.status, 0, result.stderr); assert.equal(JSON.parse(result.stdout).should_run, false);
+    // Writing two of the International Law ones leaves that course two short; Pro Res never gets essays.
+    fs.writeFileSync(input, JSON.stringify({ ...stocked, written_material_ids: [stock[0].id, stock[1].id] }));
+    const low = JSON.parse(run().stdout) as { should_run: boolean; targets: { course: string; essays: number }[] };
+    assert.equal(low.should_run, true);
+    assert.deepEqual(low.targets.map(t => [t.course, t.essays]), [["il", 2], ["asy", 0], ["pr", 0]]);
     assert.deepEqual(fs.readdirSync(dir).sort(), ["history.brief.json"]);
   } finally { fs.rmSync(dir, { recursive: true, force: true }); }
 });

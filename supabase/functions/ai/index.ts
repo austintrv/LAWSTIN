@@ -1,4 +1,4 @@
-// Lawstin AI tutor: "Ask about this", "Harder version", Written practice (issue-spotter + grading).
+// Lawstin AI tutor: "Ask about this", "Harder version", Written practice (issue-spotter + grading), and checking a typed explanation of a recall card.
 // Uses the Gemini API; the key is in server_secrets (row gemini_api_key). Only Austin's signed-in account can call it.
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import type { QuestionDTO } from "../_shared/types.ts";
@@ -126,7 +126,17 @@ const choiceSchema = {
   },
 };
 const harderSchema = { type: "object", required: ["stem", "prompt", "choices", "rule"], properties: { stem: { type: "string" }, prompt: { type: "string" }, rule: { type: "string" }, choices: { type: "array", minItems: 4, maxItems: 4, items: choiceSchema } } };
-const spotterSchema = { type: "object", required: ["facts", "call", "issues"], properties: { facts: { type: "string" }, call: { type: "string" }, issues: { type: "array", minItems: 2, maxItems: 6, items: { type: "string" } } } };
+const spotterSchema = { type: "object", required: ["facts", "call", "issues"], properties: { facts: { type: "string" }, call: { type: "string" }, issues: { type: "array", minItems: 2, maxItems: 8, items: { type: "string" } } } };
+const explainSchema = {
+  type: "object",
+  required: ["verdict", "got", "gaps", "note"],
+  properties: {
+    verdict: { type: "string", enum: ["solid", "partial", "off"] },
+    got: { type: "array", maxItems: 4, items: { type: "string" } },
+    gaps: { type: "array", maxItems: 4, items: { type: "string" } },
+    note: { type: "string" },
+  },
+};
 const gradeSchema = {
   type: "object",
   required: ["score", "summary", "spotted", "missed", "errors", "modelAnswer"],
@@ -137,6 +147,11 @@ const gradeSchema = {
     missed: { type: "array", items: { type: "object", required: ["issue", "rule"], properties: { issue: { type: "string" }, rule: { type: "string" } } } },
     errors: { type: "array", items: { type: "string" } },
     modelAnswer: { type: "string" },
+    rubric: {
+      type: "object",
+      required: ["issues", "rules", "application"],
+      properties: { issues: { type: "integer", minimum: 0, maximum: 10 }, rules: { type: "integer", minimum: 0, maximum: 10 }, application: { type: "integer", minimum: 0, maximum: 10 } },
+    },
   },
 };
 
@@ -233,23 +248,27 @@ ${describeQuestion(q, null)}`;
         return { topic, t, weight: (n ? 1.4 - t.c / n : 1.2) + Math.random() * 0.6 };
       }).sort((a, b) => b.weight - a.weight);
       const main = list[0];
-      const others = list.slice(1, 4);
+      // An exam-length prompt (45 minutes) draws on more topics and plants more issues.
+      const full = input.length === "full";
+      const others = list.slice(1, full ? 6 : 4);
       const material = [
         `Main topic: ${main.topic}`,
         ...[...main.t.rules.values()].slice(0, 12).map((r) => `- ${r}`),
-        ...others.flatMap((o) => [`Other topic: ${o.topic}`, ...[...o.t.rules.values()].slice(0, 4).map((r) => `- ${r}`)]),
+        ...others.flatMap((o) => [`Other topic: ${o.topic}`, ...[...o.t.rules.values()].slice(0, full ? 8 : 4).map((r) => `- ${r}`)]),
       ].join("\n");
-      const system = `${VOICE}\n${GROUNDING}\nYou write short issue-spotter essay prompts for a law school ${COURSE_NAME[course]} course.`;
-      const prompt = `Write a short issue-spotter for Austin built from the rules below.
+      const system = `${VOICE}\n${GROUNDING}\nYou write issue-spotter essay prompts for a law school ${COURSE_NAME[course]} course.`;
+      const prompt = `Write ${full ? "an exam-length issue-spotter (about 45 minutes of writing)" : "a short issue-spotter"} for Austin built from the rules below.
 
-- "facts": a fact pattern of 150 to 260 words with new names, in paragraphs separated by a blank line. Center it on the main topic; you may add one issue from another topic listed. Plant two to four issues a strong answer should spot, including at least one close call where the facts cut both ways.
+- "facts": ${full
+        ? "a fact pattern of 450 to 650 words with new names, in paragraphs separated by a blank line. Center it on the main topic and draw in two or three of the other topics listed, the way a final exam crosses units. Plant five to seven issues a strong answer should spot, including at least two close calls where the facts cut both ways and one fact that looks important but changes nothing."
+        : "a fact pattern of 150 to 260 words with new names, in paragraphs separated by a blank line. Center it on the main topic; you may add one issue from another topic listed. Plant two to four issues a strong answer should spot, including at least one close call where the facts cut both ways."}
 - "call": one sentence, e.g. “Discuss the issues raised.” or a narrower call that fits.
 - "issues": the issues a strong answer spots, each stated as “Issue — governing rule — the facts that matter”.
 
 Rules:
 ${material}`;
       const sp = await geminiJson<{ facts: string; call: string; issues: string[] }>(system, prompt, spotterSchema);
-      return json({ action: "spotter", spotter: { course, topic: main.topic, facts: sp.facts, call: sp.call, issues: (sp.issues ?? []).slice(0, 6) } });
+      return json({ action: "spotter", spotter: { course, topic: main.topic, facts: sp.facts, call: sp.call, issues: (sp.issues ?? []).slice(0, 8), minutes: full ? 45 : 15 } });
     }
 
     if (action === "grade") {
@@ -261,7 +280,11 @@ ${material}`;
       const t = topics.get(String(input.topic));
       const material = t ? [...t.rules.values()].slice(0, 14).map((r) => `- ${r}`).join("\n") : "(no stored rules for this topic)";
       const issues = (Array.isArray(input.issues) ? input.issues : []).slice(0, 12).map((i) => clip(i, 600));
-      const system = `${VOICE}\n${GROUNDING}\nYou grade short law school essay answers fairly and specifically, the way a careful professor would. Credit correct analysis even when worded differently from the rubric. Quote or paraphrase Austin’s own words when commenting.`;
+      // A verified hypothetical brings its own checked analysis; the grade is held against that.
+      const reference = (Array.isArray(input.reference) ? input.reference : []).slice(0, 12)
+        .map((r: Record<string, unknown>) => `- ${clip(r?.issue, 300)}: ${clip(r?.analysis, 1500)} (${clip(r?.authority, 300)})`);
+      const full = input.length === "full";
+      const system = `${VOICE}\n${GROUNDING}\nYou grade law school essay answers fairly and specifically, the way a careful professor would. Credit correct analysis even when worded differently from the rubric. Quote or paraphrase Austin’s own words when commenting.`;
       const prompt = `Grade Austin’s answer to this issue-spotter.
 
 Fact pattern:
@@ -274,19 +297,48 @@ ${issues.map((i) => `- ${i}`).join("\n")}
 
 Rules for this topic:
 ${material}
-
+${reference.length ? `\nVerified analysis (the standard to grade against; where it and the rules above differ, follow this):\n${reference.join("\n")}\n` : ""}${input.openNote ? "\nThis course’s final is an open-note essay. He can look rules up, so weigh spotting the issues and applying the rules to these facts (arguing both sides of close calls and reaching a conclusion) more heavily than reciting rule language word for word. A rule stated loosely but applied correctly loses little; a rule recited correctly but never applied to the facts earns little.\n" : ""}
 Austin’s answer:
 ${answer}
 
 Return:
 - "score": 0 to 10 for issue spotting, rule statements, and application to the facts.
+- "rubric": 0 to 10 each for "issues" (how many of the issues he spotted), "rules" (accuracy of the law he stated), and "application" (use of the specific facts, both sides of close calls, a conclusion).
 - "summary": two or three sentences on how the answer did overall.
 - "spotted": each rubric issue he addressed, with a one- or two-sentence comment on the quality of his rule statement and application.
-- "missed": each rubric issue he did not address, with the governing rule.
+- "missed": each rubric issue he did not address, with the governing rule and the fact that should have raised it.
 - "errors": misstatements of law in his answer (empty if none).
-- "modelAnswer": a model answer of 150 to 250 words in IRAC paragraphs separated by blank lines.`;
-      const g = await geminiJson<{ score: number; summary: string; spotted: { issue: string; comment: string }[]; missed: { issue: string; rule: string }[]; errors: string[]; modelAnswer: string }>(system, prompt, gradeSchema);
-      return json({ action: "grade", grade: { score: Math.max(0, Math.min(10, Math.round(Number(g.score) || 0))), summary: g.summary ?? "", spotted: g.spotted ?? [], missed: g.missed ?? [], errors: g.errors ?? [], modelAnswer: g.modelAnswer ?? "" } });
+- "modelAnswer": a model answer of ${full ? "400 to 600" : "150 to 250"} words in IRAC paragraphs separated by blank lines.`;
+      const g = await geminiJson<{ score: number; summary: string; spotted: { issue: string; comment: string }[]; missed: { issue: string; rule: string }[]; errors: string[]; modelAnswer: string; rubric?: Record<string, number> }>(system, prompt, gradeSchema);
+      const ten = (n: unknown) => Math.max(0, Math.min(10, Math.round(Number(n) || 0)));
+      const rubric = g.rubric ? { issues: ten(g.rubric.issues), rules: ten(g.rubric.rules), application: ten(g.rubric.application) } : undefined;
+      return json({ action: "grade", grade: { score: ten(g.score), summary: g.summary ?? "", spotted: g.spotted ?? [], missed: g.missed ?? [], errors: g.errors ?? [], modelAnswer: g.modelAnswer ?? "", rubric } });
+    }
+
+    if (action === "explain") {
+      const course = input.course as Course;
+      if (!COURSE_NAME[course]) throw new AiError("Bad request");
+      const answer = clip(input.answer, 4000).trim();
+      const reference = clip(input.reference, 4000).trim();
+      if (!answer || !reference) throw new AiError("Bad request");
+      const system = `${VOICE}\nYou check whether a law student understands a point from ${COURSE_NAME[course]}, using only the reference answer provided. Judge the substance, not the wording: an explanation in his own words that gets the rule, its conditions, and its reason right is solid even if it shares no phrasing with the reference. Do not add law that is not in the reference, and never invent authorities.`;
+      const prompt = `Topic: ${clip(input.topic, 200)}
+Prompt: ${clip(input.prompt, 1000)}
+
+Reference answer:
+${reference}
+
+Austin’s explanation:
+${answer}
+
+Return:
+- "verdict": "solid" if he has every element that matters and nothing wrong; "partial" if the core is right but an element, condition, or exception is missing or blurred; "off" if the core is wrong or missing.
+- "got": up to four short statements of what he got right, each one sentence.
+- "gaps": up to four short statements of what is missing or wrong, each one sentence that states the correct point from the reference.
+- "note": one sentence that would help him understand the point (why the rule works this way, or the distinction he blurred), drawn from the reference. Empty if the verdict is solid and nothing needs adding.`;
+      const x = await geminiJson<{ verdict: string; got: string[]; gaps: string[]; note: string }>(system, prompt, explainSchema);
+      const verdict = ["solid", "partial", "off"].includes(x.verdict) ? x.verdict : "partial";
+      return json({ action: "explain", explain: { verdict, got: (x.got ?? []).slice(0, 4), gaps: (x.gaps ?? []).slice(0, 4), note: x.note ?? "" } });
     }
 
     throw new AiError("Unknown action");

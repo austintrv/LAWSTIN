@@ -9,9 +9,9 @@ import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
 import { toast } from "../helpers/toast";
-import { useStudyMaterials } from "../helpers/useStudyMaterials";
+import type { useStudyMaterials } from "../helpers/useStudyMaterials";
 import { useLogStudy } from "../helpers/useLogStudy";
-import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, weakMaterialTopics, type Flashcard, type MaterialKind, type SchoolCourse, type StudyMaterial, type StudyRecord } from "../helpers/studyMaterials";
+import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, weakMaterialTopics, type Flashcard, type Hypothetical, type MaterialKind, type SchoolCourse, type StudyMaterial, type StudyRecord } from "../helpers/studyMaterials";
 import type { CourseCode } from "../helpers/studyEngine";
 import { TaskList, type WorkspaceLink } from "./TaskList";
 import { dueSoon, sortTasks, useCourseTasks } from "../helpers/useCourseTasks";
@@ -22,8 +22,9 @@ const TOOLS = { flashcard: Layers3, flowchart: GitBranch, outline: BookOpen, com
 const KINDS = Object.keys(MATERIAL_LABELS) as MaterialKind[];
 /** Set while a Missed lesson waits behind a study tool opened from it: back returns to the lesson, end closes it. */
 export type LessonReturn = { back: () => void; end: () => void };
-type Props = { userId: string; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: () => void; lesson?: LessonReturn };
 type Store = ReturnType<typeof useStudyMaterials>;
+/** `store` is the app's one study-progress store. `onWrite` opens Written practice, on a hypothetical when one is given. */
+type Props = { store: Store; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: (hypo?: Hypothetical) => void; lesson?: LessonReturn };
 type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string };
 const readRoute = (): Route => {
   const [, section, course, kind, item] = window.location.hash.split("/");
@@ -48,8 +49,7 @@ const LINKS: Record<"clinic" | "tutoring", WorkspaceLink[]> = {
 };
 const isStudyCourse = (c: SchoolCourse): c is CourseCode => c === "il" || c === "asy" || c === "pr";
 
-export function Courses({ userId, state, onQuiz, onWrite, lesson }: Props) {
-  const store = useStudyMaterials(userId);
+export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
   const { tasks } = useCourseTasks();
   const [route, setRoute] = useState(readRoute);
   const [search, setSearch] = useState("");
@@ -176,7 +176,7 @@ export function Courses({ userId, state, onQuiz, onWrite, lesson }: Props) {
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!view.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={view.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
-        })}</nav><button className={styles.writingLink} onClick={onWrite}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
+        })}</nav><button className={styles.writingLink} onClick={() => onWrite()}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
         <div className={styles.materialsPanel}>
           <div className={styles.sectionHead}><h3>{view.kind ? MATERIAL_LABELS[view.kind] : "Study materials"}</h3></div>
           <SearchField value={search} onChange={setSearch} />
@@ -191,7 +191,7 @@ export function Courses({ userId, state, onQuiz, onWrite, lesson }: Props) {
     {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store}
       onClose={() => { setDeck(null); lesson?.end(); }} onAgain={list => { setAgain(true); setDeck(list); }}
       onBack={lesson && (() => { setDeck(null); lesson.back(); })} />}
-    {selected && <MaterialReader key={selected.id} material={selected} store={store}
+    {selected && <MaterialReader key={selected.id} material={selected} store={store} onWrite={onWrite}
       onQuiz={() => { openedHere.current = false; go(selected.course, listRoute.current.course === selected.course ? listRoute.current.kind : selected.kind); lesson?.end(); onQuiz(selected.course, selected.topic); }}
       onClose={() => { closeReader(selected); lesson?.end(); }} onBack={lesson && (() => { haptic(); lesson.back(); })} />}
   </div>;
@@ -301,7 +301,7 @@ function SourceList({ material }: { material: StudyMaterial }) {
   return <details className={styles.sources}><summary>Sources<ChevronRight size={18} /></summary>{material.sources.map((s, i) => <a key={i} href={s.url} target="_blank" rel="noopener noreferrer"><span>{s.title}</span><span>{s.section}</span><ArrowRight size={18} /></a>)}</details>;
 }
 
-function MaterialReader({ material: m, store, onQuiz, onClose, onBack }: { material: StudyMaterial; store: Store; onQuiz: () => void; onClose: () => void; onBack?: () => void }) {
+function MaterialReader({ material: m, store, onQuiz, onWrite, onClose, onBack }: { material: StudyMaterial; store: Store; onQuiz: () => void; onWrite: (hypo: Hypothetical) => void; onClose: () => void; onBack?: () => void }) {
   // Text size is the app-wide reading size from Settings, so it matches the quiz.
   const [size, setSize] = useState<ReadingSize>(() => readPrefs().reading);
   const step = (d: number) => { const next = SIZES[Math.min(SIZES.length - 1, Math.max(0, SIZES.indexOf(size) + d))]; haptic(); setSize(next); writePrefs({ reading: next }); };
@@ -332,7 +332,7 @@ function MaterialReader({ material: m, store, onQuiz, onClose, onBack }: { mater
         {m.kind === "comparison" && <div className={styles.compareCards}>{m.rows.map((r, i) => <section key={i}><h3>{r.label}</h3><p className={styles.authority}>{r.authority}</p>{r.cells.map((c, k) => <div key={k}><span>{m.columns[k]}</span><p>{highlighted(c)}</p></div>)}</section>)}</div>}
         {m.kind === "outline" && m.sections.map((s, i) => <details key={i} className={styles.ruleSection} open><summary>{s.heading}</summary><p>{highlighted(s.text)}</p><p className={styles.authority}>{s.authority}</p></details>)}
         {m.kind === "drill" && <SortingDrill material={m} />}
-        {m.kind === "hypothetical" && <HypotheticalView material={m} store={store} />}
+        {m.kind === "hypothetical" && <HypotheticalView material={m} onWrite={() => { haptic(); onWrite(m); }} />}
       </div>
       {!!highlights.length && <details className={styles.highlights}><summary>Your highlights</summary>{highlights.map((text, i) => <div key={i}><mark>{text}</mark><button className={styles.iconButton} aria-label="Remove highlight" onClick={() => store.update(p => ({ ...p, highlights: { ...p.highlights, [m.id]: highlights.filter(t => t !== text) } }))}><X size={18} /></button></div>)}</details>}
       <SourceList material={m} />
@@ -385,7 +385,8 @@ function SortingDrill({ material }: { material: Extract<StudyMaterial, { kind: "
   </div>;
 }
 
-function HypotheticalView({ material, store }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; store: Store }) {
+// The facts and the call; writing, timing and grading happen in Written practice. The checked analysis stays one tap away.
+function HypotheticalView({ material, onWrite }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; onWrite: () => void }) {
   const [revealed, setRevealed] = useState(false);
-  return <div className={styles.hypo}><div className={styles.hypoFacts}><p>{material.facts}</p><h3>{material.prompt}</h3></div><div className={styles.hypoWork}><label>Your analysis<textarea value={store.record.notes[material.id] ?? ""} onChange={e => { const value = e.target.value; store.update(p => ({ ...p, notes: { ...p.notes, [material.id]: value } })); }} /></label><button className={styles.primary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div></div>;
+  return <div className={styles.hypo}><div className={styles.hypoFacts}><p>{material.facts}</p><h3>{material.prompt}</h3></div><div className={styles.hypoWork}><button className={styles.primary} onClick={onWrite}><PenLine size={19} />Write and grade</button><button className={styles.secondary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div></div>;
 }

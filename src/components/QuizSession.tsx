@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles } from "lucide-react";
+import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles, RotateCcw, Minus } from "lucide-react";
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
 import { AskPanel } from "./AskPanel";
 import type { QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
-import { COURSES, ROLE_LABEL, type RoundItem } from "../helpers/studyEngine";
+import type { ExplainDTO } from "../endpoints/ai_POST.schema";
+import { COURSES, ROLE_LABEL, itemCourse, itemId, itemTopic, type RoundItem, type SessionCard } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
 import styles from "./QuizSession.module.css";
@@ -18,10 +19,20 @@ type Props = {
   mode: QuizMode;
   getProgress: (id: string) => ProgressDTO | undefined;
   onAnswer: (q: QuestionDTO, choice: string) => Promise<boolean>;
+  /** A recall card graded: moves its review date and counts toward the day. */
+  onCard: (card: SessionCard, correct: boolean) => void;
+  /** Checks a typed explanation of a card against its answer. Null when the tutor is unavailable. */
+  onExplain?: (card: SessionCard, answer: string) => Promise<ExplainDTO | null>;
+  /** Practice asks for an answer in your own words before the choices appear. */
+  recallFirst?: boolean;
+  /** Exam time limit in seconds. */
+  seconds?: number;
+  /** Offered on the results screen, such as an essay due today. */
+  after?: { label: string; onGo: () => void }[];
   onStar: (q: QuestionDTO, starred: boolean) => void;
   onGuess: (q: QuestionDTO) => void;
   onFlag: (q: QuestionDTO, note: string) => void;
-  /** Practice sessions keep going: returns more questions, skipping ones already in this session. */
+  /** Practice sessions keep going: returns more items, skipping ones already in this session. */
   onMore?: (exclude: Set<string>) => RoundItem[];
   onAnother: () => void;
   onRetry: (items: RoundItem[]) => void;
@@ -34,18 +45,25 @@ type Props = {
   className?: string;
 };
 
-export type QuizSnapshot = { items: RoundItem[]; i: number; picks: (string | undefined)[]; results: (boolean | undefined)[] };
+export type QuizSnapshot = { items: RoundItem[]; i: number; picks: (string | undefined)[]; results: (boolean | undefined)[]; shown?: (boolean | undefined)[]; typed?: (string | undefined)[] };
 
 const paras = (t: string) => t.split(/\n\s*\n/).map((p, i) => <p key={i}>{p.trim()}</p>);
 const isAi = (q: QuestionDTO) => q.id.startsWith("ai-");
+const clock = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
+const VERDICT: Record<ExplainDTO["verdict"], string> = { solid: "Solid", partial: "Partly there", off: "Not yet" };
 
-export function QuizSession({ items: initial, mode, getProgress, onAnswer, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, className }: Props) {
+export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, className }: Props) {
   const [items, setItems] = useState(resume?.items ?? initial);
   const [i, setI] = useState(resume?.i ?? 0);
   const [sel, setSel] = useState<string | null>(null);
-  // Per-position answers, so going back shows that question's review exactly as it was.
+  // Per-position answers, so going back shows that item's review exactly as it was.
   const [results, setResults] = useState<(boolean | undefined)[]>(resume?.results ?? []);
   const [picks, setPicks] = useState<(string | undefined)[]>(resume?.picks ?? []);
+  // Per position: choices (or a card's answer) revealed, and what was typed before revealing.
+  const [shown, setShown] = useState<(boolean | undefined)[]>(resume?.shown ?? []);
+  const [typed, setTyped] = useState<(string | undefined)[]>(resume?.typed ?? []);
+  const [feedback, setFeedback] = useState<Record<number, ExplainDTO>>({});
+  const [checking, setChecking] = useState(false);
   const [done, setDone] = useState(false);
   const [anim, setAnim] = useState<"in" | "out" | "back">("in");
   const [closing, setClosing] = useState(false);
@@ -59,14 +77,32 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   const modalRef = useModalFocus<HTMLDivElement>();
   const touch = useRef<{ x: number; y: number } | null>(null);
   const item = items[Math.min(i, items.length - 1)];
+  const card = item.card;
   const q = item.q;
   const picked = picks[i];
   const checked = picked !== undefined;
   const answered = results.filter((r) => r !== undefined).length;
   const right = results.filter(Boolean).length;
+  const mine = typed[i]?.trim() ?? "";
+  // A card is in review once its answer is showing; a question once it has been answered.
+  const revealed = !!shown[i] || checked;
+  const hidden = mode === "practice" && !!recallFirst && !!q && !revealed;
+  const reviewing = mode === "practice" && !done && (card ? revealed : checked);
+
+  // Exam clock: counts down from the limit and ends the exam at zero.
+  const started = useRef(Date.now());
+  const [used, setUsed] = useState(0);
+  const timed = mode === "exam" && !!seconds;
+  useEffect(() => {
+    if (!timed || done) return;
+    const tick = () => setUsed(Math.floor((Date.now() - started.current) / 1000));
+    const t = setInterval(tick, 1000);
+    return () => clearInterval(t);
+  }, [timed, done]);
+  const left = timed ? seconds! - used : 0;
 
   const snapshot = useRef<QuizSnapshot | undefined>(undefined);
-  snapshot.current = done ? undefined : { items, i, picks, results };
+  snapshot.current = done ? undefined : { items, i, picks, results, shown, typed };
   const close = useCallback(() => {
     setClosing(true);
     setTimeout(() => onClose(snapshot.current), 380);
@@ -81,6 +117,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
     exit();
     if (stay) return false;
   });
+  useEffect(() => { if (timed && !done && left <= 0) exit(); }, [timed, done, left, exit]);
 
   const goTo = useCallback((n: number, dir: "out" | "back" = "out") => {
     setAnim(dir);
@@ -97,7 +134,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
 
   const goNext = useCallback(() => {
     if (i + 1 < items.length) return goTo(i + 1);
-    const more = mode === "practice" && onMore ? onMore(new Set(items.map((it) => it.q.id))) : [];
+    const more = mode === "practice" && onMore ? onMore(new Set(items.map(itemId))) : [];
     if (more.length) {
       setItems((list) => [...list, ...more]);
       goTo(i + 1);
@@ -113,24 +150,48 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
   }, [i, done, goTo]);
   const reopen = useCallback((k: number) => { haptic(); setDone(false); setI(k); setAnim("back"); scrollRef.current?.scrollTo({ top: 0 }); }, []);
 
+  const slide = () => { setAnim("out"); setTimeout(() => { setAnim("in"); scrollRef.current?.scrollTo({ top: 0 }); }, 170); };
+
+  // Shows a question's choices, or a card's answer. A typed explanation of a card is checked first.
+  const reveal = useCallback(async () => {
+    if (revealed || checking) return;
+    haptic();
+    const at = i;
+    if (card && mine && onExplain) {
+      setChecking(true);
+      const fb = await onExplain(card, mine);
+      setChecking(false);
+      if (fb) setFeedback((f) => ({ ...f, [at]: fb }));
+    }
+    setShown((v) => { const n = [...v]; n[at] = true; return n; });
+    if (card) slide();
+  }, [revealed, checking, i, card, mine, onExplain]);
+
+  const gradeCard = useCallback((ok: boolean) => {
+    if (!card || checked) return;
+    haptic();
+    const at = i;
+    setResults((r) => { const n = [...r]; n[at] = ok; return n; });
+    setPicks((p) => { const n = [...p]; n[at] = ok ? "Y" : "N"; return n; });
+    onCard(card, ok);
+    goNext();
+  }, [card, checked, i, onCard, goNext]);
+
   const check = useCallback(async () => {
-    if (!sel || checked) return;
+    if (!q || !sel || checked) return;
     const local = sel === q.answer;
     if (mode === "practice") haptic();
     const at = i;
     setResults((r) => { const n = [...r]; n[at] = local; return n; });
     setPicks((p) => { const n = [...p]; n[at] = sel; return n; });
-    if (mode === "practice") {
-      // Slide over to the review screen while the answer saves.
-      setAnim("out");
-      setTimeout(() => { setAnim("in"); scrollRef.current?.scrollTo({ top: 0 }); }, 170);
-    }
+    // Slide over to the review screen while the answer saves.
+    if (mode === "practice") slide();
     try { await onAnswer(q, sel); } catch { /* the toast in the parent reports it */ }
     if (mode === "exam") goNext();
   }, [sel, checked, q, i, mode, onAnswer, goNext]);
 
   const makeHarder = async () => {
-    if (!onHarder || harder[q.id]) return;
+    if (!q || !onHarder || harder[q.id]) return;
     haptic();
     setHarder((h) => ({ ...h, [q.id]: "busy" }));
     const nq = await onHarder(q);
@@ -144,19 +205,27 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
       if (asking) return;
       if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
       const k = e.key.toUpperCase();
-      if (!done && !checked && ["A", "B", "C", "D", "1", "2", "3", "4"].includes(k)) {
+      if (e.key === "Escape") { exit(); return; }
+      if (done) { if (e.key === "ArrowLeft" && mode === "practice") goBack(); return; }
+      if (e.key === "ArrowLeft" && mode === "practice") { goBack(); return; }
+      if (card) {
+        if (!revealed) { if (e.key === "Enter" || e.code === "Space") { e.preventDefault(); void reveal(); } return; }
+        if (!checked) { if (k === "1") gradeCard(false); else if (k === "2" || e.key === "Enter") { e.preventDefault(); gradeCard(true); } return; }
+        if (e.key === "Enter" || e.key === "ArrowRight") { e.preventDefault(); goNext(); }
+        return;
+      }
+      if (hidden) { if (e.key === "Enter" || e.code === "Space") { e.preventDefault(); void reveal(); } return; }
+      if (!checked && ["A", "B", "C", "D", "1", "2", "3", "4"].includes(k)) {
         const pick = "ABCD"["1234".includes(k) ? Number(k) - 1 : "ABCD".indexOf(k)];
         setSel((cur) => (cur === pick ? null : pick));
-      } else if (e.key === "Enter" && !done) {
+      } else if (e.key === "Enter") {
         e.preventDefault();
-        if (!checked) check(); else if (mode === "practice") goNext();
-      } else if (e.key === "ArrowLeft" && mode === "practice") goBack();
-      else if (e.key === "ArrowRight" && !done && checked && mode === "practice") goNext();
-      else if (e.key === "Escape") exit();
+        if (!checked) void check(); else if (mode === "practice") goNext();
+      } else if (e.key === "ArrowRight" && checked && mode === "practice") goNext();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, checked, check, goNext, goBack, exit, mode, asking]);
+  }, [done, checked, check, goNext, goBack, exit, mode, asking, card, revealed, hidden, reveal, gradeCard]);
 
   const onTouchStart = (e: React.TouchEvent) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -173,17 +242,19 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
     if (t && e.changedTouches[0].clientY - t.y > 70) close();
   };
 
-  const p = getProgress(q.id);
+  const p = q ? getProgress(q.id) : undefined;
   const shownPick = checked ? picked : sel;
-  const chosen = q.choices.find((c) => c.id === picked);
-  const answer = q.choices.find((c) => c.id === q.answer)!;
-  const ok = picked === q.answer;
-  const course = COURSES[q.course];
-  const reviewing = checked && mode === "practice" && !done;
-  const ai = isAi(q);
-  const others = q.choices.filter((c) => c.id !== q.answer && c.id !== picked);
-  const isGuess = guessed.has(q.id), isFlagged = flagged.has(q.id);
+  const chosen = q?.choices.find((c) => c.id === picked);
+  const answer = q?.choices.find((c) => c.id === q.answer);
+  const ok = card ? results[i] === true : picked === q!.answer;
+  const course = COURSES[itemCourse(item)];
+  const ai = !!q && isAi(q);
+  const others = q ? q.choices.filter((c) => c.id !== q.answer && c.id !== picked) : [];
+  const isGuess = !!q && guessed.has(q.id), isFlagged = !!q && flagged.has(q.id);
   const animCls = anim === "in" ? styles.in : anim === "back" ? styles.inBack : styles.out;
+  const fb = feedback[i];
+  const setMine = (value: string) => setTyped((v) => { const n = [...v]; n[i] = value; return n; });
+  const chip = <span className={styles.chip} style={{ color: course.color, background: `color-mix(in srgb, ${course.color} 14%, transparent)` }}>{course.short}</span>;
 
   return (
     <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label={mode === "exam" ? "Practice exam" : "Practice"}>
@@ -195,11 +266,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
               <div className={styles.prog}>
                 {items.map((_, k) => <i key={k} className={results[k] !== undefined ? styles.done : k === i ? styles.cur : ""} />)}
               </div>
-              <span className={styles.count}>{done ? "" : `${i + 1} of ${items.length}`}</span>
+              <span className={`${styles.count} ${timed && left < 60 ? styles.countLow : ""}`} role={timed ? "timer" : undefined}>{done ? "" : timed ? clock(left) : `${i + 1} of ${items.length}`}</span>
             </>
           ) : (
             <>
-              <button className={styles.x} onClick={goBack} disabled={i === 0 && !done} aria-label="Previous question"><ChevronLeft size={18} strokeWidth={2.4} /></button>
+              <button className={styles.x} onClick={goBack} disabled={i === 0 && !done} aria-label="Previous"><ChevronLeft size={18} strokeWidth={2.4} /></button>
               <div className={styles.tally} aria-live="polite">
                 {answered > 0 && <><span className={styles.tallyOk}><Check size={13} strokeWidth={3} />{right}</span><span className={styles.tallyBad}><X size={13} strokeWidth={3} />{answered - right}</span></>}
               </div>
@@ -211,30 +282,91 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
 
       <div className={styles.scroll} ref={scrollRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {done ? (
-          <Results items={items} results={results} picks={picks} mode={mode} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={reopen} />
-        ) : !reviewing ? (
+          <Results items={items} results={results} picks={picks} mode={mode} used={timed ? Math.min(used, seconds!) : undefined} after={after} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={reopen} />
+        ) : card && !reviewing ? (
+          <div className={`${styles.body} ${styles.split} ${animCls}`} key={`c-${i}-${card.id}`}>
+            <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
+            <div className={styles.meta}>
+              {chip}
+              <span className={styles.pill}>{card.rule ? "Rule" : item.review ? "Review" : "Card"}</span>
+              <span className={styles.topic}>{card.topic}</span>
+            </div>
+            <div className={styles.paneL}>
+              <div className={styles.cardFront}>
+                {card.rule && <span className={styles.label}>State the rule</span>}
+                <h2>{card.front}</h2>
+              </div>
+            </div>
+            <div className={styles.paneR}>
+              <Textarea className={styles.recall} value={typed[i] ?? ""} onChange={(e) => setMine(e.target.value)} placeholder="Explain it in your own words" disabled={checking} />
+            </div>
+          </div>
+        ) : card ? (
+          <div className={`${styles.body} ${styles.review} ${styles.split} ${animCls}`} key={`cr-${i}-${card.id}`}>
+            {(checked || fb) && (
+              <header className={styles.verdict}>
+                {checked
+                  ? <span className={`${styles.vBig} ${ok ? styles.vOk : styles.vBad}`}>{ok ? <Check size={20} strokeWidth={3} /> : <RotateCcw size={18} strokeWidth={3} />}</span>
+                  : <span className={`${styles.vBig} ${fb!.verdict === "solid" ? styles.vOk : fb!.verdict === "partial" ? styles.vMid : styles.vBad}`}>{fb!.verdict === "solid" ? <Check size={20} strokeWidth={3} /> : fb!.verdict === "partial" ? <Minus size={20} strokeWidth={3} /> : <X size={20} strokeWidth={3} />}</span>}
+                <div><h2>{checked ? (ok ? "Got it" : "Back tomorrow") : VERDICT[fb!.verdict]}</h2></div>
+              </header>
+            )}
+            <div className={styles.paneL}>
+              <section className={`${styles.rc} ${styles.answerCard}`}>
+                <span className={styles.label}><i style={{ background: course.color }} />{course.short} · {card.topic}</span>
+                <p className={styles.strong}>{card.front}</p>
+              </section>
+            </div>
+            <div className={styles.paneR}>
+              {mine && (
+                <section className={`${styles.rc} ${styles.answerCard}`}>
+                  <span className={styles.label}>Your answer</span>
+                  <p className={styles.bodyText}>{mine}</p>
+                </section>
+              )}
+              <section className={`${styles.rc} ${styles.answerCard}`}>
+                <span className={`${styles.label} ${styles.labelOk}`}>{card.rule ? "Rule" : "Answer"}</span>
+                <p className={card.reason ? styles.strong : styles.bodyText}>{card.back}</p>
+                {card.reason && <p className={styles.bodyText}>{card.reason}</p>}
+                {card.authority && <span className={styles.authority}>{card.authority}</span>}
+              </section>
+              {fb && (fb.got.length > 0 || fb.gaps.length > 0 || fb.note) && (
+                <section className={`${styles.rc} ${styles.answerCard}`}>
+                  <span className={styles.label}>Feedback</span>
+                  {fb.got.map((t, k) => <p key={`g${k}`} className={`${styles.bodyText} ${styles.fb}`}><span className={`${styles.mark} ${styles.markOk}`}><Check size={12} strokeWidth={3} /></span>{t}</p>)}
+                  {fb.gaps.map((t, k) => <p key={`m${k}`} className={`${styles.bodyText} ${styles.fb}`}><span className={`${styles.mark} ${styles.markBad}`}><X size={12} strokeWidth={3} /></span>{t}</p>)}
+                  {fb.note && <p className={styles.bodyText}>{fb.note}</p>}
+                </section>
+              )}
+            </div>
+          </div>
+        ) : q && !reviewing ? (
           <div className={`${styles.body} ${styles.split} ${animCls}`} key={`q-${i}-${q.id}`}>
             <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
             <div className={styles.meta}>
-              <span className={styles.chip} style={{ color: course.color, background: `color-mix(in srgb, ${course.color} 14%, transparent)` }}>{course.short}</span>
+              {chip}
               {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : mode === "exam" ? <span className={styles.pill}>Exam</span> : item.review ? <span className={styles.pill}>Review</span> : null}
               <span className={styles.topic}>{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ""}</span>
             </div>
             <div className={styles.paneL}><div className={styles.stem}>{paras(q.stem)}</div></div>
             <div className={styles.paneR}>
               <p className={styles.ask}>{q.prompt}</p>
-              <div className={styles.choices} role="group" aria-label="Answer choices">
-                {q.choices.map((c) => (
-                  <button key={c.id} className={`${styles.choice} ${c.id === shownPick ? styles.selected : ""}`} disabled={checked} aria-pressed={c.id === shownPick}
-                    onClick={() => { haptic(); setSel((cur) => (cur === c.id ? null : c.id)); }}>
-                    <span className={styles.letter}>{c.id}</span>
-                    <span className={styles.choiceText}>{c.text}</span>
-                  </button>
-                ))}
-              </div>
+              {hidden ? (
+                <Textarea className={styles.recall} value={typed[i] ?? ""} onChange={(e) => setMine(e.target.value)} placeholder="Your answer, before the choices" />
+              ) : (
+                <div className={styles.choices} role="group" aria-label="Answer choices">
+                  {q.choices.map((c) => (
+                    <button key={c.id} className={`${styles.choice} ${c.id === shownPick ? styles.selected : ""}`} disabled={checked} aria-pressed={c.id === shownPick}
+                      onClick={() => { haptic(); setSel((cur) => (cur === c.id ? null : c.id)); }}>
+                      <span className={styles.letter}>{c.id}</span>
+                      <span className={styles.choiceText}>{c.text}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
-        ) : (
+        ) : q && answer ? (
           <div className={`${styles.body} ${styles.review} ${styles.split} ${animCls}`} key={`r-${i}-${q.id}`}>
             <header className={styles.verdict}>
               <span className={`${styles.vBig} ${ok ? styles.vOk : styles.vBad}`}>{ok ? <Check size={20} strokeWidth={3} /> : <X size={20} strokeWidth={3} />}</span>
@@ -255,6 +387,13 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
             </details>
             </div>
             <div className={styles.paneR}>
+
+            {mine && (
+              <section className={`${styles.rc} ${styles.answerCard}`}>
+                <span className={styles.label}>Your first answer</span>
+                <p className={styles.bodyText}>{mine}</p>
+              </section>
+            )}
 
             {!ok && chosen && (
               <section className={`${styles.rc} ${styles.answerCard}`}>
@@ -323,10 +462,20 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
             )}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
-      {!done && !reviewing && (
+      {!done && !reviewing && (card || hidden) && (
+        <div className={`${styles.foot} ${styles.footOn}`}>
+          <div className={styles.footIn}>
+            <Button className={`${styles.big} ${styles.cta}`} disabled={checking} onClick={() => void reveal()}>
+              {checking ? "Checking…" : card ? (mine && onExplain ? "Check my answer" : "Reveal answer") : "Show choices"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!done && !reviewing && q && !hidden && (
         <div className={`${styles.foot} ${sel && !checked ? styles.footOn : ""}`} aria-hidden={!sel}>
           <div className={styles.footIn}>
             <Button className={`${styles.big} ${styles.cta}`} disabled={!sel || checked} onClick={check}>
@@ -336,7 +485,20 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
         </div>
       )}
 
-      {reviewing && (
+      {reviewing && card && (
+        <div className={`${styles.foot} ${styles.footOn} ${styles.reviewFoot}`}>
+          <div className={styles.footIn}><div className={styles.actions}>
+            {checked ? <Button className={`${styles.next} ${styles.cta}`} onClick={() => { haptic(); goNext(); }}>Next</Button> : (
+              <>
+                <Button variant="secondary" className={styles.next} onClick={() => gradeCard(false)}>Review tomorrow</Button>
+                <Button className={`${styles.next} ${styles.cta}`} onClick={() => gradeCard(true)}>Got it</Button>
+              </>
+            )}
+          </div></div>
+        </div>
+      )}
+
+      {reviewing && q && (
         <div className={`${styles.foot} ${styles.footOn} ${styles.reviewFoot}`}>
           <div className={styles.footIn}><div className={styles.actions}>
             {!ai && (
@@ -354,13 +516,15 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onSta
         </div>
       )}
 
-      {asking && !done && <AskPanel question={q} picked={picked ?? null} onClose={() => setAsking(false)} />}
+      {asking && !done && q && <AskPanel question={q} picked={(picked as "A" | "B" | "C" | "D" | undefined) ?? null} onClose={() => setAsking(false)} />}
     </div>
   );
 }
 
-function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose, onOpen }: {
+function Results({ items: all, results, picks, mode, used, after, onAnother, onRetry, onClose, onOpen }: {
   items: RoundItem[]; results: (boolean | undefined)[]; picks: (string | undefined)[]; mode: QuizMode;
+  /** Seconds a timed exam took. */
+  used?: number; after?: { label: string; onGo: () => void }[];
   onAnother: () => void; onRetry: (items: RoundItem[]) => void; onClose: () => void; onOpen: (index: number) => void;
 }) {
   // Only answered questions count; practice and an exam ended early can stop anywhere.
@@ -391,7 +555,11 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
   }, [c, n, circ]);
   useEffect(() => { haptic(); }, []);
   const by: Record<string, { n: number; c: number }> = {};
-  items.forEach((it, k) => { const b = (by[it.q.course] ||= { n: 0, c: 0 }); b.n++; if (res[k]) b.c++; });
+  items.forEach((it, k) => { const b = (by[itemCourse(it)] ||= { n: 0, c: 0 }); b.n++; if (res[k]) b.c++; });
+  // An exam also breaks the score down by topic, weakest first.
+  const topics = new Map<string, { n: number; c: number }>();
+  if (mode === "exam") items.forEach((it, k) => { const t = topics.get(itemTopic(it)) ?? { n: 0, c: 0 }; t.n++; if (res[k]) t.c++; topics.set(itemTopic(it), t); });
+  const topicRows = [...topics].sort((a, b) => a[1].c / a[1].n - b[1].c / b[1].n);
   const [open, setOpen] = useState<number | null>(null);
   const perfect = n > 0 && c === n;
 
@@ -412,6 +580,12 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
         <div><b>{shown}<small>/{n}</small></b><span>correct</span></div>
       </div>
       <h1 className={styles.resTitle}>{mode === "exam" ? "Exam complete" : "All caught up"}</h1>
+      {used !== undefined && n > 0 && (
+        <div className={styles.card}>
+          <div className={styles.row}><span className={styles.rowTitle}>Time</span><span className={styles.rowEnd}>{clock(used)}</span></div>
+          <div className={styles.row}><span className={styles.rowTitle}>Per question</span><span className={styles.rowEnd}>{clock(Math.round(used / n))}</span></div>
+        </div>
+      )}
       <div className={styles.card}>
         {Object.entries(by).map(([k, b]) => {
           const course = COURSES[k as keyof typeof COURSES];
@@ -424,9 +598,21 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
           );
         })}
       </div>
+      {topicRows.length > 1 && (
+        <div className={styles.card}>
+          {topicRows.map(([topic, t]) => (
+            <div key={topic} className={styles.row}>
+              <span className={`${styles.mark} ${t.c === t.n ? styles.markOk : styles.markBad}`}>{t.c === t.n ? <Check size={13} strokeWidth={3} /> : <X size={13} strokeWidth={3} />}</span>
+              <span className={styles.rowTitle}>{topic}</span>
+              <span className={styles.rowEnd}>{t.c} of {t.n}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {mode === "exam" ? (
         <div className={`${styles.card} ${styles.resList}`}>
           {items.map((it, k) => {
+            if (!it.q) return null;
             const pick = it.q.choices.find((x) => x.id === pk[k]);
             const right = it.q.choices.find((x) => x.id === it.q.answer)!;
             const isOpen = open === k;
@@ -451,9 +637,9 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
       ) : missed.length > 0 ? (
         <div className={`${styles.card} ${styles.resList}`}>
           {missed.map((it) => (
-            <button key={it.q.id} className={`${styles.row} ${styles.rowBtn}`} onClick={() => onOpen(all.indexOf(it))}>
+            <button key={itemId(it)} className={`${styles.row} ${styles.rowBtn}`} onClick={() => onOpen(all.indexOf(it))}>
               <span className={`${styles.mark} ${styles.markBad}`}><X size={13} strokeWidth={3} /></span>
-              <span className={styles.rowMain}><span className={styles.rowTitle}>{it.q.subtopic ?? it.q.topic}</span><span className={styles.rowSub}>{it.q.prompt}</span></span>
+              <span className={styles.rowMain}><span className={styles.rowTitle}>{it.card ? it.card.topic : it.q.subtopic ?? it.q.topic}</span><span className={styles.rowSub}>{it.card ? it.card.front : it.q.prompt}</span></span>
               <ChevronRight size={16} className={styles.chev} />
             </button>
           ))}
@@ -462,8 +648,9 @@ function Results({ items: all, results, picks, mode, onAnother, onRetry, onClose
       <div className={styles.btns}>
         {mode === "exam" && <Button className={`${styles.big} ${styles.cta}`} onClick={onAnother}>New exam</Button>}
         {missed.length > 0 && (
-          <Button variant="secondary" className={styles.big} onClick={() => onRetry(missed.map((it) => ({ q: it.q, review: true })))}>Retry the {missed.length} missed</Button>
+          <Button variant="secondary" className={styles.big} onClick={() => onRetry(missed.map((it) => ({ ...it, review: true })))}>Retry the {missed.length} missed</Button>
         )}
+        {after?.map((a) => <Button key={a.label} variant="secondary" className={styles.big} onClick={a.onGo}>{a.label}</Button>)}
         <Button variant="ghost" onClick={onClose}>Done</Button>
       </div>
     </div>
