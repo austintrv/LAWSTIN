@@ -39,7 +39,7 @@
   border-radius: var(--radius);
   font-size: 17px;
   font-weight: 600;
-  background: var(--uh-red);
+  background: var(--uh-red-button);
   color: #fff;
   margin-top: 4px;
   transition: transform 0.2s var(--ease-ios), opacity 0.2s;

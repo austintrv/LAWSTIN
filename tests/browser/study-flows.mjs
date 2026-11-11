@@ -213,3 +213,6 @@ try {
   assert.deepEqual(errors,[]);
   console.log('PASS: 320, 390 and 1440 layouts, light and dark, no runtime errors');
 } finally {await browser.close();await server.close();}
+
+const { safetyFlows } = await import('./safety-flows.mjs');
+await safetyFlows();

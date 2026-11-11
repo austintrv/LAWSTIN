@@ -241,21 +241,7 @@ function StudyPlan({ materials, record, weak, onOpen, expanded, onToggle }: { ma
 
 function StudyDialog({ title, children, onClose, onBack, actions }: { title: string; children: React.ReactNode; onClose: () => void; onBack?: () => void; actions?: React.ReactNode }) {
   const ref = useModalFocus<HTMLDivElement>();
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); closeRef.current(); }
-      if (e.key !== "Tab") return;
-      const nodes = ref.current?.querySelectorAll<HTMLElement>('button:not(:disabled), a[href], textarea, input, select, [tabindex="0"]');
-      if (!nodes?.length) return;
-      const first = nodes[0], last = nodes[nodes.length - 1];
-      if (e.shiftKey && (document.activeElement === first || document.activeElement === ref.current)) { e.preventDefault(); last.focus(); }
-      else if (!e.shiftKey && (document.activeElement === last || document.activeElement === ref.current)) { e.preventDefault(); first.focus(); }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  useBackClose(onBack ?? onClose);
   // The dialog is portalled so that the underlying scrolling pane can be inert.
   return <DialogPortal><div className={styles.dialogBackdrop} onClick={e => { if (e.target === e.currentTarget) onClose(); }}><div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={title} className={styles.dialog}>
     <header className={styles.dialogHeader}><div>{onBack && <button className={styles.iconButton} aria-label="Back to lesson" onClick={onBack}><ChevronLeft size={18} strokeWidth={2.4} /></button>}{actions}</div><span>{title}</span><div><button className={styles.iconButton} aria-label="Close" onClick={onClose}><X size={17} strokeWidth={2.4} /></button></div></header>{children}
@@ -270,12 +256,11 @@ function FlashcardSession({ cards, again, store, onClose, onAgain, onBack }: { c
   const log = useLogStudy();
   const [index, setIndex] = useState(0), [flipped, setFlipped] = useState(false), [missed, setMissed] = useState<Flashcard[]>([]);
   const card = cards[index];
-  useBackClose(onBack ?? onClose);
   const grade = (correct: boolean) => {
     if (!flipped || !card) return;
     haptic();
     if (!again) store.update(prev => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
-    log("card", card.id, correct);
+    if (!again) log("card", card.id, correct);
     if (!correct) setMissed(m => [...m, card]);
     setIndex(n => n + 1); setFlipped(false);
   };
@@ -295,7 +280,7 @@ function FlashcardSession({ cards, again, store, onClose, onAgain, onBack }: { c
     {card ? <div className={styles.cardSession}>
       <div className={styles.sessionMeta}><span style={{ color: SCHOOL_COURSES[card.course].color }}>{SCHOOL_COURSES[card.course].name}</span><span aria-live="polite">{index + 1} of {cards.length}</span></div>
       <progress max={cards.length} value={index} aria-label="Flashcard session progress" />
-      <button className={`${styles.recallCard} ${flipped ? styles.recalled : ""}`} onClick={() => { haptic(); setFlipped(v => !v); }} aria-label={flipped ? "Show prompt" : "Reveal answer"} aria-expanded={flipped}>
+      <button className={`${styles.recallCard} ${flipped ? styles.recalled : ""}`} onClick={() => { haptic(); setFlipped(v => !v); }} aria-expanded={flipped}>
         <span className={styles.overline}>{flipped ? "Answer" : card.topic}</span><h2>{flipped ? card.back : card.front}</h2>{flipped ? <p>{card.reason}</p> : <span className={styles.revealPrompt}>Reveal answer<ArrowRight size={20} /></span>}
       </button>
       {flipped && <><p className={styles.authority}>{card.authority}</p><div className={styles.gradeActions}><button className={styles.secondary} onClick={() => grade(false)}><RotateCcw size={20} />Review tomorrow</button><button className={styles.primary} onClick={() => grade(true)}><Check size={20} />Recalled it</button></div><SourceList material={card} /></>}
@@ -362,7 +347,7 @@ function FlowchartView({ material }: { material: Extract<StudyMaterial, { kind: 
   // After a choice, bring the next step (or the outcome) into view.
   useEffect(() => {
     if (!Object.keys(choices).length) return;
-    box.current?.querySelector("section:last-of-type")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    box.current?.querySelector("section:last-of-type")?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "nearest" });
   }, [choices]);
   const nodes = overview ? material.nodes : path.map(id => material.nodes.find(n => n.id === id)!);
   return <div ref={box} className={styles.flow} data-overview={overview || undefined}><div className={styles.flowControls}><button className={styles.secondary} onClick={() => setOverview(v => !v)} aria-pressed={overview}>{overview ? "Walk through" : "See full tree"}</button><button className={styles.secondary} onClick={() => { setPath([material.start]); setChoices({}); }}><RotateCcw size={18} />Start over</button></div>
@@ -380,7 +365,7 @@ function SortingDrill({ material }: { material: Extract<StudyMaterial, { kind: "
   const retry = () => {
     haptic();
     setAnswers(p => { const n = { ...p }; missed.forEach(i => delete n[i]); return n; });
-    items.current[missed[0]]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    items.current[missed[0]]?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "center" });
   };
   return <div className={styles.drill}><p>{material.prompt}</p>{material.items.map((item, i) => {
     const a = answers[i], ok = a === item.answer;

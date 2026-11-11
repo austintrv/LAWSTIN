@@ -64,7 +64,7 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
   const [saving, setSaving] = useState(false);
   const submitting = useRef(false);
   const scroll = useRef<HTMLDivElement>(null);
-  const modalRef = useModalFocus<HTMLDivElement>();
+  const modalRef = useModalFocus<HTMLDivElement>(!away);
   const step = steps[at];
 
   const close = useCallback(() => { setClosing(true); setTimeout(onClose, 380); }, [onClose]);
@@ -106,8 +106,7 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
         setSel((s) => s === choice ? null : choice);
       }
       else if (e.key === "Enter" && step.kind === "check" && !checked) { e.preventDefault(); void check(); }
-      if (e.key === "Escape") close();
-      else if (e.key === "ArrowLeft") go(at - 1);
+      if (e.key === "ArrowLeft") go(at - 1);
       else if (e.key === "ArrowRight" && !(step.kind === "check" && !checked)) go(at + 1);
     };
     window.addEventListener("keydown", onKey);

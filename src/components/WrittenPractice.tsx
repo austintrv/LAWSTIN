@@ -8,19 +8,15 @@ import { useLawstinAi } from "../helpers/useLawstinAi";
 import { type GradeDTO, type SpotterDTO } from "../endpoints/ai_POST.schema";
 import { COURSES, EXAMS, type CourseCode } from "../helpers/studyEngine";
 import type { Hypothetical } from "../helpers/studyMaterials";
-import type { useWritten, WrittenEntry } from "../helpers/useWritten";
+import { readDrafts, saveDraft, removeDraft, draftKey, type WrittenDraft, type useWritten, type WrittenEntry } from "../helpers/useWritten";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
 import { toast } from "../helpers/toast";
 import styles from "./WrittenPractice.module.css";
 
-const STORE = "lawstin-written";
 type Length = "short" | "full";
-type Saved = { spot: SpotterDTO; answer: string; grade: GradeDTO | null; seconds?: number };
-const load = (): Saved | null => { try { const v = localStorage.getItem(STORE); return v ? (JSON.parse(v) as Saved) : null; } catch { return null; } };
-const save = (v: Saved | null) => { try { if (v) localStorage.setItem(STORE, JSON.stringify(v)); else localStorage.removeItem(STORE); } catch { /* storage unavailable */ } };
-
+const savedMessage = "Saved. Grade it when you’re back online.";
 const errText = (e: unknown) => (e as Error)?.message || "Something went wrong. Try again.";
 const clock = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 const MINUTES: Record<Length, number> = { short: 15, full: 45 };
@@ -50,22 +46,35 @@ type Props = {
 
 export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos, weak, written, onGraded, onTopic, className }: Props) {
   const { spotter, grade } = useLawstinAi();
-  const saved = useState(() => (hypo ? null : load()))[0];
-  const [course, setCourse] = useState<CourseCode>(hypo?.course ?? openCourse ?? saved?.spot.course ?? "il");
+  const [drafts, setDrafts] = useState(readDrafts);
+  const saved = useState(() => hypo ? drafts[draftKey(fromHypo(hypo))] : !openCourse ? Object.values(drafts).slice(-1)[0] : undefined)[0];
+  const [course, setCourse] = useState<CourseCode>(hypo?.course ?? (openCourse === "pr" ? "il" : openCourse) ?? saved?.spot.course ?? "il");
   const [length, setLength] = useState<Length>(full ? "full" : "short");
-  const [spot, setSpot] = useState<SpotterDTO | null>(hypo ? fromHypo(hypo) : openCourse ? null : saved?.spot ?? null);
-  const [answer, setAnswer] = useState(hypo || openCourse ? "" : saved?.answer ?? "");
-  const [result, setResult] = useState<GradeDTO | null>(hypo || openCourse ? null : saved?.grade ?? null);
-  const [seconds, setSeconds] = useState(hypo || openCourse ? 0 : saved?.seconds ?? 0);
+  const [spot, setSpot] = useState<SpotterDTO | null>(saved?.spot ?? (hypo ? fromHypo(hypo) : null));
+  const [answer, setAnswer] = useState(saved?.answer ?? "");
+  const [result, setResult] = useState<GradeDTO | null>(null);
+  const [seconds, setSeconds] = useState(saved?.seconds ?? 0);
+  const [ready, setReady] = useState(saved?.ready ?? false);
+  const [online, setOnline] = useState(navigator.onLine);
+  const [grading, setGrading] = useState(false);
+  const request = useRef(0);
   const [view, setView] = useState<WrittenEntry | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [ring, setRing] = useState(0);
   const scroll = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { save(spot ? { spot, answer, grade: result, seconds } : null); }, [spot, answer, result, seconds]);
+  const keep = (draft: WrittenDraft) => {
+    try { saveDraft(draft); setDrafts(readDrafts()); }
+    catch { toast.error("Couldn’t save your draft on this device"); }
+  };
+  useEffect(() => { if (spot && !result) keep({ spot, answer, seconds, ready }); }, [spot, answer, result, seconds, ready]);
+  useEffect(() => {
+    const change = () => setOnline(navigator.onLine);
+    window.addEventListener("online", change); window.addEventListener("offline", change);
+    return () => { request.current++; window.removeEventListener("online", change); window.removeEventListener("offline", change); };
+  }, []);
   // The clock runs while a prompt is open and unanswered, and pauses when the app is in the background.
-  const writing = !!spot && !result && !grade.isPending && !view;
+  const writing = !!spot && !result && !grading && !view;
   useEffect(() => {
     if (!writing) return;
     const t = setInterval(() => { if (!document.hidden) setSeconds((s) => s + 1); }, 1000);
@@ -83,11 +92,14 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
   useBackClose(close);
   const modalRef = useModalFocus<HTMLDivElement>();
 
-  // Starting over keeps an Undo for a few seconds when an ungraded answer would be thrown away.
+  const resumeDraft = (draft: WrittenDraft) => {
+    setSpot(draft.spot); setAnswer(draft.answer); setSeconds(draft.seconds ?? 0); setReady(!!draft.ready); setResult(null); setErr(draft.ready && !navigator.onLine ? savedMessage : null);
+  };
   const discard = () => {
-    if (!spot || !answer.trim() || result) return;
-    const prev = { spot, answer, seconds };
-    toast("Answer cleared", { action: { label: "Undo", onClick: () => { setSpot(prev.spot); setAnswer(prev.answer); setSeconds(prev.seconds); setResult(null); } } });
+    if (!spot) return;
+    const previous = { spot, answer, seconds, ready };
+    removeDraft(spot); setDrafts(readDrafts()); setSpot(null); setAnswer(""); setReady(false); setErr(null);
+    toast("Draft discarded", { action: { label: "Undo", onClick: () => resumeDraft(previous) } });
   };
   /** The next verified hypothetical of this length not yet written: weak topics first, then the newest class. */
   const nextHypo = () => hypos
@@ -95,8 +107,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
     .sort((a, b) => Number(weak.has(`${b.course}|${b.topic}`)) - Number(weak.has(`${a.course}|${a.topic}`)) || b.class_date.localeCompare(a.class_date))[0];
   const newSpot = async () => {
     haptic();
-    discard();
-    setErr(null); setResult(null); setAnswer(""); setSeconds(0);
+    setErr(null); setResult(null); setAnswer(""); setSeconds(0); setReady(false);
     const h = nextHypo();
     setSpot(null);
     if (h) { setSpot(fromHypo(h)); return; }
@@ -107,21 +118,31 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
   };
 
   const submit = async () => {
-    if (!spot || !answer.trim()) return;
-    haptic();
-    setErr(null);
+    if (!spot || !answer.trim() || grading) return;
+    haptic(); setReady(true); keep({ spot, answer, seconds, ready: true });
+    if (!navigator.onLine) { setErr(savedMessage); return; }
+    const token = ++request.current;
+    setErr(null); setGrading(true);
     const len = lengthOf(spot.minutes);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let offline: () => void = () => {};
     try {
-      const r = await grade.mutateAsync({ course: spot.course, topic: spot.topic, facts: spot.facts, call: spot.call, issues: spot.issues, answer,
-        reference: spot.reference, openNote: EXAMS[spot.course].notes === "open", length: len });
-      setResult(r.grade);
+      const unavailable = new Promise<never>((_, reject) => {
+        offline = () => reject(new Error(savedMessage));
+        timer = setTimeout(offline, 15000); window.addEventListener("offline", offline, { once: true });
+      });
+      const r = await Promise.race([grade.mutateAsync({ course: spot.course, topic: spot.topic, facts: spot.facts, call: spot.call, issues: spot.issues, answer,
+        reference: spot.reference, openNote: EXAMS[spot.course].notes === "open", length: len }), unavailable]);
+      if (token !== request.current) return;
       scroll.current?.scrollTo({ top: 0 });
       const at = new Date().toISOString();
-      const entry: WrittenEntry = { id: at.replace(/\D/g, "").slice(0, 14), at, day: dateKey.today(), course: spot.course, topic: spot.topic, materialId: spot.materialId,
+      const entry: WrittenEntry = { id: crypto.randomUUID(), at, day: dateKey.today(), course: spot.course, topic: spot.topic, materialId: spot.materialId,
         facts: spot.facts, call: spot.call, answer, words, seconds, minutes: spot.minutes, grade: r.grade };
       written.add(entry);
+      setResult(r.grade); setReady(false); removeDraft(spot); setDrafts(readDrafts());
       onGraded(entry, len);
-    } catch (e) { setErr(errText(e)); }
+    } catch (e) { if (token === request.current) setErr(errText(e)); }
+    finally { clearTimeout(timer); window.removeEventListener("offline", offline); if (token === request.current) setGrading(false); }
   };
 
   const cur = view ? { course: view.course, topic: view.topic, facts: view.facts, call: view.call, minutes: view.minutes } : spot;
@@ -153,7 +174,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               <div className={styles.start}>
                 <h1 className={styles.startTitle}>Issue spotter</h1>
                 <div className={styles.seg} role="group" aria-label="Course">
-                  {(["il", "asy", "pr"] as const).map((k) => (
+                  {(["il", "asy"] as const).map((k) => (
                     <button key={k} aria-pressed={course === k} className={course === k ? styles.segOn : ""} onClick={() => { haptic(); setCourse(k); }}>{COURSES[k].short}</button>
                   ))}
                 </div>
@@ -162,6 +183,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
                     <button key={k} aria-pressed={length === k} className={length === k ? styles.segOn : ""} onClick={() => { haptic(); setLength(k); }}>{MINUTES[k]} minutes</button>
                   ))}
                 </div>
+                {Object.values(drafts).filter(d => d.spot.course === course).map(d => <Button key={draftKey(d.spot)} variant="secondary" className={styles.big} onClick={() => resumeDraft(d)}>Continue your draft<span className={styles.draftTopic}>{d.spot.topic}</span></Button>)}
                 <Button className={`${styles.big} ${styles.cta}`} onClick={newSpot}>Get a fact pattern</Button>
               </div>
               {written.list.length > 0 && (
@@ -202,7 +224,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               <div className={styles.paneR}>
               {!shown ? (
                 <div className={styles.answerBox}>
-                  <Textarea className={styles.answer} value={answer} onChange={(e) => setAnswer(e.target.value)} placeholder="Your answer" disabled={grade.isPending} />
+                  <Textarea className={styles.answer} value={answer} onChange={(e) => { setAnswer(e.target.value); if (spot) keep({ spot, answer: e.target.value, seconds, ready }); }} placeholder="Your answer" disabled={grading} />
                   <span className={styles.count}>{words} {words === 1 ? "word" : "words"}</span>
                 </div>
               ) : (
@@ -269,7 +291,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               </div>
             </div>
           )}
-          {err && <p className={styles.err}>{err}</p>}
+          {err && <p role="status" className={styles.err}>{err}</p>}
         </div>
       </div>
 
@@ -280,8 +302,9 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               <Button variant="secondary" className={styles.big} onClick={() => { haptic(); setView(null); }}>Back</Button>
             ) : !result ? (
               <>
-                <Button variant="secondary" className={styles.side} disabled={grade.isPending} onClick={newSpot}>New</Button>
-                <Button className={`${styles.big} ${styles.cta}`} disabled={!answer.trim() || grade.isPending} onClick={submit}>{grade.isPending ? "Grading…" : "Grade my answer"}</Button>
+                <Button variant="secondary" className={styles.side} disabled={grading} onClick={() => { setSpot(null); setErr(null); }}>New</Button>
+                <Button variant="secondary" className={styles.side} disabled={grading} onClick={discard}>Discard</Button>
+                <Button className={`${styles.big} ${styles.cta}`} disabled={!answer.trim() || grading} onClick={submit}>{grading ? "Grading…" : ready && online ? "Grade now" : "Grade my answer"}</Button>
               </>
             ) : (
               <>

@@ -6,8 +6,9 @@ import { useEffect, useRef } from "react";
  * one and, if others remain, the entry is pushed again. Closing from the UI removes the entry
  * once nothing is left open. onBack returns false to stay open (an exam switching to results).
  */
-type Entry = { back: () => boolean | void };
+type Entry = { back: () => boolean | void; history: boolean };
 const stack: Entry[] = [];
+const hasHistory = () => stack.some(e => e.history);
 let owned = false;
 // True while our own history.back() is on its way; its popstate is not a user Back.
 let backing = false;
@@ -23,7 +24,7 @@ function push() {
 
 function settle() {
   backing = false;
-  if (stack.length && !owned) push();
+  if (hasHistory() && !owned) push();
   flushAfter();
 }
 
@@ -36,13 +37,19 @@ function onPop() {
   if (top.back() === false) { push(); return; }
   const at = stack.indexOf(top);
   if (at >= 0) stack.splice(at, 1);
-  if (stack.length) push();
+  if (hasHistory()) push();
+}
+
+function onKey(e: KeyboardEvent) {
+  if (e.key !== "Escape" || !stack.length || e.repeat) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  stack[stack.length - 1].back();
 }
 
 function register(entry: Entry) {
-  if (!listening) { window.addEventListener("popstate", onPop); listening = true; }
+  if (!listening) { window.addEventListener("popstate", onPop); window.addEventListener("keydown", onKey, true); listening = true; }
   stack.push(entry);
-  if (!owned && !backing) push();
+  if (entry.history && !owned && !backing) push();
 }
 
 function unregister(entry: Entry) {
@@ -51,7 +58,7 @@ function unregister(entry: Entry) {
   stack.splice(at, 1);
   // Wait a tick so an overlay that replaces another (exam sheet → quiz) reuses the entry.
   setTimeout(() => {
-    if (stack.length || !owned) { flushAfter(); return; }
+    if (hasHistory() || !owned) { flushAfter(); return; }
     owned = false;
     backing = true;
     history.back();
@@ -64,13 +71,13 @@ export function afterOverlayClose(fn: () => void) {
   if (owned || backing) after.push(fn); else fn();
 }
 
-export function useBackClose(onBack: () => boolean | void, active = true) {
+export function useBackClose(onBack: () => boolean | void, active = true, ownHistory = true) {
   const ref = useRef(onBack);
   ref.current = onBack;
   useEffect(() => {
     if (!active) return;
-    const entry: Entry = { back: () => ref.current() };
+    const entry: Entry = { back: () => ref.current(), history: ownHistory };
     register(entry);
     return () => unregister(entry);
-  }, [active]);
+  }, [active, ownHistory]);
 }
