@@ -9,7 +9,6 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { ContextStore, revision, replaceCurrentWork } from "./store.mjs";
 import { COURSES } from "./courses.mjs";
 import { setupMac, codexConfig, discoverSemester } from "./setup.mjs";
-import { claudeImport, managedInstructions, mergeInstructions } from "./instructions.mjs";
 
 const MEMORY = "# Sample course\n\n## Course\nKeep this rule.\n\n## Current work\n- Earlier task.\n\n## Log\n- A durable fact.\n";
 async function fixture(t, all = false) {
@@ -149,15 +148,6 @@ test("malformed handoffs and non-commit revision syntax are refused", async t =>
   assert.throws(() => replaceCurrentWork("No section", "A task"), /no '## Current work'/);
 });
 
-test("managed instructions preserve existing content and stay idempotent", () => {
-  const block = managedInstructions("il"), original = "# Existing instructions\nCustom rule.\n";
-  const once = mergeInstructions(original, block);
-  assert.ok(once.startsWith(original.trimEnd()));
-  assert.equal(mergeInstructions(once, block), once);
-  assert.equal(claudeImport(claudeImport("Custom Claude rule.\n")), "@AGENTS.md\n\nCustom Claude rule.\n");
-  assert.throws(() => mergeInstructions("<!-- LAWSTIN-COURSE-CONTEXT:START -->", block), /Incomplete/);
-});
-
 test("Codex settings preserve unrelated servers and reject unmanaged name collisions", () => {
   const original = 'model = "sample"\n\n[mcp_servers.other]\ncommand = "other"\n';
   const launch = { command: "/path with spaces/node", args: ["/path with spaces/server.cjs", "--config", "/config"] };
@@ -174,6 +164,10 @@ test("Mac setup covers five courses, preserves app settings and work, and can be
   await fs.mkdir(path.join(home, ".codex"));
   await fs.writeFile(path.join(home, ".codex", "config.toml"), 'model = "sample"\n');
   const work = path.join(f.semester, "WORK"); await fs.mkdir(work); await fs.writeFile(path.join(work, "AI-MEMORY.md"), "Do not change");
+  const courseListings = await Promise.all(f.courses.map(async course => ({
+    root: (await fs.readdir(course.root)).sort(),
+    context: (await fs.readdir(course.contextDir)).sort(),
+  })));
   const options = { home, sourceDir, semester: f.semester, platform: "darwin" };
   const installed = await setupMac(options);
   assert.equal(installed.courses.length, 5);
@@ -184,17 +178,18 @@ test("Mac setup covers five courses, preserves app settings and work, and can be
   await setupMac(options);
   assert.equal((await store.history("il")).length, before.length);
   assert.equal(await fs.readFile(path.join(work, "AI-MEMORY.md"), "utf8"), "Do not change");
-  for (const course of f.courses) {
+  for (const [index, course] of f.courses.entries()) {
     assert.equal(await fs.readFile(path.join(course.contextDir, "AI-MEMORY.md"), "utf8"), MEMORY);
-    assert.equal(await fs.readFile(path.join(course.root, "CLAUDE.md"), "utf8"), "@AGENTS.md\n");
+    assert.deepEqual((await fs.readdir(course.root)).sort(), courseListings[index].root);
+    assert.deepEqual((await fs.readdir(course.contextDir)).sort(), courseListings[index].context);
   }
 });
 
-test("malformed app settings stop setup before writing course instructions", async t => {
+test("malformed app settings stop setup before configuring the runtime", async t => {
   const f = await fixture(t, true), home = path.join(f.temp, "home"); await fs.mkdir(home);
   await fs.writeFile(path.join(home, ".claude.json"), "not JSON");
   await assert.rejects(setupMac({ home, sourceDir: f.temp, semester: f.semester, platform: "darwin" }));
-  await assert.rejects(fs.access(path.join(f.courses[0].root, "AGENTS.md")), { code: "ENOENT" });
+  await assert.rejects(fs.access(path.join(home, "Library", "Application Support", "LAWSTIN")), { code: "ENOENT" });
 });
 
 test("Drive discovery finds the real mount and ignores other accounts without all five courses", async t => {

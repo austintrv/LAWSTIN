@@ -24,7 +24,7 @@ If ChatGPT Desktop cannot run the local plugin, use its connected Google Drive a
 
 ## Daily use
 
-Start with “Read the latest [course] handoff.” Before switching apps, ask the AI to save a concise handoff. No copy/paste between AIs is needed when the connections work. Both coding tools read the course's `AGENTS.md`; `CLAUDE.md` imports the same instructions for compatibility.
+Start with “Read the latest [course] handoff.” Before switching apps, ask the AI to save a concise handoff. No copy/paste between AIs is needed when the connections work. Both assistants read the course's existing `AI & CLOUD/AI-MEMORY.md` through the connector. If the connector is unavailable, point the assistant directly to that file and update it in place.
 
 `AI-MEMORY.md` remains the one shared memory, and its existing `Current work` section is the current handoff. Durable facts remain in the existing sections and Log. The setup does not migrate old tasks, rewrite your memories, or change source documents. Old entries may still need review for current relevance.
 
@@ -38,7 +38,7 @@ The runtime, local configuration, and separate per-course Git histories are in:
 
 The histories contain copies of the four allowlisted context Markdown files only. They are private to this Mac, have no Git remotes, and are not an off-device backup. They must never be copied into the public LAWSTIN repository. Course source documents and student submissions are not indexed or copied by this server.
 
-Before replacing existing app settings, the installer saves their old contents privately in `settings-before-setup/`. It preserves unrelated settings and other MCP servers. It merges a labeled block into course instructions and preserves existing custom instructions. Rerunning setup updates those managed blocks without duplicating them.
+Before replacing existing app settings, the installer saves their old contents privately in `settings-before-setup/`. It preserves unrelated settings and other MCP servers. Setup leaves the course folders alone. Each course uses its existing `AI-MEMORY.md` as the single shared context file.
 
 The installer configures:
 

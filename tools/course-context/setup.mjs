@@ -4,7 +4,6 @@ import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { COURSES } from "./courses.mjs";
 import { ContextStore, readOptional, atomicWrite } from "./store.mjs";
-import { managedInstructions, mergeInstructions, claudeImport } from "./instructions.mjs";
 
 const normalize = value => value.normalize("NFC");
 async function child(parent, name) {
@@ -108,16 +107,7 @@ export async function setupMac({ home = os.homedir(), semester, sourceDir, platf
   await safeUpdate(configFile, JSON.stringify(config, null, 2) + "\n", backups);
   await safeUpdate(path.join(stateDir, "node-path"), process.execPath + "\n");
   const store = await ContextStore.open(configFile);
-  // Baseline private history before changing course instructions. No remote exists.
   for (const course of courses) await store.read(course.id);
-  for (const course of courses) {
-    for (const [dir, inner] of [[course.root, false], [course.contextDir, true]]) {
-      const agents = path.join(dir, "AGENTS.md"), claude = path.join(dir, "CLAUDE.md");
-      await safeUpdate(agents, mergeInstructions(await readOptional(agents), managedInstructions(course.id, inner)));
-      await safeUpdate(claude, claudeImport(await readOptional(claude)));
-    }
-    await store.read(course.id);
-  }
   for (const [file, text] of updates) await safeUpdate(file, text, backups);
   return { courses: courses.map(({ id, name }) => ({ id, name })), configFile, runtime, configured: ["Claude Code", "Claude Desktop", "Codex"], chatgpt: "Install the packaged LAWSTIN Course Context plugin in ChatGPT Desktop. Local execution must be available.", next: "Fully quit and reopen your AI apps. Ask each to list courses and read one course. Claude Code may ask you to trust this MCP server." };
 }
