@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles, RotateCcw, Minus, CalendarDays } from "lucide-react";
+import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles, RotateCcw, Minus, CalendarDays, Flame } from "lucide-react";
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
 import { AskPanel } from "./AskPanel";
@@ -9,6 +9,7 @@ import type { QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
 import type { ExplainDTO } from "../endpoints/ai_POST.schema";
 import { COURSES, FINALS, ROLE_LABEL, examDue, itemCourse, itemId, itemTopic, type RoundItem, type SessionCard } from "../helpers/studyEngine";
 import { dateKey } from "../helpers/dateKey";
+import { reviewSchedule } from "../helpers/reviewSchedule";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
 import styles from "./QuizSession.module.css";
@@ -44,6 +45,8 @@ type Props = {
   onCheckpoint?: (snapshot?: QuizSnapshot) => void;
   /** Writes a harder version of the question with AI; it is inserted right after the current one. */
   onHarder?: (q: QuestionDTO) => Promise<QuestionDTO | null>;
+  /** Practice: today's live counts from the parent, drawn as a goal bar and a compact count. */
+  day?: { answered: number; goal: number };
   className?: string;
 };
 
@@ -52,9 +55,30 @@ export type QuizSnapshot = { items: RoundItem[]; i: number; picks: (string | und
 const paras = (t: string) => t.split(/\n\s*\n/).map((p, i) => <p key={i}>{p.trim()}</p>);
 const isAi = (q: QuestionDTO) => q.id.startsWith("ai-");
 const clock = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
+/** Consecutive correct results in position order (a miss resets): the run now and the longest. */
+const runsOf = (results: (boolean | undefined)[]) => {
+  let cur = 0, best = 0;
+  for (const r of results) {
+    if (r === undefined) continue;
+    cur = r ? cur + 1 : 0;
+    if (cur > best) best = cur;
+  }
+  return { cur, best };
+};
+/** Why a question is showing: built from its progress before this answer. */
+function whyPill(p: ProgressDTO | undefined, guessed: boolean): { text: string; tone: "new" | "bad" | "ok" } {
+  if (!p || !p.seen || !p.lastAt) return { text: "New", tone: "new" };
+  const today = dateKey.today();
+  const day = dateKey.today(new Date(p.lastAt));
+  const n = dateKey.diff(day, today);
+  const when = n <= 0 ? "today" : n === 1 ? "yesterday" : n < 7 ? `${n} days ago` : new Date(`${day}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  if (p.lastCorrect === false) return { text: `Missed ${when}`, tone: "bad" };
+  if (guessed) return { text: "Guessed last time", tone: "ok" };
+  return { text: `Right ${when}`, tone: "ok" };
+}
 const VERDICT: Record<ExplainDTO["verdict"], string> = { solid: "Solid", partial: "Partly there", off: "Not yet" };
 
-export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, onCheckpoint, className }: Props) {
+export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, onCheckpoint, day = { answered: 12, goal: 38 }, className }: Props) {
   const [items, setItems] = useState(resume?.items ?? initial);
   const [i, setI] = useState(resume?.i ?? 0);
   const [sel, setSel] = useState<string | null>(null);
@@ -89,6 +113,16 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
   const checked = picked !== undefined;
   const answered = results.filter((r) => r !== undefined).length;
   const right = results.filter(Boolean).length;
+  const { cur: run } = runsOf(results);
+  const prevRun = useRef(run);
+  useEffect(() => {
+    if (run > prevRun.current && (run === 5 || run === 10)) haptic();
+    prevRun.current = run;
+  }, [run]);
+  const goalOn = mode === "practice" && !!day && day.goal > 0;
+  const goalMet = goalOn && day!.answered >= day!.goal;
+  const before = useRef<Record<string, ProgressDTO | undefined>>({});
+  if (item.q && !checked && !(item.q.id in before.current)) before.current[item.q.id] = getProgress(item.q.id);
   const mine = typed[i]?.trim() ?? "";
   // A card is in review once its answer is showing; a question once it has been answered.
   const revealed = !!shown[i] || checked;
@@ -302,11 +336,18 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
               <button className={styles.x} onClick={goBack} disabled={i === 0 && !done} aria-label="Previous"><ChevronLeft size={18} strokeWidth={2.4} /></button>
               <div className={styles.tally} aria-live="polite">
                 {answered > 0 && <><span className={styles.tallyOk}><Check size={13} strokeWidth={3} />{right}</span><span className={styles.tallyBad}><X size={13} strokeWidth={3} />{answered - right}</span></>}
+                {run >= 3 && <span key={run} className={styles.streak} role="img" aria-label={`${run} correct in a row`}><Flame size={14} strokeWidth={2.4} />{run}</span>}
+                {goalOn && <span className={`${styles.dayCount} ${goalMet ? styles.dayMet : ""}`} aria-hidden="true">{goalMet && <Check size={13} strokeWidth={3} />}{goalMet ? day!.answered : `${day!.answered}/${day!.goal}`}</span>}
               </div>
               <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
             </>
           )}
         </div>
+        {goalOn && (
+          <div className={styles.goalBar} role="progressbar" aria-label="Today’s goal" aria-valuemin={0} aria-valuemax={day!.goal} aria-valuenow={Math.min(day!.answered, day!.goal)}>
+            <i className={goalMet ? styles.goalMet : ""} style={{ width: `${Math.min(1, day!.answered / day!.goal) * 100}%` }} />
+          </div>
+        )}
       </div>
 
       <div className={styles.scroll} ref={scrollRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
@@ -374,7 +415,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
             <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
             <div className={styles.meta}>
               {chip}
-              {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : mode === "exam" ? <span className={styles.pill}>Exam</span> : item.review ? <span className={styles.pill}>Review</span> : null}
+              {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : mode === "exam" ? <span className={styles.pill}>Exam</span> : (() => {
+                const bp = before.current[q.id];
+                const w = whyPill(bp, !!bp && bp.guessed > 0 && bp.box === 1 && bp.lastCorrect === true);
+                return <span className={`${styles.pill} ${w.tone === "bad" ? styles.pillBad : w.tone === "ok" ? styles.pillOk : ""}`}>{w.text}</span>;
+              })()}
               <span className={styles.topic}>{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ""}</span>
             </div>
             <div className={styles.paneL}><div className={styles.stem}>{paras(q.stem)}</div></div>
@@ -465,6 +510,13 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
               {!ai && nextDue && <div className={`${styles.listRow} ${styles.scheduleRow}`} role="status">
                 <span className={styles.rowIcon}><CalendarDays size={17} /></span>
                 <span className={styles.strong}>Next review</span>
+                {p && p.box >= 1 && p.box <= 5 && (
+                  <span className={styles.ladder} role="img" aria-label={`Step ${p.box} of 5`}>
+                    {reviewSchedule.intervals.slice(1).map((d, k) => (
+                      <span key={d} className={`${styles.step} ${k + 1 <= p.box ? (p.lastCorrect === false ? styles.stepBad : styles.stepOn) : ""} ${k + 1 === p.box ? styles.stepCur : ""}`}><i />{d}d</span>
+                    ))}
+                  </span>
+                )}
                 <span className={styles.scheduleDate}>{dateKey.diff(dateKey.today(), nextDue) === 1 ? "Tomorrow" : new Date(`${nextDue}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
               </div>}
               {ok && !ai && (
@@ -595,6 +647,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
   if (mode === "exam") items.forEach((it, k) => { const t = topics.get(itemTopic(it)) ?? { n: 0, c: 0 }; t.n++; if (res[k]) t.c++; topics.set(itemTopic(it), t); });
   const topicRows = [...topics].sort((a, b) => a[1].c / a[1].n - b[1].c / b[1].n);
   const [open, setOpen] = useState<number | null>(null);
+  const longest = runsOf(results).best;
   const perfect = n > 0 && c === n;
 
   return (
@@ -631,6 +684,13 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
             </div>
           );
         })}
+        {mode === "practice" && longest >= 3 && (
+          <div className={styles.row}>
+            <span className={`${styles.dot} ${styles.dotFlame}`}><Flame size={13} strokeWidth={2.4} /></span>
+            <span className={styles.rowTitle}>Longest run</span>
+            <span className={styles.rowEnd}>{longest}</span>
+          </div>
+        )}
       </div>
       {topicRows.length > 1 && (
         <div className={styles.card}>
