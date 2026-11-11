@@ -8,7 +8,7 @@ import { examSizes, readActiveExam, requestExamResume } from "../helpers/useExam
 import { type Engine } from "../pages/StudyParts";
 
 /** Pro Res is tested by timed multiple choice; the essay courses by a timed essay. */
-export function ExamPicker({ e, onStart, onEssay, initialSize = 20 }: { e: Engine; initialSize?: number; onStart: (f: Filter, n: number, timed: boolean) => void; onEssay: (c: CourseCode) => void }) {
+export function ExamPicker({ e, onStart, onEssay, initialSize = 10 }: { e: Engine; initialSize?: number; onStart: (f: Filter, n: number, timed: boolean) => void; onEssay: (c: CourseCode) => void }) {
   const [f, setF] = useState<Filter>("pr");
   const [n, setN] = useState(initialSize);
   const [timed, setTimed] = useState(true);
