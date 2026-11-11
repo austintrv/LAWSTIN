@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Aura, auraHost } from "../components/Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig, GraduationCap, RotateCcw, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
+import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Shuffle, Sparkles, LibraryBig, GraduationCap, RotateCcw, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
 const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
@@ -14,6 +14,8 @@ const QuizSession = lazy(() => loadQuiz().then((m) => ({ default: m.QuizSession 
 const SettingsPage = lazy(() => import("../components/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const MissedLesson = lazy(() => import("../components/MissedLesson").then((m) => ({ default: m.MissedLesson })));
 const WrittenPractice = lazy(() => import("../components/WrittenPractice").then((m) => ({ default: m.WrittenPractice })));
+const MatchGame = lazy(() => import("../components/MatchGame").then((m) => ({ default: m.MatchGame })));
+import { matchPairs, MIN_ROUND } from "../helpers/matchPairs";
 import { useWide } from "../helpers/useWide";
 import { useLawstinData } from "../helpers/useLawstinData";
 import { useLawstinAi } from "../helpers/useLawstinAi";
@@ -110,6 +112,8 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     else window.location.hash = `/${tab}`;
   };
   const [writing, setWriting] = useState<{ course?: CourseCode; full?: boolean; hypo?: Hypothetical } | null>(null);
+  const [matching, setMatching] = useState(false);
+  const canMatch = useMemo(() => matchPairs(state?.questions ?? []).length >= MIN_ROUND, [state?.questions]);
   const [lesson, setLesson] = useState<LessonTopic[] | null>(null);
   // A study tool opened from the lesson: the lesson stays where it was, hidden, until Back returns to it.
   const [lessonAway, setLessonAway] = useState(false);
@@ -370,6 +374,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred), "practice", `starred:${filter}`)}
                   onExam={() => { haptic(); setExamSheet(true); }}
                   onWrite={() => { haptic(); setWriting({}); }}
+                  onMatch={canMatch ? () => { haptic(); setMatching(true); } : undefined}
                   onUpdate={(list, c) => start((eng) => {
                     const ids = new Set(eng.questions.map((q) => q.id));
                     const left = list.filter((q) => ids.has(q.id) && !eng.prog(q.id)?.seen);
@@ -435,6 +440,10 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       )}
 
       {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} /></Suspense>}
+
+      {matching && state && <Suspense fallback={null}><MatchGame questions={state.questions} course={filter} onClose={() => setMatching(false)}
+        // Each pair counts as one answer toward the day; a miss costs one of them.
+        onRound={(r) => log("drill", `match:${Date.now()}`, r.misses === 0, r.pairs, Math.max(0, r.pairs - r.misses))} /></Suspense>}
 
       {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(null)} course={writing.course} full={writing.full} hypo={writing.hypo}
         hypos={hypos} weak={new Set(e.weakTopics().map((t) => `${t.course}|${t.topic}`))} written={written}
@@ -645,7 +654,7 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onUpdate }: {
+function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onMatch, onUpdate }: {
   resuming: boolean;
   nextReview: string | null;
   onHow: () => void;
@@ -658,7 +667,7 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
   plan: PlanCourse[];
   onEssay: (c: CourseCode) => void;
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
-  onStart: () => void; onCourse: (c: CourseCode) => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
+  onStart: () => void; onCourse: (c: CourseCode) => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onMatch?: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
   if (!e.questions.length) {
     return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2></div>;
@@ -767,6 +776,11 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
                   <button className={styles.row} onClick={onWrite}>
                     <span className={styles.dot} style={{ background: "var(--uh-red)" }}><PenLine size={12} color="#fff" strokeWidth={2.4} /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Written practice</span></span>
+                    <ChevronRight size={18} className={styles.chev} />
+                  </button>
+                  <button className={styles.row} onClick={onMatch} disabled={!onMatch}>
+                    <span className={styles.dot} style={{ background: "var(--success)" }}><Shuffle size={12} color="#fff" strokeWidth={2.4} /></span>
+                    <span className={styles.rowMain}><span className={styles.rowTitle}>Match</span></span>
                     <ChevronRight size={18} className={styles.chev} />
                   </button>
                   <button className={styles.row} onClick={onStarred} disabled={!qs.starred.length}>
