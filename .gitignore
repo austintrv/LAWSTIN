@@ -1,5 +1,6 @@
 node_modules
 dist
+artifacts/
 deno.lock
 
 # Private source extracts, question history, and unpublished study drafts

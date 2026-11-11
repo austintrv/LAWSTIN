@@ -19,6 +19,8 @@
 .endTopics { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
 .endTopics span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-full); font-size: 14px; font-weight: 600; color: var(--course-color); background: color-mix(in srgb, var(--course-color) 12%, transparent); }
 .endTopics i { width: 7px; height: 7px; border-radius: 50%; background: var(--course-color); }
+.endTopics span[data-reviewed="true"] { background: var(--success-soft); color: var(--success); }
+.endPending { background: var(--uh-red-soft); color: var(--uh-red); }
 .endActions { display: flex; flex-direction: column; gap: 6px; }
 @keyframes pop { 0% { transform: scale(0.5); opacity: 0; } 60% { transform: scale(1.08); opacity: 1; } 100% { transform: none; } }
 @media (prefers-reduced-motion: reduce) { .endMark { animation: none; } }

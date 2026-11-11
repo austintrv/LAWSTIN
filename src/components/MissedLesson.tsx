@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, RotateCcw, X } from "lucide-react";
 import { Button } from "./Button";
 import { COURSES, ROLE_LABEL, type CourseCode } from "../helpers/studyEngine";
 import type { ProgressDTO, QuestionDTO } from "../endpoints/state_GET.schema";
@@ -8,6 +8,7 @@ import { useBackClose } from "../helpers/useBackClose";
 import { useModalFocus } from "../helpers/useModalFocus";
 import q from "./QuizSession.module.css";
 import styles from "./MissedLesson.module.css";
+import type { TopicReview } from "../helpers/topicReview";
 
 export type LessonTopic = {
   course: CourseCode;
@@ -16,6 +17,7 @@ export type LessonTopic = {
   items: { q: QuestionDTO; p: ProgressDTO }[];
   /** The question to try at the end of the topic: another one from it when there is one. */
   check: QuestionDTO;
+  evidence: TopicReview["questions"];
 };
 
 type Step =
@@ -30,11 +32,12 @@ const paras = (t: string) => t.split(/\n\s*\n/).map((p, i) => <p key={i}>{p.trim
  * A short lesson on topics with missed questions, built from those questions' own rules and
  * explanations: the rule, where each miss went wrong, then one question to try again.
  */
-export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose, tools }: {
+export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDrill, onClose, tools }: {
   topics: LessonTopic[];
   /** A study tool opened from the lesson is on top: stay mounted at the same step, hidden and inactive. */
   away?: boolean;
   onAnswer: (q: QuestionDTO, choice: string) => Promise<boolean>;
+  onReviewed: (topic: LessonTopic) => void;
   onDrill: (questions: QuestionDTO[]) => void;
   onClose: () => void;
   /** Links to the topic's study materials. */
@@ -58,6 +61,8 @@ export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose,
   const [picks, setPicks] = useState<Record<number, string>>({});
   const [sel, setSel] = useState<string | null>(null);
   const [right, setRight] = useState<Record<number, boolean>>({});
+  const [saving, setSaving] = useState(false);
+  const submitting = useRef(false);
   const scroll = useRef<HTMLDivElement>(null);
   const modalRef = useModalFocus<HTMLDivElement>();
   const step = steps[at];
@@ -66,7 +71,7 @@ export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose,
   useBackClose(close, !away);
   useEffect(() => { if (!away) modalRef.current?.focus({ preventScroll: true }); }, [away]);
   const go = useCallback((n: number) => {
-    if (n < 0 || n >= steps.length) return;
+    if (n < 0 || n >= steps.length || submitting.current) return;
     haptic();
     setDir(n < at ? "back" : "in");
     setAt(n);
@@ -76,29 +81,46 @@ export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose,
 
   const checked = step.kind === "check" && picks[at] !== undefined;
   const check = async () => {
-    if (step.kind !== "check" || !sel || checked) return;
+    if (step.kind !== "check" || !sel || checked || submitting.current) return;
+    submitting.current = true;
+    setSaving(true);
     haptic();
-    const at0 = at, ok = sel === step.q.answer;
-    setPicks((p) => ({ ...p, [at0]: sel }));
-    setRight((r) => ({ ...r, [at0]: ok }));
-    try { await onAnswer(step.q, sel); } catch { /* the app reports save errors */ }
+    const at0 = at;
+    try {
+      const ok = await onAnswer(step.q, sel);
+      setPicks((p) => ({ ...p, [at0]: sel }));
+      setRight((r) => ({ ...r, [at0]: ok }));
+      if (ok) onReviewed(step.t);
+    } catch { /* The app reports save errors. Leave the check open for a retry. */ }
+    finally { submitting.current = false; setSaving(false); }
   };
 
   useEffect(() => {
     if (away) return;
     const onKey = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
+      if (submitting.current || e.repeat) return;
+      if (step.kind === "check" && !checked && /^[a-d1-4]$/i.test(e.key)) {
+        e.preventDefault();
+        const choice = /^[1-4]$/.test(e.key) ? "ABCD"[Number(e.key) - 1] : e.key.toUpperCase();
+        setSel((s) => s === choice ? null : choice);
+      }
+      else if (e.key === "Enter" && step.kind === "check" && !checked) { e.preventDefault(); void check(); }
       if (e.key === "Escape") close();
       else if (e.key === "ArrowLeft") go(at - 1);
       else if (e.key === "ArrowRight" && !(step.kind === "check" && !checked)) go(at + 1);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [at, step, checked, close, go, away]);
+  }, [at, step, checked, sel, close, go, away]);
 
   const checks = steps.map((s, k) => (s.kind === "check" ? k : -1)).filter((k) => k >= 0);
   const fixed = checks.filter((k) => right[k]).length;
-  const allMissed = topics.flatMap((t) => t.items.map((it) => it.q));
+  const remaining = topics.filter((t) => !checks.some((k) => {
+    const s = steps[k];
+    return s.kind === "check" && s.t === t && right[k];
+  }));
+  const allMissed = remaining.flatMap((t) => t.items.map((it) => it.q));
   const label = (t: LessonTopic) => {
     const c = COURSES[t.course];
     return <span className={q.label}><i style={{ background: c.color }} />{c.short} · {t.topic}</span>;
@@ -175,7 +197,7 @@ export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose,
                 {qq.choices.map((c) => {
                   const state = picked === undefined ? undefined : c.id === qq.answer ? "right" : c.id === picked ? "wrong" : "other";
                   return (
-                    <button key={c.id} className={`${q.choice} ${styles.pick} ${c.id === shown && !picked ? q.selected : ""}`} data-state={state} disabled={picked !== undefined}
+                    <button key={c.id} className={`${q.choice} ${styles.pick} ${c.id === shown && !picked ? q.selected : ""}`} data-state={state} disabled={picked !== undefined || saving}
                       aria-pressed={c.id === shown} onClick={() => { haptic(); setSel((s) => (s === c.id ? null : c.id)); }}>
                       <span className={q.letter}>{state === "right" ? <Check size={15} strokeWidth={3} /> : state === "wrong" ? <X size={15} strokeWidth={3} /> : c.id}</span>
                       <span className={q.choiceText}>{c.text}</span>
@@ -185,7 +207,7 @@ export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose,
               </div>
               {picked !== undefined && (
                 <section className={`${q.rc} ${q.answerCard}`} role="status">
-                  <span className={`${q.label} ${right[at] ? q.labelOk : q.labelBad}`}>{right[at] ? "Correct" : `Answer: ${answer.id}`}</span>
+                  <span className={`${q.label} ${right[at] ? q.labelOk : q.labelBad}`}>{right[at] ? "Correct · Topic reviewed" : `Answer: ${answer.id}`}</span>
                   <p className={q.bodyText}>{answer.why}</p>
                 </section>
               )}
@@ -195,11 +217,11 @@ export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose,
 
           {step.kind === "end" && (
             <div className={styles.end}>
-              <span className={styles.endMark}><Check size={34} strokeWidth={2.6} /></span>
-              <h2>Lesson done</h2>
-              {checks.length > 0 && <p>{fixed} of {checks.length} correct</p>}
+              <span className={`${styles.endMark} ${remaining.length ? styles.endPending : ""}`}>{remaining.length ? <RotateCcw size={32} /> : <Check size={34} strokeWidth={2.6} />}</span>
+              <h2>{remaining.length ? "Lesson complete" : "Topics reviewed"}</h2>
+              {checks.length > 0 && <p>{fixed} reviewed · {remaining.length} to revisit</p>}
               <div className={styles.endTopics}>
-                {topics.map((t) => <span key={`${t.course}|${t.topic}`} style={{ "--course-color": COURSES[t.course].color } as React.CSSProperties}><i />{t.topic}</span>)}
+                {topics.map((t) => <span key={`${t.course}|${t.topic}`} data-reviewed={!remaining.includes(t)} style={{ "--course-color": COURSES[t.course].color } as React.CSSProperties}>{remaining.includes(t) ? <RotateCcw size={14} /> : <Check size={14} />}{t.topic}</span>)}
               </div>
             </div>
           )}
@@ -209,11 +231,11 @@ export function MissedLesson({ topics, away = false, onAnswer, onDrill, onClose,
       <div className={`${q.foot} ${q.footOn}`}>
         <div className={q.footIn}>
           {step.kind === "check" && !checked
-            ? <Button className={`${q.big} ${q.cta}`} disabled={!sel} onClick={check}>Check answer</Button>
+            ? <Button className={`${q.big} ${q.cta}`} disabled={!sel || saving} onClick={check}>{saving ? "Saving…" : "Check answer"}</Button>
             : step.kind === "end"
               ? <div className={styles.endActions}>
-                  <Button className={`${q.big} ${q.cta}`} onClick={() => { onDrill(allMissed); }}>Drill these questions</Button>
-                  <Button variant="ghost" onClick={close}>Done</Button>
+                  {remaining.length > 0 && <Button className={`${q.big} ${q.cta}`} onClick={() => { onDrill(allMissed); }}>Practice remaining topics</Button>}
+                  <Button variant={remaining.length ? "ghost" : "primary"} className={!remaining.length ? `${q.big} ${q.cta}` : undefined} onClick={close}>Done</Button>
                 </div>
               : <Button className={`${q.big} ${q.cta}`} onClick={() => go(at + 1)}>Next</Button>}
         </div>

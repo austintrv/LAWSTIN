@@ -127,8 +127,9 @@ export type CardProgress = { seen: number; correct: number; box: number; due: st
 export type StudyRecord = {
   cards: Record<string, CardProgress>; completed: Record<string, boolean>; confidence: Record<string, "shaky" | "learning" | "solid">;
   notes: Record<string, string>; highlights: Record<string, string[]>; starred: Record<string, boolean>;
+  reviews: Record<string, import("./topicReview").TopicReview>;
 };
-export const emptyStudyRecord = (): StudyRecord => ({ cards: {}, completed: {}, confidence: {}, notes: {}, highlights: {}, starred: {} });
+export const emptyStudyRecord = (): StudyRecord => ({ cards: {}, completed: {}, confidence: {}, notes: {}, highlights: {}, starred: {}, reviews: {} });
 
 export function reviewCard(prev: CardProgress | undefined, correct: boolean, today = dateKey.today()): CardProgress {
   const box = reviewSchedule.nextBox(prev?.box ?? 0, prev?.seen ?? 0, correct);

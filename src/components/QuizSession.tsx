@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles, RotateCcw, Minus } from "lucide-react";
+import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles, RotateCcw, Minus, CalendarDays } from "lucide-react";
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
 import { AskPanel } from "./AskPanel";
 import type { QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
 import type { ExplainDTO } from "../endpoints/ai_POST.schema";
-import { COURSES, ROLE_LABEL, itemCourse, itemId, itemTopic, type RoundItem, type SessionCard } from "../helpers/studyEngine";
+import { COURSES, FINALS, ROLE_LABEL, examDue, itemCourse, itemId, itemTopic, type RoundItem, type SessionCard } from "../helpers/studyEngine";
+import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
 import styles from "./QuizSession.module.css";
@@ -40,6 +41,7 @@ type Props = {
   onClose: (snapshot?: QuizSnapshot) => void;
   /** A session closed earlier, reopened where it left off. */
   resume?: QuizSnapshot;
+  onCheckpoint?: (snapshot?: QuizSnapshot) => void;
   /** Writes a harder version of the question with AI; it is inserted right after the current one. */
   onHarder?: (q: QuestionDTO) => Promise<QuestionDTO | null>;
   className?: string;
@@ -52,18 +54,22 @@ const isAi = (q: QuestionDTO) => q.id.startsWith("ai-");
 const clock = (s: number) => `${Math.floor(Math.max(0, s) / 60)}:${String(Math.max(0, s) % 60).padStart(2, "0")}`;
 const VERDICT: Record<ExplainDTO["verdict"], string> = { solid: "Solid", partial: "Partly there", off: "Not yet" };
 
-export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, className }: Props) {
+export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, onCheckpoint, className }: Props) {
   const [items, setItems] = useState(resume?.items ?? initial);
   const [i, setI] = useState(resume?.i ?? 0);
   const [sel, setSel] = useState<string | null>(null);
   // Per-position answers, so going back shows that item's review exactly as it was.
   const [results, setResults] = useState<(boolean | undefined)[]>(resume?.results ?? []);
   const [picks, setPicks] = useState<(string | undefined)[]>(resume?.picks ?? []);
+  const recorded = useRef(new Set((resume?.items ?? []).filter((_, k) => resume?.picks[k] != null).map(itemId)));
   // Per position: choices (or a card's answer) revealed, and what was typed before revealing.
   const [shown, setShown] = useState<(boolean | undefined)[]>(resume?.shown ?? []);
   const [typed, setTyped] = useState<(string | undefined)[]>(resume?.typed ?? []);
   const [feedback, setFeedback] = useState<Record<number, ExplainDTO>>({});
   const [checking, setChecking] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const submitting = useRef(false);
+  const moving = useRef(false);
   const [done, setDone] = useState(false);
   const [anim, setAnim] = useState<"in" | "out" | "back">("in");
   const [closing, setClosing] = useState(false);
@@ -103,6 +109,9 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
 
   const snapshot = useRef<QuizSnapshot | undefined>(undefined);
   snapshot.current = done ? undefined : { items, i, picks, results, shown, typed };
+  const checkpoint = useRef(onCheckpoint);
+  checkpoint.current = onCheckpoint;
+  useEffect(() => { checkpoint.current?.(snapshot.current); }, [items, i, picks, results, shown, typed, done]);
   const close = useCallback(() => {
     setClosing(true);
     setTimeout(() => onClose(snapshot.current), 380);
@@ -117,9 +126,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     exit();
     if (stay) return false;
   });
-  useEffect(() => { if (timed && !done && left <= 0) exit(); }, [timed, done, left, exit]);
+  useEffect(() => { if (timed && !done && left <= 0 && !saving) setDone(true); }, [timed, done, left, saving]);
 
   const goTo = useCallback((n: number, dir: "out" | "back" = "out") => {
+    if (moving.current || submitting.current) return;
+    moving.current = true;
     setAnim(dir);
     setTimeout(() => {
       setI(n);
@@ -129,18 +140,21 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
       setAsking(false);
       setAnim(dir === "back" ? "back" : "in");
       scrollRef.current?.scrollTo({ top: 0 });
+      moving.current = false;
     }, 170);
   }, []);
 
   const goNext = useCallback(() => {
+    if (moving.current || submitting.current) return;
     if (i + 1 < items.length) return goTo(i + 1);
     const more = mode === "practice" && onMore ? onMore(new Set(items.map(itemId))) : [];
     if (more.length) {
       setItems((list) => [...list, ...more]);
       goTo(i + 1);
     } else {
+      moving.current = true;
       setAnim("out");
-      setTimeout(() => { setDone(true); setAnim("in"); scrollRef.current?.scrollTo({ top: 0 }); }, 170);
+      setTimeout(() => { setDone(true); setAnim("in"); moving.current = false; scrollRef.current?.scrollTo({ top: 0 }); }, 170);
     }
   }, [i, items, mode, onMore, goTo]);
 
@@ -168,7 +182,8 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
   }, [revealed, checking, i, card, mine, onExplain]);
 
   const gradeCard = useCallback((ok: boolean) => {
-    if (!card || checked) return;
+    if (!card || checked || moving.current || recorded.current.has(card.id)) return;
+    recorded.current.add(card.id);
     haptic();
     const at = i;
     setResults((r) => { const n = [...r]; n[at] = ok; return n; });
@@ -178,16 +193,21 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
   }, [card, checked, i, onCard, goNext]);
 
   const check = useCallback(async () => {
-    if (!q || !sel || checked) return;
-    const local = sel === q.answer;
+    if (!q || !sel || checked || submitting.current || moving.current || recorded.current.has(q.id)) return;
+    submitting.current = true;
+    setSaving(true);
     if (mode === "practice") haptic();
     const at = i;
-    setResults((r) => { const n = [...r]; n[at] = local; return n; });
-    setPicks((p) => { const n = [...p]; n[at] = sel; return n; });
-    // Slide over to the review screen while the answer saves.
-    if (mode === "practice") slide();
-    try { await onAnswer(q, sel); } catch { /* the toast in the parent reports it */ }
-    if (mode === "exam") goNext();
+    try {
+      const correct = await onAnswer(q, sel);
+      recorded.current.add(q.id);
+      setResults((r) => { const n = [...r]; n[at] = correct; return n; });
+      setPicks((p) => { const n = [...p]; n[at] = sel; return n; });
+      submitting.current = false;
+      if (mode === "practice") slide();
+      if (mode === "exam") goNext();
+    } catch { /* The parent reports the error. Keep this question open for a retry. */ }
+    finally { submitting.current = false; setSaving(false); }
   }, [sel, checked, q, i, mode, onAnswer, goNext]);
 
   const makeHarder = async () => {
@@ -197,12 +217,19 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     const nq = await onHarder(q);
     if (!nq) { setHarder((h) => { const n = { ...h }; delete n[q.id]; return n; }); return; }
     setItems((list) => [...list.slice(0, i + 1), { q: nq, review: false }, ...list.slice(i + 1)]);
+    // This can be requested from a previous review; preserve every later item's own answers.
+    setPicks((v) => { const n = [...v]; n.splice(i + 1, 0, undefined); return n; });
+    setResults((v) => { const n = [...v]; n.splice(i + 1, 0, undefined); return n; });
+    setShown((v) => { const n = [...v]; n.splice(i + 1, 0, undefined); return n; });
+    setTyped((v) => { const n = [...v]; n.splice(i + 1, 0, undefined); return n; });
+    setFeedback((v) => Object.fromEntries(Object.entries(v).map(([k, fb]) => [Number(k) > i ? Number(k) + 1 : Number(k), fb])));
     setHarder((h) => ({ ...h, [q.id]: "added" }));
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (asking) return;
+      if (submitting.current || moving.current || e.repeat) return;
       if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
       const k = e.key.toUpperCase();
       if (e.key === "Escape") { exit(); return; }
@@ -250,7 +277,9 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
   const course = COURSES[itemCourse(item)];
   const ai = !!q && isAi(q);
   const others = q ? q.choices.filter((c) => c.id !== q.answer && c.id !== picked) : [];
-  const isGuess = !!q && guessed.has(q.id), isFlagged = !!q && flagged.has(q.id);
+  const isGuess = !!q && (guessed.has(q.id) || !!p && p.guessed > 0 && p.box === 1 && p.lastCorrect === true);
+  const isFlagged = !!q && (flagged.has(q.id) || !!p?.flagged);
+  const nextDue = p?.due ? examDue(p.due, p.lastAt ? dateKey.today(new Date(p.lastAt)) : null, q ? FINALS[q.course] : undefined, dateKey.today()) : null;
   const animCls = anim === "in" ? styles.in : anim === "back" ? styles.inBack : styles.out;
   const fb = feedback[i];
   const setMine = (value: string) => setTyped((v) => { const n = [...v]; n[i] = value; return n; });
@@ -357,7 +386,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
                 <div className={styles.choices} role="group" aria-label="Answer choices">
                   {q.choices.map((c) => (
                     <button key={c.id} className={`${styles.choice} ${c.id === shownPick ? styles.selected : ""}`} disabled={checked} aria-pressed={c.id === shownPick}
-                      onClick={() => { haptic(); setSel((cur) => (cur === c.id ? null : c.id)); }}>
+                      onClick={() => { if (submitting.current) return; haptic(); setSel((cur) => (cur === c.id ? null : c.id)); }}>
                       <span className={styles.letter}>{c.id}</span>
                       <span className={styles.choiceText}>{c.text}</span>
                     </button>
@@ -433,6 +462,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
             )}
 
             <section className={`${styles.rc} ${styles.listCard}`}>
+              {!ai && nextDue && <div className={`${styles.listRow} ${styles.scheduleRow}`} role="status">
+                <span className={styles.rowIcon}><CalendarDays size={17} /></span>
+                <span className={styles.strong}>Next review</span>
+                <span className={styles.scheduleDate}>{dateKey.diff(dateKey.today(), nextDue) === 1 ? "Tomorrow" : new Date(`${nextDue}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+              </div>}
               {ok && !ai && (
                 <button className={styles.listRow} disabled={isGuess} onClick={() => { haptic(); onGuess(q); setGuessed((g) => new Set(g).add(q.id)); }}>
                   <span className={styles.rowIcon}>{isGuess ? <Check size={17} /> : <CircleHelp size={17} />}</span>
@@ -478,8 +512,8 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
       {!done && !reviewing && q && !hidden && (
         <div className={`${styles.foot} ${sel && !checked ? styles.footOn : ""}`} aria-hidden={!sel}>
           <div className={styles.footIn}>
-            <Button className={`${styles.big} ${styles.cta}`} disabled={!sel || checked} onClick={check}>
-              {mode === "exam" ? (i === items.length - 1 ? "Finish" : "Next") : "Check answer"}
+            <Button className={`${styles.big} ${styles.cta}`} disabled={!sel || checked || saving} onClick={check}>
+              {saving ? "Saving…" : mode === "exam" ? (i === items.length - 1 ? "Finish" : "Next") : "Check answer"}
             </Button>
           </div>
         </div>
@@ -579,7 +613,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
         </svg>
         <div><b>{shown}<small>/{n}</small></b><span>correct</span></div>
       </div>
-      <h1 className={styles.resTitle}>{mode === "exam" ? "Exam complete" : "All caught up"}</h1>
+      <h1 className={styles.resTitle}>{mode === "exam" ? "Exam complete" : "Session complete"}</h1>
       {used !== undefined && n > 0 && (
         <div className={styles.card}>
           <div className={styles.row}><span className={styles.rowTitle}>Time</span><span className={styles.rowEnd}>{clock(used)}</span></div>
