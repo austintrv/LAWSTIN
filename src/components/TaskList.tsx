@@ -230,6 +230,7 @@ function ClinicHours() {
       const value = settingQueue()[key]?.value ?? (pending || readCache<string>(key) !== before ? readCache<string>(key) : data?.value);
       const known = readHours(value);
       if (known) { writeCache(key, value); setH(known); }
+      else if (!data) setH((now) => now ?? { logged: 0, required: 200, as_of: dateKey.today() });
     };
     void fetch(); window.addEventListener("online", fetch);
     return () => { live = false; window.removeEventListener("online", fetch); };

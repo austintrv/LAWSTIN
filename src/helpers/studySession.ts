@@ -118,10 +118,10 @@ export function holdDayGoal(plan: ReturnType<typeof finalsPlan>, today: string, 
 export function studyNumbers(e: Engine, cards: ReturnType<typeof readyCards>, plan: { goal: number; courses: PlanCourse[] }, done: CourseCounts, filter: Filter = "all", total = COURSE_KEYS.reduce((a, c) => a + done[c], 0)) {
   const courses = activeCourses(e.today, filter), qs = e.queues(filter);
   const answered = filter === "all" ? Math.max(0, total - COURSE_KEYS.filter((c) => !courses.includes(c)).reduce((a, c) => a + done[c], 0)) : done[filter];
-  const goal = filter === "all" ? plan.goal : plan.courses.find((c) => c.course === filter)?.target ?? 0;
   const review = qs.due.length + cards.due.length;
   const fresh = qs.fresh.length + cards.fresh.length;
   const ready = review + fresh;
+  const goal = filter === "all" ? plan.goal : plan.courses.find((c) => c.course === filter)?.target ?? answered + Math.min(ready, 10);
   const left = Math.min(Math.max(0, goal - answered), ready);
   return { answered, goal, review, fresh, ready, left, minutes: left ? Math.max(5, Math.ceil(left * 0.75 / 5) * 5) : 0 };
 }

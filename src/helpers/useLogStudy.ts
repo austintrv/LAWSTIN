@@ -30,7 +30,11 @@ export function useLogStudy() {
         for (let rows = readStudyQueue(); rows.length && navigator.onLine; rows = readStudyQueue()) {
           const row = rows[0];
           const { error } = await supabase.from("study_events").upsert(row, { onConflict: "id", ignoreDuplicates: true }).abortSignal(AbortSignal.timeout(10000));
-          if (error) break;
+          if (error) {
+            // A rejected event moves to the back so the rest of the queue still drains.
+            if (error.code && rows.length > 1) writeStudyQueue([...readStudyQueue().filter(e => e.id !== row.id), row]);
+            break;
+          }
           writeStudyQueue(readStudyQueue().filter(e => e.id !== row.id));
         }
       } catch { /* Retain the same ids until the server acknowledges them. */ }

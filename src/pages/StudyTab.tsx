@@ -30,7 +30,7 @@ function FinalsCard({ e, courseNumbers, onCourse }: { e: Engine; courseNumbers: 
               <b>{days === 0 ? "Today" : days}</b>
               <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
               <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
-              <span className={styles.finalStats}>{`${today} today · ${numbers.goal} goal`}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
+              <span className={styles.finalStats}>{today ? `${today} to go` : "Done today"}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
             </button>
           );
         })}

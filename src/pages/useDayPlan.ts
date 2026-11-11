@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { COURSE_KEYS, DAILY_GOAL, type CourseCode } from "../helpers/studyEngine";
+import { COURSE_KEYS, DAILY_GOAL, courseCounts, type CourseCode } from "../helpers/studyEngine";
 import type { Flashcard, StudyRecord } from "../helpers/studyMaterials";
 import { finalsPlan, holdDayGoal, inferredDone, readyCards, reconcileDayWork, restoreDayGoal, studyNumbers, type DayGoal, type DayWork } from "../helpers/studySession";
 import type { WrittenEntry } from "../helpers/useWritten";
@@ -42,5 +42,7 @@ export function useDayPlan({ e, record, flashcards, entries, lastEssay, enabled,
   };
   const cardsFor = (filter: Parameters<typeof studyNumbers>[4]) => readyCards(flashcards, e.ruleCards(filter), record, undefined, filter, e.today);
   const numbers = (filter: Parameters<typeof studyNumbers>[4] = "all") => studyNumbers(e, cardsFor(filter), plan, work.done, filter, work.total);
-  return { plan, credit, cardsFor, numbers };
+  const remaining = courseCounts();
+  plan.courses.forEach((c) => { remaining[c.course] = Math.max(0, c.target - work.done[c.course]); });
+  return { plan, credit, cardsFor, numbers, remaining };
 }

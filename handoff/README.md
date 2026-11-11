@@ -10,8 +10,8 @@ Then tell Claude the package is ready. Claude reviews it, runs the checks, merge
 
 | Stage | Package | Brief | Can run alongside |
 |---|---|---|---|
-| 1 Trust | 1A Numbers you can trust | `1A-numbers.md` | 1B |
-| 1 Trust | 1B Nothing gets lost | `1B-safety.md` | 1A |
+| 1 Trust (merged) | 1A Numbers you can trust | `1A-numbers.md` | done |
+| 1 Trust (merged) | 1B Nothing gets lost | `1B-safety.md` | done |
 | 2 Fit each exam | 2A The next exam drives Study | `2A-next-exam.md` | 2B, 2C |
 | 2 Fit each exam | 2B Essays he will actually write | `2B-essays.md` | 2A, 2C |
 | 2 Fit each exam | 2C Pro Res under exam conditions | `2C-exam-conditions.md` | 2A, 2B |

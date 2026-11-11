@@ -116,7 +116,7 @@ export function flushSettings() {
         acknowledgeSetting(row);
       }
       settingsDelay = 1000;
-    } catch { toast.error("Couldn’t sync. Your changes are saved on this device."); settingsDelay = Math.min(settingsDelay * 2, 30000); }
+    } catch { if (settingsDelay === 1000) toast.error("Couldn’t sync. Your changes are saved on this device."); settingsDelay = Math.min(settingsDelay * 2, 30000); }
     finally {
       syncingSettings = null;
       if (Object.keys(settingQueue()).length) settingsRetry = setTimeout(() => void flushSettings(), settingsDelay);

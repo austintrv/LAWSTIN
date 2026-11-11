@@ -73,7 +73,15 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const written = useWritten();
   const syllabus = useSyllabus();
   const log = useLogStudy();
-  const e = useMemo(() => studyEngine(state, undefined, { weakExtra: written.weak, reviews: store.record.reviews }), [state, written.weak, store.record.reviews]);
+  // The day key follows the clock so a session left open past midnight counts toward the new day.
+  const [day, setDay] = useState(() => dateKey.today());
+  useEffect(() => {
+    const tick = () => setDay(dateKey.today());
+    const timer = window.setInterval(tick, 60000);
+    document.addEventListener("visibilitychange", tick);
+    return () => { clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
+  }, []);
+  const e = useMemo(() => studyEngine(state, day, { weakExtra: written.weak, reviews: store.record.reviews }), [state, day, written.weak, store.record.reviews]);
   const flashcards = useMemo(() => store.materials.filter((m): m is Flashcard => m.kind === "flashcard"), [store.materials]);
   const hypos = useMemo(() => store.materials.filter((m): m is Hypothetical => m.kind === "hypothetical"), [store.materials]);
   const [prefs, setPrefs] = useState(readPrefs);
@@ -235,11 +243,13 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   // The everyday session: questions with recall cards mixed in, read from the latest card progress.
   const cardState = useRef({ flashcards, record: store.record });
   cardState.current = { flashcards, record: store.record };
+  const remaining = useRef(daily.remaining);
+  remaining.current = daily.remaining;
   const mixed = (f: Filter, mode: StudyMode = "mixed"): Source => (eng, exclude) => {
     const { flashcards: fc, record } = cardState.current;
     // Rule cards use the full bank even when the question source excludes this session's items.
     const cards = readyCards(fc, studyEngine(latest.current).ruleCards(f), record, latest.current, f, eng.today, mode).list.filter((c) => !exclude.has(c.id));
-    return mixRound(eng.buildRound(f, mode, plan.saved.targets), cards, record);
+    return mixRound(eng.buildRound(f, mode, remaining.current), cards, record);
   };
   const onCard = (card: SessionCard, correct: boolean) => {
     const credited = daily.credit(card.course);

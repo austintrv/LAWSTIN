@@ -51,10 +51,6 @@ export function ProgressView({ e, syllabus, materials, onTopic, onHow }: { onHow
           {roleRow("Sneaky distractor", m.sneaky, "var(--course-pr)")}
           {roleRow("Average distractor", m.average, "var(--course-il)")}
           {roleRow("Really bad answer", m.bad, "var(--error)")}
-        </div>
-      </section>
-      <section className={styles.sec}>
-        <div className={`${styles.card} ${styles.list}`}>
           <div className={styles.row}>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Correct but guessed</span></span>
             <span className={styles.rowEnd}><b>{m.guessed}</b></span>
