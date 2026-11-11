@@ -3,22 +3,28 @@ import { haptic } from "../helpers/haptics";
 import { EXAMS, EXAM_PACE, type CourseCode, type Filter } from "../helpers/studyEngine";
 import styles from "../pages/_index.module.css";
 import { Button } from "./Button";
+import { examSizes, readActiveExam, requestExamResume } from "../helpers/useExams";
 
 import { type Engine } from "../pages/StudyParts";
 
 /** Pro Res is tested by timed multiple choice; the essay courses by a timed essay. */
 export function ExamPicker({ e, onStart, onEssay }: { e: Engine; onStart: (f: Filter, n: number, timed: boolean) => void; onEssay: (c: CourseCode) => void }) {
   const [f, setF] = useState<Filter>("pr");
-  const [n, setN] = useState(20);
+  const [n, setN] = useState(10);
   const [timed, setTimed] = useState(true);
   const essay = f !== "all" && EXAMS[f].format === "essay";
   const available = e.queues(f).total;
   // Only offer lengths the bank can fill; the last option is always "every question" for this course.
-  const lengths = [10, 20, 30].filter((k) => k < available);
-  if (available > 0) lengths.push(available);
+  const lengths = examSizes(available);
   const size = lengths.includes(n) ? n : lengths[lengths.length - 1] ?? 0;
+  const saved = readActiveExam();
   return (
     <div className={styles.examPick}>
+      {saved && <Button variant="secondary" className={styles.big} onClick={() => {
+        requestExamResume();
+        const courses = new Set(saved.questions.map(q => q.course));
+        onStart(courses.size === 1 ? saved.questions[0].course : "all", Math.min(saved.questions.length, e.questions.length), !!saved.limit);
+      }}>Resume exam</Button>}
       <div className={styles.seg} role="group" aria-label="Exam course">
         {([["pr", "Pro Res"], ["il", "Intl Law"], ["asy", "Asylum"], ["all", "Mixed"]] as const).map(([k, l]) => (
           <button key={k} aria-pressed={f === k} className={f === k ? styles.segOn : ""} onClick={() => { haptic(); setF(k); }}>{l}</button>

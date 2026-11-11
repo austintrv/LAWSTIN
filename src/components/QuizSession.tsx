@@ -1,17 +1,23 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { X, Star, Flag, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles, RotateCcw, Minus, CalendarDays, Flame } from "lucide-react";
+import { X, Star, Flag, Grid2X2, CircleHelp, ChevronLeft, ChevronRight, Check, MessageCircle, TrendingUp, Sparkles, RotateCcw, Minus, CalendarDays, Flame } from "lucide-react";
 import { Button } from "./Button";
 import { Textarea } from "./Textarea";
 import { AskPanel } from "./AskPanel";
 import type { QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
 import type { ExplainDTO } from "../endpoints/ai_POST.schema";
-import { COURSES, FINALS, ROLE_LABEL, examDue, itemCourse, itemId, itemTopic, type RoundItem, type SessionCard } from "../helpers/studyEngine";
+import { COURSES, FINALS, examDue, itemCourse, itemId, itemTopic, type RoundItem, type SessionCard } from "../helpers/studyEngine";
 import { dateKey } from "../helpers/dateKey";
 import { reviewSchedule } from "../helpers/reviewSchedule";
 import { haptic } from "../helpers/haptics";
-import { useBackClose } from "../helpers/useBackClose";
+import { afterOverlayClose, useBackClose } from "../helpers/useBackClose";
+import { BottomSheet } from "./BottomSheet";
+import { ANSWER_LABEL } from "../helpers/missedRules";
+import { writeCache } from "../helpers/offlineCache";
+import { examSummary, takeExamResume, clearExamResume, useExams, examDate, type ActiveExam, type ExamEntry } from "../helpers/useExams";
+import { toast } from "../helpers/toast";
+import { useLawstinData } from "../helpers/useLawstinData";
 import styles from "./QuizSession.module.css";
 
 export type QuizMode = "practice" | "exam";
@@ -78,7 +84,11 @@ function whyPill(p: ProgressDTO | undefined, guessed: boolean): { text: string; 
 }
 const VERDICT: Record<ExplainDTO["verdict"], string> = { solid: "Solid", partial: "Partly there", off: "Not yet" };
 
-export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, onCheckpoint, day, className }: Props) {
+export function QuizSession(props: Props) {
+  return props.mode === "exam" ? <ExamSession {...props} /> : <PracticeSession {...props} />;
+}
+
+function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExplain, recallFirst, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, onCheckpoint, day, className }: Props) {
   const [items, setItems] = useState(resume?.items ?? initial);
   const [i, setI] = useState(resume?.i ?? 0);
   const [sel, setSel] = useState<string | null>(null);
@@ -119,27 +129,15 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     if (run > prevRun.current && (run === 5 || run === 10)) haptic();
     prevRun.current = run;
   }, [run]);
-  const goalOn = mode === "practice" && !!day && day.goal > 0;
+  const goalOn = !!day && day.goal > 0;
   const goalMet = goalOn && day!.answered >= day!.goal;
   const before = useRef<Record<string, ProgressDTO | undefined>>({});
   if (item.q && !checked && !(item.q.id in before.current)) before.current[item.q.id] = getProgress(item.q.id);
   const mine = typed[i]?.trim() ?? "";
   // A card is in review once its answer is showing; a question once it has been answered.
   const revealed = !!shown[i] || checked;
-  const hidden = mode === "practice" && !!recallFirst && !!q && !revealed;
-  const reviewing = mode === "practice" && !done && (card ? revealed : checked);
-
-  // Exam clock: counts down from the limit and ends the exam at zero.
-  const started = useRef(Date.now());
-  const [used, setUsed] = useState(0);
-  const timed = mode === "exam" && !!seconds;
-  useEffect(() => {
-    if (!timed || done) return;
-    const tick = () => setUsed(Math.floor((Date.now() - started.current) / 1000));
-    const t = setInterval(tick, 1000);
-    return () => clearInterval(t);
-  }, [timed, done]);
-  const left = timed ? seconds! - used : 0;
+  const hidden = !!recallFirst && !!q && !revealed;
+  const reviewing = !done && (card ? revealed : checked);
 
   const snapshot = useRef<QuizSnapshot | undefined>(undefined);
   snapshot.current = done ? undefined : { items, i, picks, results, shown, typed };
@@ -150,19 +148,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     setClosing(true);
     setTimeout(() => onClose(snapshot.current), 380);
   }, [onClose]);
-  const [endOpen, setEndOpen] = useState(false);
-  // Leaving an exam partway shows results for what was answered; closing the results leaves.
-  const exit = useCallback(() => {
-    if (timed && !done) { setEndOpen(true); return; }
-    if (mode === "exam" && !done && results.some((r) => r !== undefined)) { haptic(); setDone(true); return; }
-    close();
-  }, [mode, timed, done, results, close]);
-  useBackClose(() => {
-    const stay = mode === "exam" && !done && (timed || results.some((r) => r !== undefined));
-    exit();
-    if (stay) return false;
-  });
-  useEffect(() => { if (timed && !done && left <= 0 && !saving) setDone(true); }, [timed, done, left, saving]);
+  useBackClose(close);
 
   const goTo = useCallback((n: number, dir: "out" | "back" = "out") => {
     if (moving.current || submitting.current) return;
@@ -183,7 +169,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
   const goNext = useCallback(() => {
     if (moving.current || submitting.current) return;
     if (i + 1 < items.length) return goTo(i + 1);
-    const more = mode === "practice" && onMore ? onMore(new Set(items.map(itemId))) : [];
+    const more = onMore ? onMore(new Set(items.map(itemId))) : [];
     if (more.length) {
       setItems((list) => [...list, ...more]);
       goTo(i + 1);
@@ -192,7 +178,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
       setAnim("out");
       setTimeout(() => { setDone(true); setAnim("in"); moving.current = false; scrollRef.current?.scrollTo({ top: 0 }); }, 170);
     }
-  }, [i, items, mode, onMore, goTo]);
+  }, [i, items, onMore, goTo]);
 
   const goBack = useCallback(() => {
     if (done) { haptic(); setAnim("back"); setDone(false); return; }
@@ -232,7 +218,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     if (!q || !sel || checked || submitting.current || moving.current || recorded.current.has(q.id)) return;
     submitting.current = true;
     setSaving(true);
-    if (mode === "practice") haptic();
+    haptic();
     const at = i;
     try {
       const correct = await onAnswer(q, sel);
@@ -240,11 +226,10 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
       setResults((r) => { const n = [...r]; n[at] = correct; return n; });
       setPicks((p) => { const n = [...p]; n[at] = sel; return n; });
       submitting.current = false;
-      if (mode === "practice") slide();
-      if (mode === "exam") goNext();
+      slide();
     } catch { /* The parent reports the error. Keep this question open for a retry. */ }
     finally { submitting.current = false; setSaving(false); }
-  }, [sel, checked, q, i, mode, onAnswer, goNext]);
+  }, [sel, checked, q, i, onAnswer]);
 
   const makeHarder = async () => {
     if (!q || !onHarder || harder[q.id]) return;
@@ -264,12 +249,12 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (asking || endOpen) return;
+      if (asking) return;
       if (submitting.current || moving.current || e.repeat) return;
       if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
       const k = e.key.toUpperCase();
-      if (done) { if (e.key === "ArrowLeft" && mode === "practice") goBack(); return; }
-      if (e.key === "ArrowLeft" && mode === "practice") { goBack(); return; }
+      if (done) { if (e.key === "ArrowLeft") goBack(); return; }
+      if (e.key === "ArrowLeft") { goBack(); return; }
       if (card) {
         if (!revealed) { if (e.key === "Enter" || e.code === "Space") { e.preventDefault(); void reveal(); } return; }
         if (!checked) { if (k === "1") gradeCard(false); else if (k === "2" || e.key === "Enter") { e.preventDefault(); gradeCard(true); } return; }
@@ -282,17 +267,17 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
         setSel((cur) => (cur === pick ? null : pick));
       } else if (e.key === "Enter") {
         e.preventDefault();
-        if (!checked) void check(); else if (mode === "practice") goNext();
-      } else if (e.key === "ArrowRight" && checked && mode === "practice") goNext();
+        if (!checked) void check(); else goNext();
+      } else if (e.key === "ArrowRight" && checked) goNext();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, checked, check, goNext, goBack, exit, mode, asking, endOpen, card, revealed, hidden, reveal, gradeCard]);
+  }, [done, checked, check, goNext, goBack, asking, card, revealed, hidden, reveal, gradeCard]);
 
   const onTouchStart = (e: React.TouchEvent) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
   const onTouchEnd = (e: React.TouchEvent) => {
     const t = touch.current; touch.current = null;
-    if (!t || mode !== "practice") return;
+    if (!t) return;
     const dx = e.changedTouches[0].clientX - t.x, dy = e.changedTouches[0].clientY - t.y;
     if (Math.abs(dy) > 50) return;
     if (done) { if (dx > 70) goBack(); return; }
@@ -321,17 +306,9 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
   const chip = <span className={styles.chip} style={{ color: course.color, background: `color-mix(in srgb, ${course.color} 14%, transparent)` }}>{course.short}</span>;
 
   return (
-    <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label={mode === "exam" ? "Practice exam" : "Practice"}>
+    <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Practice">
       <div className={styles.top} onTouchStart={onTouchStart} onTouchEnd={onTopTouchEnd}>
         <div className={styles.topIn}>
-          {mode === "exam" ? (
-            <>
-              <span className={`${styles.count} ${timed && left < 60 ? styles.countLow : ""}`} role={timed ? "timer" : undefined}>{done ? "" : timed ? clock(left) : `${i + 1} of ${items.length}`}</span>
-              <span className={styles.examTitle}>Practice exam</span>
-              <button className={styles.x} onClick={exit} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
-            </>
-          ) : (
-            <>
               <button className={styles.x} onClick={goBack} disabled={i === 0 && !done} aria-label="Previous"><ChevronLeft size={18} strokeWidth={2.4} /></button>
               <div className={styles.tally} aria-live="polite">
                 {answered > 0 && <><span className={styles.tallyOk}><Check size={13} strokeWidth={3} />{right}</span><span className={styles.tallyBad}><X size={13} strokeWidth={3} />{answered - right}</span></>}
@@ -339,10 +316,8 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
                 {goalOn && <span className={`${styles.dayCount} ${goalMet ? styles.dayMet : ""}`} aria-hidden="true">{goalMet && <Check size={13} strokeWidth={3} />}{goalMet ? day!.answered : `${day!.answered}/${day!.goal}`}</span>}
               </div>
               <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
-            </>
-          )}
+
         </div>
-        {mode === "exam" && <div className={styles.prog}>{items.map((_, k) => <i key={k} className={results[k] !== undefined ? styles.done : k === i ? styles.cur : ""} />)}</div>}
         {goalOn && (
           <div className={styles.goalBar} role="progressbar" aria-label="Today’s goal" aria-valuemin={0} aria-valuemax={day!.goal} aria-valuenow={Math.min(day!.answered, day!.goal)}>
             <i className={goalMet ? styles.goalMet : ""} style={{ width: `${Math.min(1, day!.answered / day!.goal) * 100}%` }} />
@@ -352,7 +327,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
 
       <div className={styles.scroll} ref={scrollRef} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {done ? (
-          <Results items={items} results={results} picks={picks} mode={mode} used={timed ? Math.min(used, seconds!) : undefined} after={after} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={reopen} />
+          <Results items={items} results={results} picks={picks} mode="practice" after={after} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={reopen} />
         ) : card && !reviewing ? (
           <div className={`${styles.body} ${styles.split} ${animCls}`} key={`c-${i}-${card.id}`}>
             <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
@@ -415,7 +390,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
             <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
             <div className={styles.meta}>
               {chip}
-              {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : mode === "exam" ? <span className={styles.pill}>Exam</span> : (() => {
+              {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : (() => {
                 const bp = before.current[q.id];
                 const w = whyPill(bp, !!bp && bp.guessed > 0 && bp.box === 1 && bp.lastCorrect === true);
                 return <span className={`${styles.pill} ${w.tone === "bad" ? styles.pillBad : w.tone === "ok" ? styles.pillOk : ""}`}>{w.text}</span>;
@@ -471,7 +446,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
 
             {!ok && chosen && (
               <section className={`${styles.rc} ${styles.answerCard}`}>
-                <span className={`${styles.label} ${styles.labelBad}`}><span className={`${styles.letterSm} ${styles.letterBad}`}>{chosen.id}</span>Your answer · {ROLE_LABEL[chosen.role]}</span>
+                <span className={`${styles.label} ${styles.labelBad}`}><span className={`${styles.letterSm} ${styles.letterBad}`}>{chosen.id}</span>Your answer · {ANSWER_LABEL[chosen.role]}</span>
                 <p className={styles.strong}>{chosen.text}</p>
                 <p className={styles.bodyText}>{chosen.why}</p>
               </section>
@@ -497,7 +472,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
                   <details key={c.id} className={styles.other}>
                     <summary>
                       <span className={styles.letterSm}>{c.id}</span>
-                      <span className={styles.otherMain}><span className={styles.label}>{ROLE_LABEL[c.role]}</span><span className={styles.bodyText}>{c.text}</span></span>
+                      <span className={styles.otherMain}><span className={styles.label}>{ANSWER_LABEL[c.role]}</span><span className={styles.bodyText}>{c.text}</span></span>
                       <ChevronRight size={16} className={styles.otherChev} />
                     </summary>
                     <p className={`${styles.bodyText} ${styles.otherWhy}`}>{c.why}</p>
@@ -565,7 +540,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
         <div className={`${styles.foot} ${sel && !checked ? styles.footOn : ""}`} aria-hidden={!sel}>
           <div className={styles.footIn}>
             <Button className={`${styles.big} ${styles.cta}`} disabled={!sel || checked || saving} onClick={check}>
-              {saving ? "Saving…" : mode === "exam" ? (i === items.length - 1 ? "Finish" : "Next") : "Check answer"}
+              {saving ? "Saving…" : "Check answer"}
             </Button>
           </div>
         </div>
@@ -602,26 +577,26 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
         </div>
       )}
 
-      {endOpen && <EndExam onKeep={() => setEndOpen(false)} onEnd={() => { setEndOpen(false); if (results.some(r => r !== undefined)) setDone(true); else close(); }} />}
       {asking && !done && q && <AskPanel question={q} picked={(picked as "A" | "B" | "C" | "D" | undefined) ?? null} onClose={() => setAsking(false)} />}
     </div>
   );
 }
 
-function Results({ items: all, results, picks, mode, used, after, onAnother, onRetry, onClose, onOpen }: {
+function Results({ items: all, results, picks, mode, used, after, onAnother, onRetry, onClose, onOpen, entry, previous }: {
   items: RoundItem[]; results: (boolean | undefined)[]; picks: (string | undefined)[]; mode: QuizMode;
   /** Seconds a timed exam took. */
   used?: number; after?: { label: string; onGo: () => void }[];
   onAnother: () => void; onRetry: (items: RoundItem[]) => void; onClose: () => void; onOpen: (index: number) => void;
+  entry?: ExamEntry; previous?: ExamEntry;
 }) {
   // Only answered questions count; practice and an exam ended early can stop anywhere.
-  const idx = all.map((_, k) => k).filter((k) => results[k] !== undefined);
+  const idx = all.map((_, k) => k).filter((k) => mode === "exam" || results[k] !== undefined);
   const items = idx.map((k) => all[k]);
   const res = idx.map((k) => results[k]);
   const pk = idx.map((k) => picks[k]);
   const n = items.length;
   const c = res.filter(Boolean).length;
-  const missed = items.filter((_, k) => res[k] === false);
+  const missed = items.filter((_, k) => res[k] !== true);
   const R = 80;
   const circ = 2 * Math.PI * R;
   const [offset, setOffset] = useState(circ);
@@ -668,6 +643,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
         <div><b>{shown}<small>/{n}</small></b><span>correct</span></div>
       </div>
       <h1 className={styles.resTitle}>{mode === "exam" ? "Exam complete" : "Session complete"}</h1>
+      {entry && previous && <span className={styles.compare}>{entry.score - previous.score >= 0 ? "+" : ""}{entry.score - previous.score} since {examDate(previous.at)}</span>}
       {used !== undefined && n > 0 && (
         <div className={styles.card}>
           <div className={styles.row}><span className={styles.rowTitle}>Time</span><span className={styles.rowEnd}>{clock(used)}</span></div>
@@ -720,9 +696,11 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
                 </button>
                 {isOpen && (
                   <div className={styles.reviewBody}>
-                    {!res[k] && pick && <p><b>You chose {pick.id}.</b> {pick.why}</p>}
-                    <p><b>The answer is {right.id}.</b> {right.why}</p>
+                    {!pick && <span className={styles.pill}>Unanswered</span>}
+                    {pick && <p><b>You chose {pick.id} · {ANSWER_LABEL[pick.role]}.</b> {pick.text} {pick.why}</p>}
+                    <p><b>The answer is {right.id}.</b> {right.text} {right.why}</p>
                     {it.q.rule && <p className={styles.reviewRule}>{it.q.rule}</p>}
+                    {it.q.authority && <span className={styles.authority}>{it.q.authority}</span>}
                   </div>
                 )}
               </div>
@@ -742,6 +720,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
       ) : null}
       <div className={styles.btns}>
         {mode === "exam" && <Button className={`${styles.big} ${styles.cta}`} onClick={onAnother}>New exam</Button>}
+        {mode === "exam" && <Button variant="secondary" className={styles.big} onClick={() => { onClose(); afterOverlayClose(() => { window.location.hash = "#/tool/ExamHistory"; }); }}>Practice exams</Button>}
         {missed.length > 0 && (
           <Button variant="secondary" className={styles.big} onClick={() => onRetry(missed.map((it) => ({ ...it, review: true })))}>Retry the {missed.length} missed</Button>
         )}
@@ -752,10 +731,128 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
   );
 }
 
-function EndExam({ onKeep, onEnd }: { onKeep: () => void; onEnd: () => void }) {
+function ExamSession({ items, seconds, onAnother, onRetry, onClose, className }: Props) {
+  const { list, add } = useExams();
+  const { queueAnswer, flush } = useLawstinData();
+  const [exam, setExam] = useState<ActiveExam>(() => takeExamResume() ?? {
+    id: new Date().toISOString(), at: Date.now(), questions: [...new Map(items.flatMap(it => it.q ? [[it.q.id, it.q] as const] : [])).values()],
+    i: 0, picks: {}, flagged: [], seconds: 0, limit: seconds, submitted: [],
+  });
+  useEffect(clearExamResume, []);
+  const [entry, setEntry] = useState<ExamEntry | null>(() => exam.finishing ? examSummary(exam.questions, exam.picks, exam.flagged, exam.seconds, !!exam.limit, exam.id) : null);
+  const [mapOpen, setMapOpen] = useState(false);
+  const [confirm, setConfirm] = useState<"finish" | "pause" | null>(null);
   const ref = useModalFocus<HTMLDivElement>();
-  useBackClose(() => { onKeep(); return false; });
-  return <div className={styles.confirmBackdrop}><div ref={ref} tabIndex={-1} role="alertdialog" aria-modal="true" aria-label="End exam?" className={styles.confirm}>
-    <h2>End exam?</h2><Button variant="secondary" onClick={onKeep}>Keep going</Button><Button onClick={onEnd}>End</Button>
+  const current = useRef(exam); current.current = exam;
+  const finished = useRef(!!entry);
+  const checkpoint = (x: ActiveExam) => {
+    writeCache("exam-active", x.finishing && x.questions.every(q => !x.picks[q.id] || x.submitted.includes(q.id)) ? null : { ...x, at: Date.now() });
+  };
+  useEffect(() => { checkpoint(exam); }, [exam]);
+  useEffect(() => {
+    const save = () => checkpoint(current.current);
+    window.addEventListener("pagehide", save);
+    return () => { save(); window.removeEventListener("pagehide", save); };
+  }, []);
+  const finish = useCallback(() => {
+    if (finished.current) return;
+    const x = current.current;
+    const summary = examSummary(x.questions, x.picks, x.flagged, x.limit ? Math.min(x.seconds, x.limit) : x.seconds, !!x.limit, x.id);
+    try { add(summary); }
+    catch { toast.error("Couldn’t save the exam on this device"); return; }
+    finished.current = true; setConfirm(null); setMapOpen(false); setEntry(summary);
+    setExam(v => ({ ...v, finishing: true })); haptic();
+  }, [add]);
+  useEffect(() => {
+    if (entry) return;
+    let last = Date.now();
+    const timer = setInterval(() => {
+      const now = Date.now(), delta = Math.max(0, Math.floor((now - last) / 1000));
+      if (delta) { last += delta * 1000; setExam(x => ({ ...x, seconds: x.limit ? Math.min(x.limit, x.seconds + delta) : x.seconds + delta })); }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [entry]);
+  useEffect(() => { if (!entry && exam.limit && exam.seconds >= exam.limit) finish(); }, [exam.seconds, exam.limit, entry, finish]);
+  useEffect(() => {
+    if (!entry) return;
+    let x = current.current;
+    for (const q of x.questions) {
+      const choice = x.picks[q.id];
+      if (!choice || x.submitted.includes(q.id)) continue;
+      queueAnswer({ questionId: q.id, choice: choice as "A" | "B" | "C" | "D", localDate: dateKey.today() }, choice === q.answer);
+      x = { ...x, submitted: [...x.submitted, q.id] }; current.current = x; checkpoint(x);
+    }
+    setExam(x); void flush(true);
+  }, [entry, queueAnswer, flush]);
+  const close = () => { checkpoint(current.current); onClose(); };
+  const exit = () => { if (entry) close(); else setConfirm("pause"); };
+  useBackClose(() => { exit(); if (!entry) return false; });
+  const move = (n: number) => { if (n < 0 || n >= exam.questions.length) return; setExam(x => ({ ...x, i: n })); haptic(); };
+  const pick = (id: string) => setExam(x => {
+    const picks = { ...x.picks }, q = x.questions[x.i];
+    if (picks[q.id] === id) delete picks[q.id]; else picks[q.id] = id;
+    return { ...x, picks };
+  });
+  const flag = () => setExam(x => { const id = x.questions[x.i].id; return { ...x, flagged: x.flagged.includes(id) ? x.flagged.filter(k => k !== id) : [...x.flagged, id] }; });
+  const askFinish = () => { if (exam.questions.some(q => !exam.picks[q.id]) || exam.flagged.length) setConfirm("finish"); else finish(); };
+  useEffect(() => {
+    const key = (ev: KeyboardEvent) => {
+      if (entry || confirm || mapOpen || ev.repeat || (ev.target as HTMLElement)?.matches("input,textarea,[contenteditable=true]")) return;
+      const k = ev.key.toUpperCase();
+      if (["A", "B", "C", "D", "1", "2", "3", "4"].includes(k)) { ev.preventDefault(); pick("1234".includes(k) ? "ABCD"[Number(k) - 1] : k); }
+      else if (ev.key === "ArrowLeft") { ev.preventDefault(); move(exam.i - 1); }
+      else if (ev.key === "ArrowRight") { ev.preventDefault(); move(exam.i + 1); }
+      else if (k === "F") { ev.preventDefault(); flag(); }
+      else if (k === "M") { ev.preventDefault(); setMapOpen(true); }
+    };
+    window.addEventListener("keydown", key); return () => window.removeEventListener("keydown", key);
+  }, [exam, entry, confirm, mapOpen]);
+  const q = exam.questions[exam.i];
+  const questionMap = (jump: (n: number) => void) => <div className={styles.examMap} role="group" aria-label="Question map">{exam.questions.map((q, n) => <button key={q.id}
+    aria-label={`Question ${n + 1}, ${exam.picks[q.id] ? "answered" : "unanswered"}${exam.flagged.includes(q.id) ? ", flagged" : ""}`}
+    aria-current={n === exam.i ? "step" : undefined} data-answered={!!exam.picks[q.id]} data-flagged={exam.flagged.includes(q.id)}
+    onClick={() => jump(n)}>{n + 1}{exam.flagged.includes(q.id) && <Flag size={10} fill="currentColor" />}</button>)}</div>;
+  const previous = entry ? list.find(e => e.at < entry.at && e.course === entry.course) : undefined;
+  return <div ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Practice exam" className={`${styles.modal} ${className ?? ""}`}>
+    <div className={styles.top}><div className={`${styles.topIn} ${styles.examTop}`}>
+      <div className={styles.examLeft}>{!entry && <><button className={styles.x} aria-label="Question map" onClick={() => setMapOpen(true)}><Grid2X2 size={18} /></button>{exam.limit && <span className={`${styles.count} ${exam.limit - exam.seconds < 60 ? styles.countLow : ""}`} role="timer">{clock(exam.limit - exam.seconds)}</span>}</>}</div>
+      <span className={styles.examTitle}>{entry ? "Practice exam" : `Question ${exam.i + 1} of ${exam.questions.length}`}</span>
+      <button className={styles.x} aria-label="Close" onClick={exit}><X size={16} strokeWidth={2.4} /></button>
+    </div></div>
+    <div className={styles.scroll}>
+      {entry ? <>
+        <Results items={exam.questions.map(q => ({ q, review: false }))} results={exam.questions.map(q => exam.picks[q.id] === q.answer)} picks={exam.questions.map(q => exam.picks[q.id])}
+          mode="exam" used={entry.seconds} entry={entry} previous={previous} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={() => {}} />
+      </> : <div className={`${styles.body} ${styles.split}`} key={q.id}>
+        <div className={styles.meta}><span className={styles.chip} style={{ color: COURSES[q.course].color }}>{COURSES[q.course].short}</span><span className={styles.topic}>{q.topic}</span></div>
+        <div className={styles.paneL}><div className={styles.stem}>{paras(q.stem)}</div></div>
+        <div className={styles.paneR}>
+          <div className={styles.desktopMap}>{questionMap(move)}</div>
+          <p className={styles.ask}>{q.prompt}</p>
+          <div className={styles.choices} role="group" aria-label="Answer choices">{q.choices.map(c => <button key={c.id} aria-pressed={exam.picks[q.id] === c.id} className={`${styles.choice} ${exam.picks[q.id] === c.id ? styles.selected : ""}`} onClick={() => pick(c.id)}><span className={styles.letter}>{c.id}</span><span className={styles.choiceText}>{c.text}</span></button>)}</div>
+          <button className={styles.examFlag} aria-pressed={exam.flagged.includes(q.id)} onClick={flag}><Flag size={18} fill={exam.flagged.includes(q.id) ? "currentColor" : "none"} />{exam.flagged.includes(q.id) ? "Flagged" : "Flag question"}</button>
+        </div>
+      </div>}
+    </div>
+    {!entry && <div className={`${styles.foot} ${styles.footOn}`}><div className={styles.footIn}><div className={styles.actions}>
+      <Button variant="secondary" className={styles.next} disabled={exam.i === 0} onClick={() => move(exam.i - 1)}>Previous</Button>
+      {exam.i < exam.questions.length - 1 && <Button variant="secondary" className={styles.next} onClick={() => move(exam.i + 1)}>Next</Button>}
+      <Button className={`${styles.next} ${styles.cta}`} onClick={askFinish}>Finish</Button>
+    </div></div></div>}
+    {mapOpen && <BottomSheet title="Question map" onClose={() => setMapOpen(false)}>{questionMap(n => { move(n); setMapOpen(false); })}</BottomSheet>}
+    {confirm && <ExamConfirm title={confirm === "pause" ? "Leave exam?" : "Finish exam?"} onBack={() => setConfirm(null)} action={confirm === "pause" ? "Leave" : "Finish"} onAction={confirm === "pause" ? close : finish}>
+      {confirm === "finish" && <div className={styles.examWarnings}>
+        {exam.questions.some(q => !exam.picks[q.id]) && <span className={styles.pill}>{exam.questions.filter(q => !exam.picks[q.id]).length} unanswered</span>}
+        {exam.flagged.length > 0 && <span className={styles.pill}>{exam.flagged.length} flagged</span>}
+      </div>}
+    </ExamConfirm>}
+  </div>;
+}
+
+function ExamConfirm({ title, action, onBack, onAction, children }: { title: string; action: string; onBack: () => void; onAction: () => void; children?: React.ReactNode }) {
+  const ref = useModalFocus<HTMLDivElement>();
+  useBackClose(() => { onBack(); return false; });
+  return <div className={styles.confirmBackdrop}><div ref={ref} tabIndex={-1} role="alertdialog" aria-modal="true" aria-label={title} className={styles.confirm}>
+    <h2>{title}</h2>{children}<Button className={styles.cta} onClick={onAction}>{action}</Button><Button variant="secondary" onClick={onBack}>Go back</Button>
   </div></div>;
 }

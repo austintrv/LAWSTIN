@@ -19,7 +19,8 @@ quiz-recall quiz-question quiz-selected quiz-review-wrong quiz-review-facts ask-
 exam-question exam-results lesson-rule lesson-slipped lesson-check lesson-correct lesson-complete
 flashcard-front flashcard-back flashcards-done written-setup written-prompt written-typed written-graded written-history written-essay match-board match-picked match-result
 courses-home courses-tool course-il course-asy course-pr course-next course-kind reader-flowchart reader-outline reader-comparison reader-drill reader-drill-answered reader-hypothetical rulebook-read rulebook-recall workspace-clinic workspace-clinic-task workspace-tutoring
-progress-top progress-full progress-expanded topic-sheet progress-how activity-top activity-full activity-day activity-updates settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-activity night-before-study night-before-finals deep-link`.split(/\s+/);
+progress-top progress-full progress-expanded topic-sheet progress-how activity-top activity-full activity-day activity-updates settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-activity night-before-study night-before-finals deep-link
+exam-map exam-confirm exam-history exam-history-detail missed-rules close-calls close-calls-review close-calls-result progress-close-call progress-plausible progress-way-off progress-right-but-guessed`.split(/\s+/);
 
 const index = [], log = [];
 let W, T, ctxTag;
@@ -92,7 +93,9 @@ async function finish(s, limit = 40) {
     if (await isCard(page)) { await tap(page, 'Reveal answer'); await tap(page, 'Got it'); continue; }
     if (await dialog(page).getAttribute('aria-label') === 'Practice exam') { // exam: pick, then Next/Finish moves on without feedback
       const q = await which(s); await choice(page, i % 3 === 1 ? 'ABCD'.replace(q.answer, '')[0] : q.answer).click();
-      await dialog(page).getByRole('button', { name: /^(Next|Finish)$/ }).click(); await page.waitForTimeout(250); continue;
+      const next = dialog(page).getByRole('button', { name: 'Next', exact: true });
+      if (await next.count()) await next.click(); else await dialog(page).getByRole('button', { name: 'Finish', exact: true }).click();
+      await page.waitForTimeout(250); continue;
     }
     if (await dialog(page).getByRole('button', { name: 'Check answer' }).isVisible().catch(() => false) || await choice(page, 'A').isVisible().catch(() => false)) await answerCurrent(s, i % 3 !== 1).catch(() => {});
     const next = dialog(page).getByRole('button', { name: /^(Next question|See results|Finish)/ }).first();
@@ -105,7 +108,7 @@ const mat = (s, kind, course = 'il') => s.data.materials.find(m => m.kind === ki
 
 const live = [];
 /** open() with the current width/theme/clock; sessions are tracked so their console errors are logged. */
-const O = async o => { const s = await open({ width: W, height: W >= 1000 ? 900 : 844, dark: T === 'dark', now: NOW, ...o }); s.page.setDefaultTimeout(8000); live.push(s); return s; };
+const O = async o => { const s = await open({ width: W, height: W >= 1000 ? 900 : W >= 768 ? 1180 : 844, dark: T === 'dark', now: NOW, ...o }); s.page.setDefaultTimeout(8000); live.push(s); return s; };
 
 // ---------- scenes ----------
 const SCENES = {
@@ -165,7 +168,20 @@ const SCENES = {
       await tap(P, /Start 10-question exam/); await dialog(P).waitFor(); await P.waitForTimeout(400);
       await snap(s, 'exam-question', 'Practice exam question (progress dashes, no feedback).', 'Study > Practice exam > Pro Res, 10 questions > Start', { full: true });
     }, s);
+    await step('exam-map', async () => { await P.keyboard.press('f'); await P.keyboard.press('m'); await snap(s, 'exam-map', 'Exam question map with a flagged current question.', 'Exam > F > M'); await P.keyboard.press('Escape'); await P.waitForTimeout(400); }, s);
+    await step('exam-confirm', async () => { await tap(P, 'Finish', { exact: true }); await snap(s, 'exam-confirm', 'Unanswered and flagged finish confirmation.', 'Exam > Finish'); await tap(P, 'Go back', { exact: true }); await P.keyboard.press('f'); }, s);
     await step('exam-results', async () => { await finish(s); await snap(s, 'exam-results', 'Practice exam results.', 'Practice exam > answer all 10', { full: true }); }, s);
+    await s.close();
+  },
+
+  async examtools() {
+    const s = await O({ tool: true, hash: '#/tool/ExamHistory' }), P = s.page;
+    await step('exam-history', async () => { await P.getByRole('group', { name: 'Score trend' }).waitFor(); await snap(s, 'exam-history', 'Practice exam history and score trend.', 'Progress > Practice exams', { full: true }); }, s);
+    await step('exam-history-detail', async () => { await P.locator('button').filter({ has: P.locator('[aria-label="8 of 10 correct"]') }).first().click(); await P.locator('summary').first().click(); await snap(s, 'exam-history-detail', 'Saved exam with topic table and missed-question explanations.', 'Practice exams > saved exam', { full: true }); }, s);
+    await step('missed-rules', async () => { await s.gotoTool('MissedRules', 'pr'); await P.getByRole('button', { name: 'Drill these' }).waitFor(); await P.locator('summary').first().click(); await snap(s, 'missed-rules', 'Missed rules grouped by topic, one expanded.', 'Progress > Rules you miss', { full: true }); }, s);
+    await step('close-calls', async () => { await s.gotoTool('CloseCalls', 'pr'); await P.getByRole('group', { name: 'Close call choices' }).waitFor(); await snap(s, 'close-calls', 'Close call fact pattern and two choices.', 'How you miss > Close call > Practice close calls', { full: true }); }, s);
+    await step('close-calls-review', async () => { await P.keyboard.press('1'); await P.getByRole('button', { name: 'Next', exact: true }).waitFor(); await snap(s, 'close-calls-review', 'Both explanations and the governing rule.', 'Close calls > 1', { full: true }); }, s);
+    await step('close-calls-result', async () => { await P.keyboard.press('Enter'); for (let i = 1; i < 10; i++) { await P.keyboard.press('1'); await P.keyboard.press('Enter'); } await P.getByRole('button', { name: 'Next round' }).waitFor(); await snap(s, 'close-calls-result', 'Close call round result.', 'Close calls > complete ten', { full: true }); }, s);
     await s.close();
   },
 
@@ -254,7 +270,10 @@ const SCENES = {
     await step('progress-full', async () => { await snap(s, 'progress-full', 'Progress tab, full height.', 'Progress tab, full height', { full: true }); }, s);
     await step('progress-expanded', async () => { const heads = P.locator('[data-pane="progress"] button[aria-expanded="false"]'); for (let i = await heads.count(); i > 0; i--) await heads.first().click(); await P.waitForTimeout(400); await snap(s, 'progress-expanded', 'Progress tab with every course coverage card expanded.', 'Progress > each course header', { full: true }); }, s);
     await step('topic-sheet', async () => { await P.locator('[data-pane="progress"] button').filter({ hasText: /\d+ of \d+ seen/ }).first().click(); await P.waitForTimeout(500); await snap(s, 'topic-sheet', 'Topic sheet: rules, study tools, Drill this topic.', 'Progress > a topic row', { full: true }); await P.keyboard.press('Escape'); await P.waitForTimeout(500); }, s);
-    await step('progress-how', async () => { await tap(P, 'How this works'); await snap(s, 'progress-how', 'How this works sheet (status definitions).', 'Progress > How this works', { full: true }); }, s);
+    for (const label of ['Close call', 'Plausible', 'Way off', 'Right, but guessed']) await step('progress-' + label, async () => {
+      await P.locator('[data-pane="progress"]').getByRole('button', { name: new RegExp('^' + label) }).click(); await P.waitForTimeout(400);
+      await snap(s, 'progress-' + label.toLowerCase().replace(/[^a-z]+/g, '-'), 'Own answers grouped as ' + label + '.', 'Progress > ' + label, { full: true }); await P.keyboard.press('Escape'); await P.waitForTimeout(400);
+    }, s);
     await s.close();
   },
 
