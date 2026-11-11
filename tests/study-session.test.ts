@@ -351,3 +351,54 @@ test("progress totals use day activity, guessed counts stay separate, and update
   assert.equal(reviewGreeting("9 reviews on the docket", 4), "4 reviews are waiting");
   assert.equal(reviewGreeting("One review is waiting", 0), "Ready when you are, Austin");
 });
+
+import { examMoment, lastPass, recapChanges, streakHistory, unitStatuses, weakestRules } from "../src/helpers/studySession";
+import { itemId } from "../src/helpers/studyEngine";
+for (const [day, kind, course] of [
+  ["01", "eve", "il"], ["02", "morning", "il"], ["03", "normal", undefined], ["06", "eve", "asy"],
+  ["07", "morning", "asy"], ["08", "eve", "pr"], ["09", "morning", "pr"], ["10", "done", undefined],
+] as const) test(`exam moment on December ${day}`, () => {
+  assert.deepEqual(examMoment(`2026-12-${day}`), course ? { kind, course } : { kind });
+});
+
+test("last pass orders misses, Shaky questions and cards, then due items; excludes other courses and ordinary new work", () => {
+  const qs = [q("miss", "il", "Weak"), q("shaky", "il", "Weak"), q("due", "il", "Other"), q("new", "il", "Other"), q("other", "pr", "Weak")];
+  const s = state(qs, [p("miss", { correct: 0, wrong: 2, lastCorrect: false, due: "2026-12-03" }), p("due", { due: "2026-12-01" })]);
+  const cards = [card("weak-card", "il"), card("due-card", "il"), card("fresh-card", "il"), card("other-card", "pr")];
+  cards[0].topic = "Weak";
+  const record = emptyStudyRecord();
+  record.cards["due-card"] = { seen: 1, correct: 0, box: 1, due: "2026-12-01", last_at: "2026-11-30T12:00:00Z" };
+  const items = lastPass(studyEngine(s, "2026-12-01"), "il", cards, record, {});
+  assert.deepEqual(items.map(itemId), ["miss", "shaky", "weak-card", "due", "due-card"]);
+  const many = Array.from({ length: 40 }, (_, i) => q(`q-${i}`, "il", "T"));
+  const capped = lastPass(studyEngine(state(many, many.map((q) => p(q.id, { due: "2026-12-01" }))), "2026-12-01"), "il", [], record, {});
+  assert.equal(capped.length, 25); assert.equal(new Set(capped.map(itemId)).size, 25);
+});
+
+test("recap changes keep unit identity and omit unchanged units", () => {
+  const before = state([q("q", "il", "Treaties"), q("pr", "pr", "Fees")]);
+  const after = applyLocalAnswer(before, { questionId: "q", choice: "A", localDate: "2026-11-11" }, "2026-11-11T18:00:00Z");
+  assert.deepEqual(recapChanges(unitStatuses(studyEngine(before), {}), unitStatuses(studyEngine(after), {})), [
+    { course: "il", topic: "Treaties", from: "unseen", status: "solid" },
+  ]);
+});
+
+test("warm-up selects ten unique rules with unresolved misses first", () => {
+  const qs = Array.from({ length: 15 }, (_, i) => q(`il-${i}`, "il", "T", `Rule ${i}`));
+  qs.push({ ...qs[0], id: "duplicate" }, q("pr-1", "pr", "T"));
+  const e = studyEngine(state(qs, [p("il-12", { wrong: 3, correct: 0, lastCorrect: false })]));
+  const rules = weakestRules(e, "il");
+  assert.equal(rules.length, 10); assert.equal(rules[0].id, "il-12");
+  assert.equal(new Set(rules.map((q) => q.rule)).size, 10);
+  assert(rules.every((q) => q.course === "il"));
+});
+
+test("streak history counts the best run, fourteen days, and a broken run without guilt", () => {
+  const days = ["2026-11-06", "2026-11-07", "2026-11-08", "2026-11-11"].map((date) => ({ date, answered: 1, correct: 1 }));
+  assert.equal(streakHistory(days, "2026-11-10").broken, true);
+  assert.equal(streakHistory(days, "2026-11-11").broken, true);
+  assert.equal(streakHistory([...days, { date: "2026-11-10", answered: 1, correct: 1 }], "2026-11-11").broken, false);
+  const result = streakHistory(days, "2026-11-10");
+  assert.equal(result.best, 3); assert.equal(result.dots.length, 14);
+  assert.equal(result.dots.at(-1)?.day, "2026-11-10");
+});

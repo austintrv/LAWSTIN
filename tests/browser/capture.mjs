@@ -19,7 +19,7 @@ quiz-recall quiz-question quiz-selected quiz-review-wrong quiz-review-facts ask-
 exam-question exam-results lesson-rule lesson-slipped lesson-check lesson-correct lesson-complete
 flashcard-front flashcard-back flashcards-done written-setup written-prompt written-typed written-graded written-history written-essay match-board match-picked match-result
 courses-home courses-tool course-il course-asy course-pr course-next course-kind reader-flowchart reader-outline reader-comparison reader-drill reader-drill-answered reader-hypothetical rulebook-read rulebook-recall workspace-clinic workspace-clinic-task workspace-tutoring
-progress-top progress-full progress-expanded topic-sheet progress-how activity-top activity-full activity-day activity-updates settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-activity night-before-study night-before-finals deep-link`.split(/\s+/);
+progress-top progress-full progress-expanded topic-sheet progress-how activity-top activity-full activity-day activity-updates settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-activity night-before-study night-before-finals deep-link exam-eve exam-morning finals-done course-sheet session-recap goal-celebration streak-sheet warm-up`.split(/\s+/);
 
 const index = [], log = [];
 let W, T, ctxTag;
@@ -109,6 +109,28 @@ const O = async o => { const s = await open({ width: W, height: W >= 1000 ? 900 
 
 // ---------- scenes ----------
 const SCENES = {
+  async nextExam() {
+    for (const [now, name] of [['2026-12-01', 'exam-eve'], ['2026-12-02', 'exam-morning'], ['2026-12-10', 'finals-done']]) {
+      const s = await O({ now });
+      await step(name, async () => { await snap(s, name, 'Study for ' + now, 'Open with now: ' + now, { full: true }); }, s);
+      if (name === 'exam-eve') await step('course-sheet', async () => { await tap(s.page, 'International Law tomorrow'); await snap(s, 'course-sheet', 'Course sheet: printed-note essay, actions, weak units and coverage.', 'Exam eve > course title'); }, s);
+      if (name === 'exam-morning') await step('warm-up', async () => { await tap(s.page, 'Warm up · 10 min'); await snap(s, 'warm-up', 'Weakest rules in Read mode, with no grading.', 'Exam morning > Warm up'); }, s);
+      await s.close();
+    }
+    const s = await O({ emptyState: true });
+    await step('streak-sheet', async () => { await s.page.getByRole('button', { name: /day streak/ }).click(); await snap(s, 'streak-sheet', 'Fourteen days, current streak and best streak.', 'Study > streak'); await s.page.keyboard.press('Escape'); await s.page.waitForTimeout(400); }, s);
+    await step('goal-celebration', async () => {
+      await tap(s.page, 'Start studying');
+      const goal = Number(await dialog(s.page).getByRole('progressbar', { name: 'Today’s goal' }).getAttribute('aria-valuemax'));
+      for (let i = 0; i < goal; i++) {
+        if (await isCard(s.page)) { await tap(s.page, 'Reveal answer'); await tap(s.page, 'Got it'); }
+        else { await answerCurrent(s, true); if (i + 1 < goal) await tap(s.page, 'Next question'); }
+      }
+      await snap(s, 'goal-celebration', 'Daily goal reached inside a practice session.', 'Practice > reach today’s goal');
+    }, s);
+    await step('session-recap', async () => { await s.page.waitForTimeout(2100); await tap(s.page, 'Close', { exact: true }); await s.page.getByRole('dialog', { name: 'Session recap', exact: true }).waitFor(); await snap(s, 'session-recap', 'Session recap: answers, right, units moved and next review.', 'Practice > at least three answers > Close'); }, s);
+    await s.close();
+  },
   async study() {
     const s = await O({});
     const P = s.page;
@@ -122,7 +144,7 @@ const SCENES = {
       ['row-missed-lesson', 'Missed topics lesson, first step.', 'Study > Missed topics', /Review \d+ missed topics/],
     ];
     for (const [name, desc, how, label] of targets) await step(name, async () => { await tap(P, label); await P.waitForTimeout(400); await snap(s, name, desc, how); await reload(s); }, s);
-    await step('finals-tile', async () => { await P.locator('section').filter({ has: P.getByRole('heading', { name: 'Finals' }) }).getByRole('button').first().click(); await P.waitForTimeout(500); await snap(s, 'finals-tile', 'Session started from a Finals tile (one course).', 'Study > Finals > first course tile'); await reload(s); }, s);
+    await step('finals-tile', async () => { await P.locator('section').filter({ has: P.getByRole('heading', { name: 'Finals' }) }).getByRole('button').first().click(); await P.waitForTimeout(500); await snap(s, 'finals-tile', 'Course sheet with format-specific actions and coverage.', 'Study > Finals > first course tile'); await reload(s); }, s);
     await step('exam-setup', async () => { await tap(P, 'Practice exam'); await snap(s, 'exam-setup', 'Practice exam setup sheet (course, length, timing).', 'Study > Practice exam', { full: true }); await reload(s); }, s);
     await step('row-flashcards', async () => { await tap(P, 'Flashcards'); await P.waitForTimeout(700); await snap(s, 'row-flashcards', 'Flashcard session started from the Study tab.', 'Study > Flashcards'); await reload(s); }, s);
     await step('row-written', async () => { await tap(P, 'Written practice'); await snap(s, 'row-written', 'Written practice (setup and essay history).', 'Study > Written practice', { full: true }); await reload(s); }, s);

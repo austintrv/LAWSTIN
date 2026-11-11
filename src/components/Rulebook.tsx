@@ -9,8 +9,8 @@ type Mode = "read" | "recall";
 type Section = { topic: string; rules: { subtopic: string; rule: string; authority: string | null }[] };
 
 /** Every rule for a course by topic in class order. Read shows them all; Recall hides each behind a tap. */
-export function Rulebook({ course, state }: { course: CourseCode; state?: QuestionState }) {
-  const [mode, setMode] = useState<Mode>("read");
+export function Rulebook({ course, state, initialMode = "read", readOnly = false }: { course: CourseCode; state?: QuestionState; initialMode?: Mode; readOnly?: boolean }) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [shown, setShown] = useState<Set<string>>(new Set());
   const body = useRef<HTMLDivElement>(null);
   const sections = useMemo<Section[]>(() => {
@@ -35,7 +35,7 @@ export function Rulebook({ course, state }: { course: CourseCode; state?: Questi
   if (!sections.length) return <div className={styles.rulebook}><div className={styles.page}><div className={styles.empty}><Search size={30} strokeWidth={1.5} /><h3>No rules yet</h3></div></div></div>;
   return <div ref={body} className={styles.rulebook}>
     <div className={styles.page}>
-      <div className={styles.seg} role="group" aria-label="Rulebook mode">{(["read", "recall"] as const).map(m => <button key={m} aria-pressed={mode === m} onClick={() => pick(m)}>{m === "read" ? "Read" : "Recall"}</button>)}</div>
+      {!readOnly && <div className={styles.seg} role="group" aria-label="Rulebook mode">{(["read", "recall"] as const).map(m => <button key={m} aria-pressed={mode === m} onClick={() => pick(m)}>{m === "read" ? "Read" : "Recall"}</button>)}</div>}
       {sections.length > 4 && <div className={styles.chipBar}><div className={styles.chips}>{sections.map((s, i) => <button key={s.topic} onClick={() => jump(i)}>{s.topic}</button>)}</div></div>}
       <div className={styles.sections}>{sections.map((s, i) => <section key={s.topic} data-section={i} className={styles.section}>
         <div className={styles.sectionHead}><h3>{s.topic}</h3><span>{s.rules.length}</span></div>

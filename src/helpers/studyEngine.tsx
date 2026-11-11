@@ -23,8 +23,8 @@ export const COURSE_KEYS: CourseCode[] = ["il", "asy", "pr"];
 /** Fall 2026 final exam dates, from Austin. */
 export const FINALS: Record<CourseCode, string> = { il: "2026-12-02", asy: "2026-12-07", pr: "2026-12-09" };
 /** How each final is given. Closed-book multiple choice rewards recall; open-note essays reward analysis. */
-export const EXAMS: Record<CourseCode, { format: "mc" | "essay"; notes: "closed" | "open" }> = {
-  il: { format: "essay", notes: "open" }, asy: { format: "essay", notes: "open" }, pr: { format: "mc", notes: "closed" },
+export const EXAMS: Record<CourseCode, { format: "mc" | "essay"; notes: "closed" | "open"; labels: string[] }> = {
+  il: { format: "essay", notes: "open", labels: ["Essay", "Printed notes"] }, asy: { format: "essay", notes: "open", labels: ["Essay", "Open book"] }, pr: { format: "mc", notes: "closed", labels: ["Multiple choice", "Closed book"] },
 };
 /** Exam pace for timed multiple choice, in seconds per question. */
 export const EXAM_PACE = 120;
@@ -414,4 +414,15 @@ export function makeGreeting(state: State | undefined, name: string, recent: str
     if (fresh.length) return pick(fresh);
   }
   return pick(general.filter((g) => !recent.includes(g)).concat(time));
+}
+
+export function momentGreeting(kind: "eve" | "morning" | "welcome", name: string, recent: string[]): string {
+  const lines = {
+    eve: [`Easy does it, ${name}`, `One last pass, counselor`, `You’ve put in the work, ${name}`, `A little review, then rest`, `Steady as you go, ${name}`, `Tonight’s docket is short`, `Counsel may take a breath`, `One calm pass, ${name}`, `The record is ready`, `Close the briefs, then sleep`],
+    morning: [`Good luck today, ${name}`, `You’ve got this, counselor`, `Take your time, ${name}`, `The floor is yours, ${name}`, `Ready for your appearance`, `Breathe. Read. Begin.`, `Go make your case, ${name}`, `Your preparation goes with you`, `One rule at a time, counselor`, `Court is yours today`],
+    welcome: [`Welcome back, ${name}`, `Good to see you, counselor`, `Fresh docket, ${name}`, `Pick up right here, ${name}`, `A few questions will do`, `The briefs kept your place`, `Counsel returns. Court smiles.`, `Let’s ease back in, ${name}`, `Your seat is still here`, `A new day on the docket`],
+  }[kind];
+  const fresh = lines.filter((line) => !recent.includes(line));
+  const pool = fresh.length ? fresh : lines;
+  return pool[Math.floor(Math.random() * pool.length)];
 }

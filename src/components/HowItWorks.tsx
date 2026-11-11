@@ -1,11 +1,11 @@
 import { COURSES, STATUS_LABEL, type CoverageStatus } from "../helpers/studyEngine";
-import { type PlanCourse } from "../helpers/studySession";
+import { type ExamMoment, type PlanCourse } from "../helpers/studySession";
 import styles from "../pages/_index.module.css";
 
 import { STATUS_COLOR } from "../pages/StudyParts";
 
 /** The reasoning behind the numbers, from the same rules the code uses (finalsPlan, reviewSchedule, examDue, coverage). */
-export function HowItWorks({ plan, planOn, goal }: { plan: PlanCourse[]; planOn: boolean; goal: number }) {
+export function HowItWorks({ plan, planOn, goal, moment }: { plan: PlanCourse[]; planOn: boolean; goal: number; moment: ExamMoment }) {
   const chips: [CoverageStatus, string][] = [
     ["unseen", "You haven’t answered any of its questions yet."],
     ["shaky", "Under 70% right after at least 2 answers, or a low-scoring essay on it."],
@@ -19,7 +19,7 @@ export function HowItWorks({ plan, planOn, goal }: { plan: PlanCourse[]; planOn:
       <section className={styles.sec}>
         <div className={styles.secH}><h2>Today</h2></div>
         <div className={`${styles.card} ${styles.list}`}>
-          {plan.map((c) => (
+          {moment.kind === "normal" && plan.map((c) => (
             <div key={c.course} className={styles.row}>
               <span className={styles.dot} style={{ background: COURSES[c.course].color }}>{COURSES[c.course].short[0]}</span>
               <span className={styles.rowMain}>
@@ -30,12 +30,12 @@ export function HowItWorks({ plan, planOn, goal }: { plan: PlanCourse[]; planOn:
             </div>
           ))}
             <div className={styles.row}>
-              <span className={styles.rowMain}><span className={styles.rowTitle}>Today’s goal</span></span>
-              <span className={styles.rowEnd}><b>{goal}</b></span>
+              <span className={styles.rowMain}><span className={styles.rowTitle}>{moment.kind === "normal" ? "Today’s goal" : moment.kind === "eve" ? "Last pass" : "Daily goal"}</span></span>
+              <span className={styles.rowEnd}><b>{moment.kind === "normal" ? goal : moment.kind === "eve" ? "Up to 25" : "None"}</b></span>
             </div>
         </div>
         <div className={`${styles.card} ${styles.list}`}>
-          {(planOn ? [
+          {(moment.kind === "done" ? [["Fall finals done", "No daily goal now"], ["Keep practicing", "Ordinary questions and cards"]] : moment.kind === "morning" ? [["Warm up", "10 weakest rules · Read only"], ["Today", "No daily goal"]] : moment.kind === "eve" ? [["Last pass", "Missed questions, Shaky units, then due reviews"], ["Tonight’s goal", "This course only · Up to 25 items"], ["Finish line", "The last pass ends"]] : planOn ? [
             ["Goal", "Still to do + done today"],
             ["Range", "5 to 40 a day"],
             ["Reviews", "Up to 10 per course; the rest roll forward"],
@@ -69,7 +69,9 @@ export function HowItWorks({ plan, planOn, goal }: { plan: PlanCourse[]; planOn:
           {[
             ["Ready to review", "Questions + recall cards due today or earlier"],
             ["To go today", "Remaining target, up to what is ready"],
-            ["Streak", "Consecutive days with a question, card, drill or essay"],
+            ["Streak", "Consecutive study days · Tap for 14 days and your best streak"],
+            ["Session recap", "3 or more answers · Right, units moved and next review"],
+            ["Keep going", "Return to your session after the recap"],
           ].map(([label, line]) => <div className={styles.row} key={label}><span className={styles.rowMain}><span className={styles.rowTitle}>{label}</span><span className={`${styles.rowSub} ${styles.wrapSub}`}>{line}</span></span></div>)}
           {chips.map(([k, line]) => (
             <div key={k} className={styles.row}>

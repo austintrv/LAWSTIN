@@ -7,14 +7,14 @@ import { Button } from "./Button";
 import { type Engine } from "../pages/StudyParts";
 
 /** Pro Res is tested by timed multiple choice; the essay courses by a timed essay. */
-export function ExamPicker({ e, onStart, onEssay }: { e: Engine; onStart: (f: Filter, n: number, timed: boolean) => void; onEssay: (c: CourseCode) => void }) {
+export function ExamPicker({ e, onStart, onEssay, initialSize = 20 }: { e: Engine; initialSize?: number; onStart: (f: Filter, n: number, timed: boolean) => void; onEssay: (c: CourseCode) => void }) {
   const [f, setF] = useState<Filter>("pr");
-  const [n, setN] = useState(20);
+  const [n, setN] = useState(initialSize);
   const [timed, setTimed] = useState(true);
   const essay = f !== "all" && EXAMS[f].format === "essay";
   const available = e.queues(f).total;
   // Only offer lengths the bank can fill; the last option is always "every question" for this course.
-  const lengths = [10, 20, 30].filter((k) => k < available);
+  const lengths = [10, 20, 25, 30].filter((k) => k < available);
   if (available > 0) lengths.push(available);
   const size = lengths.includes(n) ? n : lengths[lengths.length - 1] ?? 0;
   return (
