@@ -4,6 +4,7 @@ import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import { haptic } from "../helpers/haptics";
 import { COURSES, COURSE_KEYS, type CourseCode } from "../helpers/studyEngine";
 import { type StudyMaterial, type StudyRun } from "../helpers/studyMaterials";
+import { questionUpdate } from "../helpers/studySession";
 import { useLawstinData } from "../helpers/useLawstinData";
 import styles from "./_index.module.css";
 
@@ -13,14 +14,13 @@ type Run = NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>["runs
 
 export function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
   // Questions written by this update: matched by batch, which update runs stamp with the run date.
-  const added = e.questions.filter((q) => q.batch?.includes(run.date));
+  const { added, total } = questionUpdate(e, run);
   const courses = (Object.entries(run.byCourse) as [CourseCode, number][]).filter(([k, n]) => n > 0 && COURSES[k]);
   const rows = courses.map(([k, n]) => {
     const qs = added.filter((q) => q.course === k);
     const left = qs.length ? qs.filter((q) => !e.prog(q.id)?.seen).length : Math.min(n, e.queues(k).fresh.length);
     return { k, n, qs, left };
   });
-  const total = rows.reduce((a, r) => a + r.n, 0) || run.added;
   const left = rows.reduce((a, r) => a + r.left, 0);
   const doneN = Math.max(0, total - left);
   const circ = 2 * Math.PI * 15;
@@ -148,7 +148,7 @@ function TopicBubbles({ bubbles, onStudy }: { bubbles: Bubble[]; onStudy: (items
 }
 
 function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
-  const added = e.questions.filter((q) => q.batch?.includes(run.date));
+  const { added, total } = questionUpdate(e, run);
   const bubbles = topicBubbles(e, run, added);
   const left = bubbles.reduce((a, b) => a + b.left, 0);
   return (
@@ -159,7 +159,7 @@ function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
         <span className={styles.noteWhen}>{whenLabel(run.date, e.today)}</span>
       </div>
       <button className={styles.noteMain} onClick={() => onStudy(added, null)}>
-        <b>{run.added} new question{run.added === 1 ? "" : "s"}</b>
+        <b>{total} new question{total === 1 ? "" : "s"}</b>
         <span>{left === 0 ? "All studied" : `${left} left to study`}</span>
       </button>
       <TopicBubbles bubbles={bubbles} onStudy={onStudy} />

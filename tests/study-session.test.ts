@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { examDue, studyEngine, FINALS, type SyllabusUnit } from "../src/helpers/studyEngine";
+import { activeCourses, apportion, courseCounts, examDue, studyEngine, FINALS, type SyllabusUnit } from "../src/helpers/studyEngine";
 import { emptyStudyRecord, reviewCard, type Flashcard } from "../src/helpers/studyMaterials";
-import { finalsPlan, mixRound, nextReviewDay, readyCards } from "../src/helpers/studySession";
+import { finalsPlan, holdDayGoal, inferredDone, missedLessonBatch, mixRound, nextReviewDay, questionUpdate, readyCards, reconcileDayWork, restoreDayGoal, reviewGreeting, studyNumbers } from "../src/helpers/studySession";
 import type { OutputType as State, ProgressDTO, QuestionDTO } from "../src/endpoints/state_GET.schema";
 import { reviewEvidence } from "../src/helpers/topicReview";
 import { applyLocalAnswer } from "../src/helpers/localAnswer";
@@ -96,12 +96,13 @@ test("the finals plan spreads new material over the days left and schedules essa
   const plan = finalsPlan(e, { cards: none, lastEssay: { asy: "2026-11-09" }, fallbackGoal: 20 });
   const by = Object.fromEntries(plan.courses.map((c) => [c.course, c]));
   assert.equal(plan.active, true);
-  assert.equal(by.il.target, 2); // 40 new over 20 days (22 days out, done two days early)
-  assert.equal(by.pr.target, 1); // 27 new over 27 days (29 days out)
+  assert.equal(by.il.target, 3); // Raw targets 2:1 scale to the minimum goal of five.
+  assert.equal(by.pr.target, 2);
   assert.equal(by.il.essay, true);
   assert.equal(by.asy.essay, false); // wrote yesterday
   assert.equal(by.pr.essay, false); // multiple-choice final
-  assert.equal(plan.goal, 10); // never below ten a day
+  assert.equal(plan.goal, 5);
+  assert.equal(plan.courses.reduce((a, c) => a + c.target, 0), plan.goal);
   const after = finalsPlan(studyEngine(state(qs), "2026-12-20"), { cards: none, lastEssay: {}, fallbackGoal: 20 });
   assert.deepEqual([after.active, after.goal], [false, 20]);
 });
@@ -206,4 +207,147 @@ test("the next review includes flashcards and final-exam dates, with course filt
   assert.equal(nextReviewDay(e, cards, record), "2026-11-14");
   assert.equal(nextReviewDay(e, cards, record, "il"), "2026-11-27");
   assert.equal(nextReviewDay(e, cards, record, "asy"), null);
+});
+
+const noCards = () => ({ il: { due: 0, fresh: 0 }, asy: { due: 0, fresh: 0 }, pr: { due: 0, fresh: 0 } });
+const planFor = (e: ReturnType<typeof studyEngine>, done = courseCounts(), extra: Partial<Parameters<typeof finalsPlan>[1]> = {}) => finalsPlan(e, { cards: noCards(), lastEssay: {}, fallbackGoal: 20, done, ...extra });
+
+test("a day's goal and course quotas stay fixed through answers, cards, reloads and a shrinking bank", () => {
+  const today = "2026-11-10";
+  let s = state(Array.from({ length: 60 }, (_, i) => q(`q-${i}`, "il", "Treaties")));
+  const done = courseCounts(), record = emptyStudyRecord();
+  let e = studyEngine(s, today);
+  const original = holdDayGoal(planFor(e), today, null);
+  let saved = JSON.parse(JSON.stringify(original.saved));
+  const before = studyNumbers(e, readyCards([], [], record, s, "il", today), original, done, "il");
+  for (let i = 0; i < 5; i++) {
+    s = applyLocalAnswer(s, { questionId: `q-${i}`, choice: "A", localDate: today }, `${today}T18:00:00Z`);
+    done.il++;
+    e = studyEngine(s, today);
+    const held = holdDayGoal(planFor(e, done), today, saved);
+    assert.equal(held.goal, original.goal);
+    assert.deepEqual(held.saved.targets, original.saved.targets);
+    const numbers = studyNumbers(e, readyCards([], [], record, s, "il", today), held, done, "il");
+    assert.equal(numbers.left, Math.max(0, before.left - i - 1));
+    saved = JSON.parse(JSON.stringify(held.saved));
+  }
+  const smaller = holdDayGoal(planFor(studyEngine(state([]), today)), today, saved);
+  assert.equal(smaller.goal, original.goal);
+  assert.equal(restoreDayGoal(saved, "2026-11-11"), null);
+});
+
+test("fixed goals obey the range and same-day high water mark", () => {
+  const e = studyEngine(state([]), "2026-11-10");
+  for (const value of [0, 5, 20, 40, 100]) {
+    const plan = planFor(e, courseCounts(), { planOn: false, fallbackGoal: value });
+    assert.equal(plan.goal, Math.min(40, Math.max(5, value)));
+    assert.equal(plan.courses.reduce((a, c) => a + c.target, 0), plan.goal);
+  }
+  const plan = planFor(e, courseCounts(), { planOn: false });
+  const saved = holdDayGoal(plan, e.today, { date: e.today, goal: 35 });
+  assert.equal(holdDayGoal(plan, e.today, saved.saved, 10).goal, 35);
+  assert.equal(holdDayGoal(plan, e.today, saved.saved, 100).goal, 40);
+  assert.equal(restoreDayGoal({ date: e.today, goal: "20" }, e.today), null);
+  assert.equal(restoreDayGoal({ date: e.today, goal: 60 }, e.today), null);
+});
+
+test("overdue questions and cards share one ten-review limit per course", () => {
+  const qs = Array.from({ length: 60 }, (_, i) => q(`overdue-${i}`, "il", "T"));
+  const e = studyEngine(state(qs, qs.map((x) => p(x.id, { due: "2026-10-01" }))), "2026-11-10");
+  const cards = noCards(); cards.il.due = 50;
+  const plan = planFor(e, courseCounts(), { cards });
+  assert.equal(plan.goal, 10);
+  assert.equal(plan.courses.find((c) => c.course === "il")!.target, 10);
+  for (const today of ["2026-11-13", "2026-11-24"]) assert.equal(planFor(studyEngine(state(qs, qs.map((x) => p(x.id, { due: "2026-10-01" }))), today), courseCounts(), { cards }).goal, 10);
+});
+
+test("capped plans scale course targets proportionally with largest remainder rounding", () => {
+  assert.deepEqual(apportion([1, 1, 1], 5), [2, 2, 1]);
+  assert.deepEqual(apportion([80, 10, 10], 40), [32, 4, 4]);
+  const qs = ["il", "asy", "pr"].flatMap((c) => Array.from({ length: 1000 }, (_, i) => q(`${c}-${i}`, c as QuestionDTO["course"], "T")));
+  const e = studyEngine(state(qs), "2026-12-01"), plan = planFor(e);
+  assert.equal(plan.goal, 40);
+  assert.equal(plan.courses.reduce((a, c) => a + c.target, 0), 40);
+  assert(plan.courses[0].target > plan.courses[1].target);
+});
+
+test("every filter uses its tile target and clamps to what is actually ready", () => {
+  const e = studyEngine(state([q("il", "il", "T"), q("pr", "pr", "T")]), "2026-11-10");
+  const plan = planFor(e), record = emptyStudyRecord(), done = { il: 1, asy: 0, pr: 0 };
+  for (const filter of ["il", "asy", "pr"] as const) {
+    const n = studyNumbers(e, readyCards([], [], record, undefined, filter, e.today), plan, done, filter);
+    assert.equal(n.goal, plan.courses.find((c) => c.course === filter)!.target);
+    assert.equal(n.left, Math.min(Math.max(0, n.goal - done[filter]), n.ready));
+    assert(n.left <= n.ready);
+    if (!n.ready) assert.equal(n.minutes, 0);
+  }
+});
+
+test("passed courses step out of All questions, cards, goals and reviews, then return after the last final", () => {
+  const qs = [q("il", "il", "T"), q("asy", "asy", "T"), q("pr", "pr", "T")];
+  const record = emptyStudyRecord(), cards = [card("il-c", "il"), card("asy-c", "asy"), card("pr-c", "pr")];
+  const e = studyEngine(state(qs), "2026-12-03");
+  assert.deepEqual(activeCourses(e.today), ["asy", "pr"]);
+  assert.deepEqual(e.queues().fresh.map((q) => q.course), ["asy", "pr"]);
+  assert(e.buildRound("all").every((it) => it.q.course !== "il"));
+  assert.equal(e.buildRound("il").length, 1);
+  assert.deepEqual(readyCards(cards, [], record, undefined, "all", e.today).fresh.map((c) => c.course), ["asy", "pr"]);
+  assert.deepEqual(planFor(e).courses.map((c) => c.course), ["asy", "pr"]);
+  const after = studyEngine(state(qs), "2026-12-10");
+  assert.equal(after.queues().fresh.length, 3);
+  assert.equal(readyCards(cards, [], record, undefined, "all", after.today).fresh.length, 3);
+  assert.equal(planFor(after).courses.length, 3);
+  assert.equal(planFor(after).active, false);
+});
+
+test("seeded new-question shares follow the plan, redistribute shortages, and reviews include every course", () => {
+  const qs = ["il", "asy", "pr"].flatMap((c) => Array.from({ length: 30 }, (_, i) => q(`${c}-${i}`, c as QuestionDTO["course"], "T")));
+  const seeded = () => { let seed = 7; return () => ((seed = (seed * 16807) % 2147483647) / 2147483647); };
+  const e = studyEngine(state(qs), "2026-11-10", { random: seeded() });
+  const round = e.buildRound("all", "new", { il: 8, asy: 1, pr: 1 });
+  assert.deepEqual(["il", "asy", "pr"].map((c) => round.filter((it) => it.q.course === c).length), [8, 1, 1]);
+  assert.deepEqual(round, studyEngine(state(qs), "2026-11-10", { random: seeded() }).buildRound("all", "new", { il: 8, asy: 1, pr: 1 }));
+  const shortage = studyEngine(state(qs.filter((q) => q.course !== "il" || q.id === "il-0")), "2026-11-10").buildRound("all", "new", { il: 8, asy: 1, pr: 1 });
+  assert.equal(shortage.length, 10);
+  const progress = qs.slice(0, 30).map((x) => p(x.id, { due: "2026-09-01" }));
+  progress.push(p("asy-0", { due: "2026-11-10" }), p("pr-0", { due: "2026-11-10" }));
+  const mixed = studyEngine(state(qs, progress), "2026-11-10").buildRound("all");
+  assert.deepEqual(new Set(mixed.filter((it) => it.review).map((it) => it.q.course)), new Set(["il", "asy", "pr"]));
+});
+
+test("missed lessons cover at most four topics and continue without dropping or repeating topics", () => {
+  const topics = Array.from({ length: 11 }, (_, i) => `topic-${i}`), seen: string[] = [];
+  let rest = topics;
+  while (rest.length) {
+    const batch = missedLessonBatch(rest);
+    assert(batch.topics.length <= 4);
+    seen.push(...batch.topics); rest = batch.remaining;
+  }
+  assert.deepEqual(seen, topics);
+  assert.equal(missedLessonBatch(topics).remaining.length, 7);
+});
+
+test("day credit restores known courses without inventing a course for old aggregate activity", () => {
+  const s = state([q("q", "il", "T")], [p("q", { lastAt: "2026-11-10T18:00:00Z" })]);
+  const e = studyEngine(s, "2026-11-10"), record = emptyStudyRecord();
+  record.cards["custom-card"] = { ...reviewCard(undefined, true, e.today), last_at: "2026-11-10T18:00:00Z" };
+  const inferred = inferredDone(e, record, [{ day: e.today, course: "asy", minutes: 45 }], [card("custom-card", "pr")]);
+  assert.deepEqual(inferred, { il: 1, asy: 10, pr: 1 });
+  const work = reconcileDayWork(e.today, 20, inferred, null);
+  assert.equal(work.total, 20);
+  const plan = planFor(e);
+  assert.equal(studyNumbers(e, readyCards([], [], record, s, "all", e.today), plan, work.done, "all", work.total).answered, 20);
+  assert.equal(studyNumbers(e, readyCards([], [], record, s, "il", e.today), plan, work.done, "il", work.total).answered, 1);
+  assert.deepEqual(reconcileDayWork(e.today, 0, courseCounts(), { ...work, date: "2026-11-09" }).done, courseCounts());
+});
+
+test("progress totals use day activity, guessed counts stay separate, and update totals agree", () => {
+  const s = state([q("q", "il", "T")], [p("q", { guessed: 7, correct: 2, wrong: 5 })]);
+  s.days = [{ date: "2026-11-10", answered: 12, correct: 8 }, { date: "2026-11-09", answered: 5, correct: 3 }];
+  const e = studyEngine(s, "2026-11-10");
+  assert.equal(e.totalAnswers, 17);
+  assert.equal(e.missProfile().guessed, 7);
+  assert.equal(questionUpdate(e, { date: e.today, added: 100, byCourse: { il: 3, asy: 2 }, note: "" }).total, 5);
+  assert.equal(reviewGreeting("9 reviews on the docket", 4), "4 reviews are waiting");
+  assert.equal(reviewGreeting("One review is waiting", 0), "Ready when you are, Austin");
 });

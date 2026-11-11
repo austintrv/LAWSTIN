@@ -32,8 +32,10 @@ const paras = (t: string) => t.split(/\n\s*\n/).map((p, i) => <p key={i}>{p.trim
  * A short lesson on topics with missed questions, built from those questions' own rules and
  * explanations: the rule, where each miss went wrong, then one question to try again.
  */
-export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDrill, onClose, tools }: {
+export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDrill, onClose, tools, more = 0, onMore }: {
   topics: LessonTopic[];
+  more?: number;
+  onMore?: () => void;
   /** A study tool opened from the lesson is on top: stay mounted at the same step, hidden and inactive. */
   away?: boolean;
   onAnswer: (q: QuestionDTO, choice: string) => Promise<boolean>;
@@ -234,8 +236,9 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
             ? <Button className={`${q.big} ${q.cta}`} disabled={!sel || saving} onClick={check}>{saving ? "Saving…" : "Check answer"}</Button>
             : step.kind === "end"
               ? <div className={styles.endActions}>
-                  {remaining.length > 0 && <Button className={`${q.big} ${q.cta}`} onClick={() => { onDrill(allMissed); }}>Practice remaining topics</Button>}
-                  <Button variant={remaining.length ? "ghost" : "primary"} className={!remaining.length ? `${q.big} ${q.cta}` : undefined} onClick={close}>Done</Button>
+                  {more > 0 && <Button className={`${q.big} ${q.cta}`} onClick={onMore}>Review {more} more</Button>}
+                  {remaining.length > 0 && <Button variant={more ? "secondary" : "primary"} className={`${q.big} ${q.cta}`} onClick={() => { onDrill(allMissed); }}>Practice remaining topics</Button>}
+                  <Button variant={remaining.length || more ? "ghost" : "primary"} className={!remaining.length && !more ? `${q.big} ${q.cta}` : undefined} onClick={close}>Done</Button>
                 </div>
               : <Button className={`${q.big} ${q.cta}`} onClick={() => go(at + 1)}>Next</Button>}
         </div>

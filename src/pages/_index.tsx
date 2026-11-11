@@ -1,19 +1,19 @@
-import { BarChart3,  BookCheck,  CalendarDays,  LibraryBig } from "lucide-react";
-import { Suspense,  lazy,  useEffect,  useMemo,  useRef,  useState } from "react";
-import { Aura,  auraHost } from "../components/Aura";
+import { BarChart3, BookCheck, CalendarDays, LibraryBig } from "lucide-react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
+import { Aura, auraHost } from "../components/Aura";
 import { Button } from "../components/Button";
 import type { LessonTopic } from "../components/MissedLesson";
-import type { QuizMode,  QuizSnapshot } from "../components/QuizSession";
+import type { QuizMode, QuizSnapshot } from "../components/QuizSession";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
-import { MIN_ROUND,  matchPairs } from "../helpers/matchPairs";
+import { MIN_ROUND, matchPairs } from "../helpers/matchPairs";
 import { isNetworkError } from "../helpers/offlineCache";
-import { readPractice,  savePractice,  type SavedPractice } from "../helpers/practiceMemory";
-import { applyPrefs,  readPrefs } from "../helpers/prefs";
-import { COURSES,  COURSE_KEYS,  DAILY_GOAL,  EXAM_PACE,  makeGreeting,  studyEngine,  type CourseCode,  type Filter,  type RoundItem,  type SessionCard,  type StudyMode } from "../helpers/studyEngine";
-import { reviewCard,  type Flashcard,  type Hypothetical } from "../helpers/studyMaterials";
-import { finalsPlan,  mixRound,  nextReviewDay,  readyCards } from "../helpers/studySession";
+import { readPractice, savePractice, type SavedPractice } from "../helpers/practiceMemory";
+import { applyPrefs, readPrefs } from "../helpers/prefs";
+import { COURSES, EXAM_PACE, makeGreeting, studyEngine, type CourseCode, type Filter, type RoundItem, type SessionCard, type StudyMode } from "../helpers/studyEngine";
+import { reviewCard, type Flashcard, type Hypothetical } from "../helpers/studyMaterials";
+import { missedLessonBatch, mixRound, nextReviewDay, readyCards, reviewGreeting } from "../helpers/studySession";
 import { toast } from "../helpers/toast";
 import { reviewEvidence } from "../helpers/topicReview";
 import { afterOverlayClose } from "../helpers/useBackClose";
@@ -41,8 +41,9 @@ import { HowItWorks } from "../components/HowItWorks";
 import { TopicTools } from "../components/TopicTools";
 import { ActivityView } from "./ActivityTab";
 import { ProgressView } from "./ProgressTab";
-import { LoadingCard,  type MissedTopic } from "./StudyParts";
+import { LoadingCard, type MissedTopic } from "./StudyParts";
 import { StudyView } from "./StudyTab";
+import { useDayPlan } from "./useDayPlan";
 
 type Tab = "progress" | "study" | "activity" | "courses";
 /** Builds a session's items. `exclude` holds what the running session already has (questions are also removed from the engine). */
@@ -75,18 +76,17 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const e = useMemo(() => studyEngine(state, undefined, { weakExtra: written.weak, reviews: store.record.reviews }), [state, written.weak, store.record.reviews]);
   const flashcards = useMemo(() => store.materials.filter((m): m is Flashcard => m.kind === "flashcard"), [store.materials]);
   const hypos = useMemo(() => store.materials.filter((m): m is Hypothetical => m.kind === "hypothetical"), [store.materials]);
-  const cardsFor = (f: Filter) => readyCards(flashcards, e.ruleCards(f), store.record, state, f);
-  const plan = useMemo(() => finalsPlan(e, {
-    cards: Object.fromEntries(COURSE_KEYS.map((k) => { const c = readyCards(flashcards, e.ruleCards(k), store.record, state, k); return [k, { due: c.due.length, fresh: c.fresh.length }]; })) as Record<CourseCode, { due: number; fresh: number }>,
-    lastEssay: written.lastEssay, fallbackGoal: settings.query.data?.settings.dailyGoal ?? DAILY_GOAL,
-  }), [e, flashcards, store.record, state, written.lastEssay, settings.query.data]);
   const [prefs, setPrefs] = useState(readPrefs);
-  const planOn = prefs.plan && plan.active;
-  const goal = planOn ? plan.goal : settings.query.data?.settings.dailyGoal ?? DAILY_GOAL;
+  const planReady = !!state && !store.loading && (!settings.query.isPending || !navigator.onLine);
+  const daily = useDayPlan({ e, record: store.record, flashcards, entries: written.list, lastEssay: written.lastEssay,
+    fallbackGoal: settings.query.data?.settings.dailyGoal, enabled: prefs.plan, ready: planReady, userId });
+  const { plan, cardsFor } = daily;
+  const planOn = plan.active;
+  const goal = plan.goal;
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>(() => (readPractice(userId)?.key.split(":")[1] as Filter | undefined) ?? "all");
-  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot; seconds?: number } | null>(null);
+  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot; seconds?: number; filter?: Filter } | null>(null);
   // A practice session survives closing the app or refreshing, until the end of the study day.
   const [lastPractice, setLastPractice] = useState<SavedPractice | null>(() => readPractice(userId));
   const checkpoint = (saved: SavedPractice | null) => { setLastPractice(saved); savePractice(userId, saved); };
@@ -114,6 +114,8 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const [writing, setWriting] = useState<{ course?: CourseCode; full?: boolean; hypo?: Hypothetical } | null>(null);
   const [matching, setMatching] = useState(false);
   const canMatch = useMemo(() => matchPairs(state?.questions ?? []).length >= MIN_ROUND, [state?.questions]);
+  const [lessonMore, setLessonMore] = useState<MissedTopic[]>([]);
+  const [lessonKey, setLessonKey] = useState(0);
   const [lesson, setLesson] = useState<LessonTopic[] | null>(null);
   // A study tool opened from the lesson: the lesson stays where it was, hidden, until Back returns to it.
   const [lessonAway, setLessonAway] = useState(false);
@@ -122,7 +124,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     setLessonAway(true);
     afterOverlayClose(() => { window.location.hash = hash; });
   };
-  const endLesson = () => { setLesson(null); setLessonAway(false); };
+  const endLesson = () => { setLesson(null); setLessonMore([]); setLessonAway(false); };
   // Back (the tool's button or the system gesture) steps back to the tab the lesson was opened on.
   const lessonReturn = useMemo(() => ({ back: () => afterOverlayClose(() => history.back()), end: endLesson }), []);
   useEffect(() => {
@@ -133,7 +135,10 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   }, [lessonAway]);
   const openLesson = (list: MissedTopic[]) => {
     haptic();
-    setLesson(list.map((t) => {
+    const batch = missedLessonBatch(list);
+    setLessonMore(batch.remaining);
+    setLessonKey((k) => k + 1);
+    setLesson(batch.topics.map((t) => {
       // Check with a question the lesson hasn't just explained: unseen first, then any other in the topic.
       const shown = new Set(t.items.slice(0, 3).map((it) => it.q.id));
       const others = e.questions.filter((q) => q.course === t.course && q.topic === t.topic && !shown.has(q.id));
@@ -175,14 +180,14 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     const pick = (s?: typeof state) => {
       if (greeted.current) return;
       greeted.current = true;
-      const g = makeGreeting(s, NAME, readRecent(), goal);
+      const g = makeGreeting(s, NAME, readRecent(), daily.numbers(filter).goal, daily.numbers(filter).review, filter, daily.numbers(filter).answered);
       setGreeting(g); saveRecent(g);
     };
-    if (state) { pick(state); return; }
+    if (planReady) { pick(state); return; }
     // Offline or slow: greet without progress-based lines rather than leave the heading empty.
     const t = setTimeout(() => pick(undefined), 2500);
     return () => clearTimeout(t);
-  }, [state, greeting]);
+  }, [state, greeting, planReady]);
 
   useEffect(() => {
     const onVis = () => {
@@ -198,15 +203,15 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   }, [query]);
 
   // Daily goal: celebrate once when today's count crosses the goal.
-  // Home Screen icon badge: question reviews due today (cleared at zero). Needs notification permission on iOS.
-  const dueCount = state ? e.queues("all").due.length : null;
+  // The Home Screen badge counts ready question and card reviews across active courses.
+  const dueCount = planReady ? daily.numbers("all").review : null;
   useEffect(() => {
     if (dueCount === null) return;
     const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
     (dueCount ? nav.setAppBadge?.(dueCount) : nav.clearAppBadge?.())?.catch(() => {});
   }, [dueCount]);
 
-  const todayAnswered = e.todayCount?.answered ?? 0;
+  const todayAnswered = daily.numbers("all").answered;
   useEffect(() => {
     if (!state) return;
     const prev = prevToday.current;
@@ -234,10 +239,12 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     const { flashcards: fc, record } = cardState.current;
     // Rule cards use the full bank even when the question source excludes this session's items.
     const cards = readyCards(fc, studyEngine(latest.current).ruleCards(f), record, latest.current, f, eng.today, mode).list.filter((c) => !exclude.has(c.id));
-    return mixRound(eng.buildRound(f, mode), cards, record);
+    return mixRound(eng.buildRound(f, mode, plan.saved.targets), cards, record);
   };
   const onCard = (card: SessionCard, correct: boolean) => {
+    const credited = daily.credit(card.course);
     store.update((prev) => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
+    credited();
     log("card", card.id, correct);
   };
   const onExplain = async (card: SessionCard, answer: string) => {
@@ -247,7 +254,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       return r.explain;
     } catch { return null; }
   };
-  const start = (source: Source, mode: QuizMode = "practice", resumeKey?: string, seconds?: number) => {
+  const start = (source: Source, mode: QuizMode = "practice", resumeKey?: string, seconds?: number, sessionFilter: Filter = filter) => {
     const last = lastPractice;
     if (mode === "practice" && resumeKey && last?.key === resumeKey && dateKey.today(new Date(last.at)) === dateKey.today()) {
       const restored = last.snap.items.map((it) => it.q ? { ...it, q: it.q.id.startsWith("ai-") ? it.q : latest.current?.questions.find((q) => q.id === it.q.id) } : it);
@@ -256,7 +263,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         haptic();
         setExamSheet(false); setTopicSheet(null);
         const snap = { ...last.snap, items: restored as RoundItem[] };
-        setSession({ items: snap.items, mode, key: Date.now(), source, resumeKey, resume: snap });
+        setSession({ items: snap.items, mode, key: Date.now(), source, resumeKey, resume: snap, filter: sessionFilter });
         return;
       }
     }
@@ -264,7 +271,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     if (!items.length) { toast("All caught up"); return; }
     haptic();
     setExamSheet(false); setTopicSheet(null);
-    setSession({ items, mode, key: Date.now(), source, resumeKey, seconds });
+    setSession({ items, mode, key: Date.now(), source, resumeKey, seconds, filter: sessionFilter });
   };
   const resumeStudy = () => {
     const key = lastPractice?.key.endsWith(`:${filter}`) ? lastPractice.key : `round:${filter}`;
@@ -301,15 +308,18 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const offlineNoted = useRef(false);
   const onAnswer = async (q: QuestionDTO, choice: string) => {
     if (q.id.startsWith("ai-")) return choice === q.answer;
+    const credited = daily.credit(q.course);
     const input = { questionId: q.id, choice: choice as "A" | "B" | "C" | "D", localDate: dateKey.today() };
     const queue = () => {
       queueAnswer(input, choice === q.answer);
+      credited();
       if (!offlineNoted.current) { offlineNoted.current = true; toast("Offline. Answers will sync when you’re back online."); }
       return choice === q.answer;
     };
     if (!navigator.onLine) return queue();
     try {
       const res = await answer.mutateAsync(input);
+      credited();
       offlineNoted.current = false;
       return res.correct;
     } catch (err) {
@@ -349,7 +359,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
                   <button className={styles.avatar} onClick={openSettings} aria-label="Settings">{NAME[0]}</button>
                 </div>
-                <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? greeting ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
+                <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? reviewGreeting(greeting, daily.numbers(filter).review) ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
               </header>
 
               {loading && k !== "courses" && <LoadingCard />}
@@ -360,15 +370,16 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                 </div>
               )}
 
-              {state && k === "study" && (
-                <StudyView e={e} state={state} goal={goal} cards={cardsFor(filter)} plan={planOn ? plan.courses : []} filter={filter} setFilter={setFilter} celebrate={celebrate}
+              {state && k === "study" && !planReady && <LoadingCard />}
+              {state && planReady && k === "study" && (
+                <StudyView e={e} state={state} numbers={daily.numbers(filter)} cards={cardsFor(filter)} plan={plan.courses} courseNumbers={(c) => daily.numbers(c)} filter={filter} setFilter={setFilter} celebrate={celebrate}
                   resuming={!!lastPractice?.key.endsWith(`:${filter}`)}
                   onHow={() => { haptic(); setHowOpen(true); }}
                   nextReview={nextReviewDay(e, [...flashcards, ...e.ruleCards(filter)], store.record, filter)}
                   onMode={(mode) => start(mixed(filter, mode), "practice", mode === "ahead" ? undefined : `${mode}:${filter}`)}
                   onLesson={openLesson}
                   onStart={resumeStudy}
-                  onCourse={(c) => start(mixed(c), "practice", `round:${c}`)}
+                  onCourse={(c) => start(mixed(c), "practice", `round:${c}`, undefined, c)}
                   onEssay={(c) => { haptic(); setWriting({ course: c }); }}
                   onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred), "practice", `starred:${filter}`)}
                   onExam={() => { haptic(); setExamSheet(true); }}
@@ -442,15 +453,15 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
       {matching && state && <Suspense fallback={null}><MatchGame questions={state.questions} course={filter} onClose={() => setMatching(false)}
         // Each pair counts as one answer toward the day; a miss costs one of them.
-        onRound={(r) => log("drill", `match:${Date.now()}`, r.misses === 0, r.pairs, Math.max(0, r.pairs - r.misses))} /></Suspense>}
+        onRound={(r) => { daily.credit(undefined, r.pairs)(); log("drill", `match:${Date.now()}`, r.misses === 0, r.pairs, Math.max(0, r.pairs - r.misses)); }} /></Suspense>}
 
       {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(null)} course={writing.course} full={writing.full} hypo={writing.hypo}
         hypos={hypos} weak={new Set(e.weakTopics().map((t) => `${t.course}|${t.topic}`))} written={written}
         // An essay counts as five answers (ten at exam length), scored in proportion to its grade.
-        onGraded={(entry, len) => { const n = len === "full" ? 10 : 5; log("written", entry.id, entry.grade.score >= 7, n, Math.round((entry.grade.score / 10) * n)); }}
+        onGraded={(entry, len) => { const n = len === "full" ? 10 : 5; daily.credit(entry.course, n)(); log("written", entry.id, entry.grade.score >= 7, n, Math.round((entry.grade.score / 10) * n)); }}
         onTopic={(course, topic) => { setWriting(null); start((eng) => eng.topicRound(course, topic)); }} /></Suspense>}
 
-      {lesson && <Suspense fallback={null}><MissedLesson topics={lesson} away={lessonAway} onAnswer={onAnswer} onClose={endLesson}
+      {lesson && <Suspense fallback={null}><MissedLesson key={lessonKey} topics={lesson} more={lessonMore.length} onMore={() => openLesson(lessonMore)} away={lessonAway} onAnswer={onAnswer} onClose={endLesson}
         onReviewed={(t) => {
           store.update((prev) => ({ ...prev, reviews: { ...prev.reviews, [`${t.course}|${t.topic}`]: { at: new Date().toISOString(), questions: t.evidence } } }));
           toast(`${t.topic} reviewed`);
@@ -463,7 +474,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           key={session.key}
           items={session.items}
           mode={session.mode}
-          day={session.mode === "practice" ? { answered: todayAnswered, goal } : undefined}
+          day={session.mode === "practice" ? { answered: daily.numbers(session.filter).answered, goal: daily.numbers(session.filter).goal } : undefined}
           getProgress={(id) => e.prog(id)}
           onAnswer={onAnswer}
           onCard={onCard}
@@ -477,7 +488,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
           onMore={(exclude) => session.source(engineFor(exclude), exclude)}
           onAnother={() => { const items = session.source(engineFor(), NONE); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now(), resume: undefined }); }}
-          onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: () => [] })}
+          onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: () => [], filter: session.filter })}
           resume={session.resume}
           onCheckpoint={session.mode === "practice" && session.resumeKey ? (snap) => checkpoint(snap ? { key: session.resumeKey!, snap, at: Date.now() } : null) : undefined}
           onClose={(snap) => {

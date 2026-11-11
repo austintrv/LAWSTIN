@@ -5,7 +5,6 @@ import { useModalFocus } from "../helpers/useModalFocus";
 import { useSwipeDown } from "../helpers/useSwipeDown";
 import styles from "../pages/_index.module.css";
 
-
 export function BottomSheet({ title, eyebrow, onClose, children, className }: { className?: string; title: string; eyebrow?: string; onClose: () => void; children: React.ReactNode }) {
   const [closing, setClosing] = useState(false);
   const close = () => { setClosing(true); setTimeout(onClose, 300); };

@@ -28,6 +28,27 @@ export const EXAMS: Record<CourseCode, { format: "mc" | "essay"; notes: "closed"
 };
 /** Exam pace for timed multiple choice, in seconds per question. */
 export const EXAM_PACE = 120;
+
+export type CourseCounts = Record<CourseCode, number>;
+export const courseCounts = (value = 0): CourseCounts => ({ il: value, asy: value, pr: value });
+export function activeCourses(today: string, filter: Filter = "all"): CourseCode[] {
+  if (filter !== "all") return [filter];
+  const ahead = COURSE_KEYS.filter((c) => FINALS[c] >= today);
+  return ahead.length ? ahead : COURSE_KEYS;
+}
+
+/** Largest remainder rounding, with stable course-order ties. */
+export function apportion(weights: number[], total: number): number[] {
+  if (!weights.length) return [];
+  const clean = weights.map((w) => Number.isFinite(w) ? Math.max(0, w) : 0);
+  const sum = clean.reduce((a, n) => a + n, 0);
+  const exact = clean.map((w) => Math.max(0, Math.round(total)) * (sum ? w / sum : 1 / weights.length));
+  const out = exact.map(Math.floor);
+  const order = exact.map((n, i) => ({ i, remainder: n - out[i] })).sort((a, b) => b.remainder - a.remainder || a.i - b.i);
+  for (let n = Math.round(total) - out.reduce((a, x) => a + x, 0), i = 0; i < n; i++) out[order[i].i]++;
+  return out;
+}
+
 /** A unit of a course as taught: the topic string questions use, the class dates, and older topic strings that belong to it. */
 export type SyllabusUnit = { topic: string; dates: string[]; also?: string[] };
 export type Syllabus = Partial<Record<CourseCode, SyllabusUnit[]>>;
@@ -55,10 +76,10 @@ export const ROLE_LABEL: Record<string, string> = {
 export const ROUND_SIZE = 10;
 export const DAILY_GOAL = 20;
 
-const shuffle = <T,>(a: T[]): T[] => {
+const shuffle = <T,>(a: T[], random = Math.random): T[] => {
   const b = [...a];
   for (let i = b.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [b[i], b[j]] = [b[j], b[i]];
   }
   return b;
@@ -71,21 +92,22 @@ function interleave<T>(lists: T[][]): T[] {
   return out;
 }
 
-function byCourse<T extends RoundItem>(items: T[]): T[][] {
+function byCourse<T extends RoundItem>(items: T[], random = Math.random): T[][] {
   const m: Record<string, T[]> = {};
   for (const it of items) (m[itemCourse(it)] ||= []).push(it);
-  return shuffle(Object.values(m));
+  return shuffle(Object.values(m), random);
 }
 
 /** Pure study logic over the loaded state. */
-export function studyEngine(state: State | undefined, todayKey?: string, opts?: { weakExtra?: string[]; reviews?: Record<string, TopicReview> }) {
+export function studyEngine(state: State | undefined, todayKey?: string, opts?: { weakExtra?: string[]; reviews?: Record<string, TopicReview>; random?: () => number }) {
   const questions = state?.questions ?? [];
   const pmap = new Map<string, ProgressDTO>((state?.progress ?? []).map((p) => [p.questionId, p]));
   const days = new Map((state?.days ?? []).map((d) => [d.date, d]));
   const today = todayKey ?? dateKey.today();
+  const random = opts?.random ?? Math.random;
   const prog = (id: string) => pmap.get(id);
   const seen = (id: string) => (prog(id)?.seen ?? 0) > 0;
-  const inFilter = (q: QuestionDTO, f: Filter) => f === "all" || q.course === f;
+  const inFilter = (q: QuestionDTO, f: Filter) => activeCourses(today, f).includes(q.course);
 
   function queues(f: Filter = "all") {
     const due: QuestionDTO[] = [], fresh: QuestionDTO[] = [], ahead: QuestionDTO[] = [], missed: QuestionDTO[] = [], starred: QuestionDTO[] = [];
@@ -157,47 +179,52 @@ export function studyEngine(state: State | undefined, todayKey?: string, opts?: 
     return { n, seen: s, cor, wr, acc: cor + wr ? Math.round((cor / (cor + wr)) * 100) : 0 };
   }
 
-  function pickFresh(fresh: QuestionDTO[], n: number) {
+  function pickFresh(fresh: QuestionDTO[], n: number, targets?: Partial<CourseCounts>) {
     const weak = new Set(weakTopics().map((t) => `${t.course}|${t.topic}`));
     const score = (q: QuestionDTO) => {
       const age = q.classDate ? dateKey.diff(q.classDate, today) : 30;
-      return (age <= 7 ? 3 : age <= 21 ? 1.6 : 1) + (weak.has(`${q.course}|${q.topic}`) ? 1.5 : 0) + Math.random();
+      return (age <= 7 ? 3 : age <= 21 ? 1.6 : 1) + (weak.has(`${q.course}|${q.topic}`) ? 1.5 : 0) + random();
     };
-    const groups: Record<string, [number, QuestionDTO][]> = {};
-    for (const q of fresh) (groups[q.course] ||= []).push([score(q), q]);
-    const lists = shuffle(Object.values(groups)).map((g) => g.sort((a, b) => b[0] - a[0]).map((x) => x[1]));
-    return interleave(lists).slice(0, n);
+    const lists = COURSE_KEYS.map((c) => fresh.filter((q) => q.course === c).map((q) => ({ q, score: score(q) })).sort((a, b) => b.score - a.score).map((x) => x.q));
+    const weights = COURSE_KEYS.map((c, i) => targets?.[c] ?? Math.ceil(lists[i].length / Math.max(1, dateKey.diff(today, FINALS[c]) - 2)));
+    const out: QuestionDTO[][] = COURSE_KEYS.map(() => []);
+    while (out.flat().length < n && lists.some((l) => l.length)) {
+      const live = lists.map((l, i) => l.length ? i : -1).filter((i) => i >= 0);
+      const share = apportion(live.map((i) => weights[i]), n - out.flat().length);
+      live.forEach((i, j) => out[i].push(...lists[i].splice(0, share[j])));
+    }
+    return interleave(out);
   }
 
-  function buildRound(f: Filter, mode: StudyMode = "mixed"): QuestionItem[] {
+  function buildRound(f: Filter, mode: StudyMode = "mixed", targets?: Partial<CourseCounts>): QuestionItem[] {
     const { due, fresh, ahead } = queues(f);
-    if (mode === "due") return interleave(byCourse(due.slice(0, ROUND_SIZE).map((q) => ({ q, review: true }))));
-    if (mode === "new") return pickFresh(fresh, ROUND_SIZE).map((q) => ({ q, review: false }));
-    if (mode === "ahead") return interleave(byCourse(ahead.slice(0, ROUND_SIZE).map((q) => ({ q, review: true }))));
-    let rev = due.slice(0, Math.ceil(ROUND_SIZE / 2));
-    const nw = pickFresh(fresh, ROUND_SIZE - rev.length);
-    if (rev.length + nw.length < ROUND_SIZE) rev = due.slice(0, ROUND_SIZE - nw.length);
-    const items: QuestionItem[] = [...rev.map((q) => ({ q, review: true })), ...nw.map((q) => ({ q, review: false }))];
-    return interleave(byCourse(items));
+    const reviews = (list: QuestionDTO[], n: number) => interleave(COURSE_KEYS.map((c) => list.filter((q) => q.course === c))).slice(0, n);
+    if (mode === "due") return reviews(due, ROUND_SIZE).map((q) => ({ q, review: true }));
+    if (mode === "new") return pickFresh(fresh, ROUND_SIZE, targets).map((q) => ({ q, review: false }));
+    if (mode === "ahead") return reviews(ahead, ROUND_SIZE).map((q) => ({ q, review: true }));
+    let rev = reviews(due, Math.ceil(ROUND_SIZE / 2));
+    const nw = pickFresh(fresh, ROUND_SIZE - rev.length, targets);
+    if (rev.length + nw.length < ROUND_SIZE) rev = reviews(due, ROUND_SIZE - nw.length);
+    return interleave<QuestionItem>([rev.map((q) => ({ q, review: true })), nw.map((q) => ({ q, review: false }))]);
   }
 
   function listRound(list: QuestionDTO[]): QuestionItem[] {
-    return interleave(byCourse(shuffle(list).slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) }))));
+    return interleave(byCourse(shuffle(list, random).slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) })), random));
   }
 
   function topicRound(course: CourseCode, topic: string): QuestionItem[] {
     const list = questions.filter((q) => q.course === course && q.topic === topic);
     const unseen = list.filter((q) => !seen(q.id));
     const rest = list.filter((q) => seen(q.id)).sort((a, b) => (prog(a.id)!.lastCorrect ? 1 : 0) - (prog(b.id)!.lastCorrect ? 1 : 0));
-    return [...shuffle(unseen), ...rest].slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) }));
+    return [...shuffle(unseen, random), ...rest].slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) }));
   }
 
   /** Unseen questions first, then the ones answered longest ago, so an exam is not a memory test of recent answers. */
   function examRound(f: Filter, size: number): QuestionItem[] {
     const rank = (q: QuestionDTO) => (seen(q.id) ? 1 : 0);
-    const pool = shuffle(questions.filter((q) => inFilter(q, f)))
+    const pool = shuffle(questions.filter((q) => inFilter(q, f)), random)
       .sort((a, b) => rank(a) - rank(b) || (prog(a.id)?.lastAt ?? "").localeCompare(prog(b.id)?.lastAt ?? ""));
-    return interleave(byCourse(shuffle(pool.slice(0, size)).map((q) => ({ q, review: seen(q.id) }))));
+    return interleave(byCourse(shuffle(pool.slice(0, size), random).map((q) => ({ q, review: seen(q.id) })), random));
   }
 
   /**
@@ -280,11 +307,11 @@ export function studyEngine(state: State | undefined, todayKey?: string, opts?: 
     return out;
   }
 
-  return { questions, prog, today, queues, topicStats, weakTopics, missedTopics, courseStats, buildRound, listRound, topicRound, examRound, streak, lastNDays, missProfile, topicRules, ruleCards, coverage, todayCount: days.get(today) };
+  return { questions, prog, today, queues, topicStats, weakTopics, missedTopics, courseStats, buildRound, listRound, topicRound, examRound, streak, lastNDays, missProfile, topicRules, ruleCards, coverage, totalAnswers: [...days.values()].reduce((a, d) => a + d.answered, 0), todayCount: days.get(today) };
 }
 
 /** A greeting picked once per app open. Context lines only when the data supports them. */
-export function makeGreeting(state: State | undefined, name: string, recent: string[], goal = DAILY_GOAL): string {
+export function makeGreeting(state: State | undefined, name: string, recent: string[], goal = DAILY_GOAL, readyReviews?: number, filter: Filter = "all", answeredToday?: number): string {
   const now = new Date();
   const h = now.getHours();
   const dow = now.getDay();
@@ -363,17 +390,18 @@ export function makeGreeting(state: State | undefined, name: string, recent: str
   const ctx: string[] = [];
   if (state) {
     const e = studyEngine(state);
-    const { due } = e.queues("all");
+    const dueCount = readyReviews ?? e.queues(filter).due.length;
     const run = state.runs[0];
     const st = e.streak();
-    const done = e.todayCount?.answered ?? 0;
-    if (due.length) ctx.push(...(due.length === 1 ? ["One review is waiting", "One review on the docket"] : [`${due.length} reviews are waiting`, `${due.length} reviews on the docket`]));
-    if (run && run.date === e.today && run.added) ctx.push(h < 12 ? `${run.added} new questions this morning` : `${run.added} new questions today`, `${run.added} fresh questions just filed`);
+    const done = answeredToday ?? e.todayCount?.answered ?? 0;
+    if (dueCount) ctx.push(...(dueCount === 1 ? ["One review is waiting", "One review on the docket"] : [`${dueCount} reviews are waiting`, `${dueCount} reviews on the docket`]));
+    const added = run ? Object.entries(run.byCourse).filter(([c]) => activeCourses(e.today, filter).includes(c as CourseCode)).reduce((a, [, n]) => a + n, 0) : 0;
+    if (run?.date === e.today && added) ctx.push(h < 12 ? `${added} new questions this morning` : `${added} new questions today`, `${added} fresh questions just filed`);
     if (st >= 2) ctx.push(`Day ${st} in a row, ${name}`, `${st}-day streak. Precedent set.`);
     if (done >= goal) ctx.push(`Goal met. Extra credit, ${name}?`, `Daily goal: satisfied. Encore?`);
     else if (done > 0) ctx.push(`Back for more, ${name}?`, `Round two, ${name}?`, `Back on the stand, ${name}`);
     else if (h >= 17) ctx.push(`Today’s docket is still open`);
-    const weak = e.weakTopics().sort((a, b) => a.c / (a.c + a.w) - b.c / (b.c + b.w))[0];
+    const weak = e.weakTopics().filter((t) => activeCourses(e.today, filter).includes(t.course)).sort((a, b) => a.c / (a.c + a.w) - b.c / (b.c + b.w))[0];
     if (weak) ctx.push(`${weak.topic} could use a round`, `${weak.topic} wants a rematch`);
   }
   const pools: [string[], number][] = [[season, 0.2], [ctx, 0.3], [day, 0.1], [time, 0.2], [general, 0.45]];

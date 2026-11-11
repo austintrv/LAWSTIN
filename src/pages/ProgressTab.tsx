@@ -42,7 +42,7 @@ export function ProgressView({ e, syllabus, materials, onTopic, onHow }: { onHow
     <>
       <div className={styles.tiles}>
         <div className={`${styles.card} ${styles.tile}`}><b>{m.correct + m.wrong ? <Num v={pct(m.correct, m.correct + m.wrong)} suffix="%" /> : "—"}</b><span>Correct overall</span></div>
-        <div className={`${styles.card} ${styles.tile}`}><b><Num v={m.correct + m.wrong} /></b><span>Answers given</span></div>
+        <div className={`${styles.card} ${styles.tile}`}><b><Num v={e.totalAnswers} /></b><span>Answers given</span></div>
         <div className={`${styles.card} ${styles.tile}`}><b><Num v={m.seen} /></b><span>Questions seen</span></div>
       </div>
       <section className={`${styles.sec} ${styles.fullRow}`}>
@@ -51,7 +51,14 @@ export function ProgressView({ e, syllabus, materials, onTopic, onHow }: { onHow
           {roleRow("Sneaky distractor", m.sneaky, "var(--course-pr)")}
           {roleRow("Average distractor", m.average, "var(--course-il)")}
           {roleRow("Really bad answer", m.bad, "var(--error)")}
-          {roleRow("Correct but guessed", m.guessed, "var(--faint-foreground)")}
+        </div>
+      </section>
+      <section className={styles.sec}>
+        <div className={`${styles.card} ${styles.list}`}>
+          <div className={styles.row}>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Correct but guessed</span></span>
+            <span className={styles.rowEnd}><b>{m.guessed}</b></span>
+          </div>
         </div>
       </section>
       {COURSE_KEYS.map((k) => {

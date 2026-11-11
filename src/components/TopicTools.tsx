@@ -4,7 +4,6 @@ import { MATERIAL_LABELS, type MaterialKind } from "../helpers/studyMaterials";
 import { useStudyLibrary } from "../helpers/useStudyLibrary";
 import styles from "../pages/_index.module.css";
 
-
 const KIND_ICON: Record<MaterialKind, typeof Layers3> = { flashcard: Layers3, flowchart: GitBranch, outline: BookOpen, comparison: Columns3, drill: ListChecks, hypothetical: PenLine };
 
 /** The topic's study materials from Courses, with its flashcards as one row. Hidden when there are none. */

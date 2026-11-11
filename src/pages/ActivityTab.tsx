@@ -25,7 +25,7 @@ function MissedTopics({ topics, onLesson }: { topics: MissedTopic[]; onLesson: (
         {more > 0 && <button className={styles.feedToggle} aria-expanded={open} onClick={() => { haptic(); setOpen((v) => !v); }}>{open ? "Show less" : `${more} more`}</button>}
       </div>
       {topics.length > 1 && (
-        <button className={`${styles.card} ${styles.lessonHero} ${auraHost}`} onClick={() => onLesson(mix)}>
+        <button className={`${styles.card} ${styles.lessonHero} ${auraHost}`} onClick={() => onLesson(topics)}>
           <Aura colors={[COURSES[mix[0].course].color, "var(--uh-red)", COURSES[mix[1].course].color]} />
           <span className={styles.lessonIcon}><GraduationCap size={22} /></span>
           <span className={styles.rowMain}><span className={styles.rowTitle}>Mixed lesson</span><span className={styles.rowSub}>{mix.length} topics · {count} questions</span></span>

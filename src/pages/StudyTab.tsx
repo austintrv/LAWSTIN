@@ -4,9 +4,9 @@ import { Button } from "../components/Button";
 import { dueLabel } from "../components/TaskList";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import { haptic } from "../helpers/haptics";
-import { COURSES, COURSE_KEYS, type CourseCode, type Filter, type StudyMode } from "../helpers/studyEngine";
+import { COURSES, activeCourses, type CourseCode, type Filter, type StudyMode } from "../helpers/studyEngine";
 import { SCHOOL_COURSES } from "../helpers/studyMaterials";
-import { readyCards, type PlanCourse } from "../helpers/studySession";
+import { readyCards, type PlanCourse, type studyNumbers } from "../helpers/studySession";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
 import { useLawstinData } from "../helpers/useLawstinData";
 import styles from "./_index.module.css";
@@ -15,7 +15,7 @@ import { Num, pct, upcomingFinals, type Engine, type MissedTopic } from "./Study
 import { UpdateCard } from "./UpdateCards";
 
 /** Days to each final, soonest first, with the day's target and how well that course's questions are going. */
-function FinalsCard({ e, plan, onCourse }: { e: Engine; plan: PlanCourse[]; onCourse: (c: CourseCode) => void }) {
+function FinalsCard({ e, courseNumbers, onCourse }: { e: Engine; courseNumbers: (c: CourseCode) => ReturnType<typeof studyNumbers>; onCourse: (c: CourseCode) => void }) {
   const list = upcomingFinals();
   if (!list.length) return null;
   return (
@@ -23,14 +23,14 @@ function FinalsCard({ e, plan, onCourse }: { e: Engine; plan: PlanCourse[]; onCo
       <div className={styles.secH}><h2>Finals</h2></div>
       <div className={styles.finalTiles}>
         {list.map(({ k, date, days }) => {
-          const c = COURSES[k], s = e.courseStats(k), today = plan.find((x) => x.course === k)?.target;
+          const c = COURSES[k], s = e.courseStats(k), numbers = courseNumbers(k), today = numbers.left;
           return (
             <button key={k} className={`${styles.card} ${styles.finalTile}`} style={{ "--course-color": c.color } as React.CSSProperties} onClick={() => onCourse(k)}>
               <span className={styles.finalCourse}><i />{c.short}</span>
               <b>{days === 0 ? "Today" : days}</b>
               <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
               <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
-              <span className={styles.finalStats}>{today ? `${today} today` : `${pct(s.seen, s.n)}% seen`}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
+              <span className={styles.finalStats}>{`${today} today · ${numbers.goal} goal`}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
             </button>
           );
         })}
@@ -66,16 +66,17 @@ function DueSoonCard() {
   );
 }
 
-export function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onMatch, onUpdate }: {
+export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onMatch, onUpdate }: {
   resuming: boolean;
   nextReview: string | null;
   onHow: () => void;
   onMode: (mode: StudyMode) => void;
   onLesson: (topics: MissedTopic[]) => void;
-  goal: number;
+  numbers: ReturnType<typeof studyNumbers>;
+  courseNumbers: (c: CourseCode) => ReturnType<typeof studyNumbers>;
   /** Recall cards ready now for the chosen filter. */
   cards: ReturnType<typeof readyCards>;
-  /** Today's plan per course while finals are ahead; empty when the plan is off. */
+  /** Saved course quotas and essay prompts for today. */
   plan: PlanCourse[];
   onEssay: (c: CourseCode) => void;
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
@@ -85,21 +86,17 @@ export function StudyView({ e, state, goal, cards, plan, filter, setFilter, cele
     return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2></div>;
   }
   const qs = e.queues(filter);
-  const today = e.todayCount?.answered ?? 0;
-  const ready = qs.due.length + qs.fresh.length + cards.list.length;
-  const missed = e.missedTopics().filter((t) => filter === "all" || t.course === filter);
+  const { answered: today, goal, ready, left, minutes: mins, review, fresh } = numbers;
+  const missed = e.missedTopics().filter((t) => activeCourses(e.today, filter).includes(t.course));
   const essays = plan.filter((c) => c.essay && (filter === "all" || filter === c.course));
   const roundLabel = resuming ? "Resume studying" : !ready ? "All caught up" : today > 0 ? "Keep going" : "Start studying";
   const run = state.runs[0];
-  const goalPct = Math.min(1, today / goal);
+  const goalPct = goal ? Math.min(1, today / goal) : 0;
   const goalDone = today >= goal;
   const circ = 2 * Math.PI * 16;
   const streak = e.streak();
   const studiedToday = today > 0;
   const showFinals = upcomingFinals().length > 0;
-  // Minutes left today: what is still needed (or ready, if less) at about 45 seconds an item, to the next 5.
-  const left = Math.min(Math.max(0, goal - today), ready);
-  const mins = Math.max(5, Math.ceil((left * 45) / 60 / 5) * 5);
   return (
     <div className={styles.studyCols}>
       <div className={styles.studyCol}>
@@ -112,7 +109,7 @@ export function StudyView({ e, state, goal, cards, plan, filter, setFilter, cele
         </div>
         <div className={styles.todayRow}>
           <button className={styles.todayBtn} onClick={onHow} aria-label="How today’s plan is built">
-            <span className={`${styles.goalWrap} ${celebrate ? styles.goalBurst : ""}`}>
+            <span role="progressbar" aria-label="Today’s goal" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.min(today, goal)} className={`${styles.goalWrap} ${celebrate ? styles.goalBurst : ""}`}>
               <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
                 <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
                 <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct), opacity: today ? 1 : 0 }} />
@@ -120,7 +117,7 @@ export function StudyView({ e, state, goal, cards, plan, filter, setFilter, cele
               {goalDone ? <Check size={26} strokeWidth={3.2} className={styles.goalCheck} /> : <b className={styles.ringNum}><Num v={today} /></b>}
             </span>
             <span className={styles.todayText}>
-              <span className={styles.todayHead}>{goalDone ? "Done for today" : left ? `${goal - today} to go today` : "Nothing ready today"}</span>
+              <span className={styles.todayHead}>{!ready ? "Nothing ready today" : goalDone ? "Done for today" : left ? `${left} to go today` : "Nothing ready today"}</span>
               {!goalDone && left > 0 && <span className={styles.rowSub}>About {mins} min</span>}
             </span>
             <ChevronRight size={18} className={styles.chev} />
@@ -134,19 +131,19 @@ export function StudyView({ e, state, goal, cards, plan, filter, setFilter, cele
           {!ready && !resuming && <Check size={18} />}{roundLabel}
         </Button>
         <div className={`${styles.list} ${styles.flat} ${styles.heroRows}`}>
-          <button className={styles.row} disabled={!qs.due.length && !cards.due.length} onClick={() => onMode("due")} aria-label={`Review ${qs.due.length + cards.due.length} due items`}>
+          <button className={styles.row} disabled={!review} onClick={() => onMode("due")} aria-label={`Review ${review} due items`}>
             <span className={styles.dot} style={{ background: "var(--uh-red)" }}><RotateCcw size={12} color="#fff" strokeWidth={2.4} /></span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Ready to review</span></span>
-            <span className={styles.rowEnd}><Num v={qs.due.length + cards.due.length} /></span>
+            <span className={styles.rowEnd}><Num v={review} /></span>
             <ChevronRight size={18} className={styles.chev} />
           </button>
-          <button className={styles.row} disabled={!qs.fresh.length && !cards.fresh.length} onClick={() => onMode("new")} aria-label={`Study ${qs.fresh.length + cards.fresh.length} new items`}>
+          <button className={styles.row} disabled={!fresh} onClick={() => onMode("new")} aria-label={`Study ${fresh} new items`}>
             <span className={styles.dot} style={{ background: "var(--info)" }}><Sparkles size={12} color="#fff" strokeWidth={2.4} /></span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Not seen yet</span></span>
-            <span className={styles.rowEnd}><Num v={qs.fresh.length + cards.fresh.length} /></span>
+            <span className={styles.rowEnd}><Num v={fresh} /></span>
             <ChevronRight size={18} className={styles.chev} />
           </button>
-          <button className={styles.row} disabled={!missed.length} onClick={() => onLesson(missed.slice(0, 4))} aria-label={`Review ${missed.length} missed topics`}>
+          <button className={styles.row} disabled={!missed.length} onClick={() => onLesson(missed)} aria-label={`Review ${missed.length} missed topics`}>
             <span className={styles.dot} style={{ background: "var(--warning)" }}><GraduationCap size={12} color="#fff" strokeWidth={2.4} /></span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Missed topics</span></span>
             <span className={styles.rowEnd}><Num v={missed.length} /></span>
@@ -170,7 +167,7 @@ export function StudyView({ e, state, goal, cards, plan, filter, setFilter, cele
           <div className={styles.o3}><DueSoonCard /></div>
         </div>
         <div className={styles.studyCol}>
-          <div className={styles.o2}><FinalsCard e={e} plan={plan} onCourse={onCourse} /></div>
+          <div className={styles.o2}><FinalsCard e={e} courseNumbers={courseNumbers} onCourse={onCourse} /></div>
           <div className={styles.o5}>
               <section className={styles.sec}>
                 <div className={`${styles.card} ${styles.list}`}>
@@ -208,14 +205,14 @@ export function StudyView({ e, state, goal, cards, plan, filter, setFilter, cele
               <section className={styles.sec}>
                 <div className={styles.secH}><h2>Courses</h2></div>
                 <div className={`${styles.card} ${styles.list}`}>
-                  {COURSE_KEYS.map((k) => {
-                    const c = COURSES[k], s = e.courseStats(k), q = e.queues(k);
+                  {activeCourses(e.today, filter).map((k) => {
+                    const c = COURSES[k], s = e.courseStats(k), n = courseNumbers(k);
                     return (
                       <button key={k} className={styles.row} onClick={() => onCourse(k)}>
                         <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
                         <span className={styles.rowMain}>
                           <span className={styles.rowTitle}>{c.name}</span>
-                          <span className={styles.rowSub}>{q.fresh.length} new · {q.due.length} due{s.seen ? ` · ${s.acc}% correct` : ""}</span>
+                          <span className={styles.rowSub}>{n.fresh} new · {n.review} due{s.seen ? ` · ${s.acc}% correct` : ""}</span>
                           <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
                         </span>
                         <ChevronRight size={18} className={styles.chev} />

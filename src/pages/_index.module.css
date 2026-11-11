@@ -74,7 +74,7 @@
 
 .hero { padding: 20px; display: flex; flex-direction: column; gap: 18px; background: linear-gradient(165deg, var(--uh-red-tint) 0%, transparent 60%), var(--card); }
 .seg { display: flex; background: var(--fill); border-radius: 10px; padding: 2px; gap: 2px; }
-.seg button { flex: 1; min-width: 0; min-height: 40px; padding: 8px 4px; border: 0; background: none; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s var(--ease-ios); }
+.seg button { flex: 1; min-width: 0; min-height: 44px; padding: 8px 4px; border: 0; background: none; border-radius: 8px; font: inherit; font-size: 13px; font-weight: 600; color: var(--muted-foreground); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; transition: background 0.2s, color 0.2s, transform 0.2s var(--ease-ios); }
 .seg button.segOn { background: var(--seg-on); color: var(--foreground); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 /* Today block in the Study hero */
 .todayRow { display: flex; align-items: center; gap: 12px; }
@@ -391,15 +391,13 @@ button.calDay:active { transform: scale(0.92); }
 
 /* How Lawstin works sheet */
 .how { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
-.howNote { margin: 0; padding-inline: 4px; font-size: 14px; line-height: 1.45; color: var(--muted-foreground); }
 .howCard { padding: 20px 16px 16px; display: flex; flex-direction: column; gap: 14px; }
-.howCard .howNote { padding: 0; }
 .ladder { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); position: relative; }
 .ladder::before { content: ""; position: absolute; top: 14px; left: 10%; right: 10%; height: 3px; border-radius: 2px; background: var(--fill); }
 .rung { position: relative; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .rungDot { width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--foreground); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .rung:first-child .rungDot { color: var(--error-foreground); }
-.rungLabel { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.rungLabel { text-align: center; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .howChip { min-width: 92px; text-align: center; }
 .wrapSub { font-size: 14px; }
 

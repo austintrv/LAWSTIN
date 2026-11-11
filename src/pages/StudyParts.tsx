@@ -4,26 +4,28 @@ import { dateKey } from "../helpers/dateKey";
 import { COURSE_KEYS, FINALS, studyEngine, type CoverageStatus } from "../helpers/studyEngine";
 import styles from "./_index.module.css";
 
-
 export type Engine = ReturnType<typeof studyEngine>;
 export type MissedTopic = ReturnType<Engine["missedTopics"]>[number];
 
 const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T12:00:00Z`) - Date.parse(`${from}T12:00:00Z`)) / 864e5);
 
-// Counts up from the previous value (0 on first show) with an ease-out curve.
+// First paint is final; later changes ease from the value currently on screen.
 export function Num({ v, suffix = "" }: { v: number; suffix?: string }) {
-  const [n, setN] = useState(0);
-  const prev = useRef(0);
+  const [n, setN] = useState(v);
+  const prev = useRef(v);
+  const shown = useRef(v);
   useEffect(() => {
-    const from = prev.current;
+    const from = shown.current;
+    if (prev.current === v) return;
     prev.current = v;
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (from === v || reduce) { setN(v); return; }
+    if (from === v || reduce) { shown.current = v; setN(v); return; }
     let raf = 0;
     const t0 = performance.now(), d = 650;
     const step = (t: number) => {
       const p = Math.min(1, (t - t0) / d);
-      setN(Math.round(from + (v - from) * (1 - Math.pow(1 - p, 3))));
+      shown.current = Math.round(from + (v - from) * (1 - Math.pow(1 - p, 3)));
+      setN(shown.current);
       if (p < 1) raf = requestAnimationFrame(step);
     };
     raf = requestAnimationFrame(step);
@@ -50,5 +52,4 @@ export const upcomingFinals = () => {
     .filter((f) => f.days >= 0).sort((a, b) => a.days - b.days);
 };
 
-
-export const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
+export const pct = (a: number, b: number) => (b ? Math.min(100, Math.max(0, Math.round((a / b) * 100))) : 0);
