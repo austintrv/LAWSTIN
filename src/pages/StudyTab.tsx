@@ -1,22 +1,25 @@
 import { CalendarDays, Check, ChevronRight, Flame, GraduationCap, Layers3, PenLine, RotateCcw, Shuffle, Sparkles, Star, Timer } from "lucide-react";
 import React from "react";
+import { WeakSpots } from "../components/CourseSheet";
+import { hasTool } from "../components/ToolHost";
 import { Button } from "../components/Button";
 import { dueLabel } from "../components/TaskList";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
+import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
-import { COURSES, activeCourses, type CourseCode, type Filter, type StudyMode } from "../helpers/studyEngine";
+import { COURSES, COURSE_KEYS, FINALS, activeCourses, type Syllabus, type CourseCode, type Filter, type StudyMode } from "../helpers/studyEngine";
 import { SCHOOL_COURSES } from "../helpers/studyMaterials";
-import { readyCards, type PlanCourse, type studyNumbers } from "../helpers/studySession";
+import { examMoment, readyCards, unitStatuses, type ExamMoment, type PlanCourse, type studyNumbers } from "../helpers/studySession";
 import { dueSoon, useCourseTasks } from "../helpers/useCourseTasks";
 import { useLawstinData } from "../helpers/useLawstinData";
 import styles from "./_index.module.css";
 
-import { Num, pct, upcomingFinals, type Engine, type MissedTopic } from "./StudyParts";
+import { Num, pct, type Engine, type MissedTopic } from "./StudyParts";
 import { UpdateCard } from "./UpdateCards";
 
 /** Days to each final, soonest first, with the day's target and how well that course's questions are going. */
 function FinalsCard({ e, courseNumbers, onCourse }: { e: Engine; courseNumbers: (c: CourseCode) => ReturnType<typeof studyNumbers>; onCourse: (c: CourseCode) => void }) {
-  const list = upcomingFinals();
+  const list = COURSE_KEYS.map((k) => ({ k, date: FINALS[k], days: dateKey.diff(e.today, FINALS[k]) })).filter((f) => f.days >= 0).sort((a, b) => a.days - b.days);
   if (!list.length) return null;
   return (
     <section className={`${styles.sec} ${styles.finals}`}>
@@ -27,10 +30,10 @@ function FinalsCard({ e, courseNumbers, onCourse }: { e: Engine; courseNumbers: 
           return (
             <button key={k} className={`${styles.card} ${styles.finalTile}`} style={{ "--course-color": c.color } as React.CSSProperties} onClick={() => onCourse(k)}>
               <span className={styles.finalCourse}><i />{c.short}</span>
-              <b>{days === 0 ? "Today" : days}</b>
+              <b data-today={days === 0}>{days === 0 ? "Today" : days}</b>
               <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
               <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
-              <span className={styles.finalStats}>{today ? `${today} to go` : "Done today"}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
+              <span className={styles.finalStats}>{examMoment(e.today).kind !== "normal" ? `${pct(s.seen, s.n)}% seen` : today ? `${today} to go` : "Done today"}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
             </button>
           );
         })}
@@ -66,7 +69,10 @@ function DueSoonCard() {
   );
 }
 
-export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onMatch, onUpdate }: {
+export function StudyView({ e, state, syllabus, moment, passNumbers, essaysWritten, onStreak, onLastPass, onRulebook, onTopic, onTool, numbers, courseNumbers, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onMatch, onUpdate }: {
+  syllabus: Syllabus; moment: ExamMoment; passNumbers: { goal: number; answered: number; resuming: boolean }; essaysWritten: number;
+  onStreak: () => void; onLastPass: () => void; onRulebook: (course: CourseCode, warmup?: boolean, recall?: boolean) => void;
+  onTopic: (course: CourseCode, topic: string) => void; onTool: (name: string, course: CourseCode) => void;
   resuming: boolean;
   nextReview: string | null;
   onHow: () => void;
@@ -80,7 +86,7 @@ export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filte
   plan: PlanCourse[];
   onEssay: (c: CourseCode) => void;
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
-  onStart: () => void; onCourse: (c: CourseCode) => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onMatch?: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
+  onStart: () => void; onCourse: (c: CourseCode) => void; onStarred: () => void; onExam: (size?: number) => void; onWrite: () => void; onMatch?: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
   const qs = e.queues(filter);
   const { answered: today, goal, ready, left, minutes: mins, review, fresh } = numbers;
@@ -93,7 +99,10 @@ export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filte
   const circ = 2 * Math.PI * 16;
   const streak = e.streak();
   const studiedToday = today > 0;
-  const showFinals = upcomingFinals().length > 0;
+  const showFinals = COURSE_KEYS.some((c) => FINALS[c] >= e.today);
+  const special = moment.kind === "done" || (moment.course && (filter === "all" || filter === moment.course)) ? moment.kind : "normal";
+  const course = moment.course;
+  const specialRow = (label: string, go: () => void, length = "") => <button key={label} className={styles.row} onClick={go}><span className={styles.rowMain}><span className={styles.rowTitle}>{label}</span></span>{length && <span className={styles.rowEnd}>{length}</span>}<ChevronRight size={18} className={styles.chev} /></button>;
   return (
     <div className={styles.studyCols}>
       <div className={styles.studyCol}>
@@ -104,6 +113,7 @@ export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filte
             <button key={k} aria-pressed={filter === k} className={filter === k ? styles.segOn : ""} onClick={() => { if (filter !== k) haptic(); setFilter(k); }}>{l}</button>
           ))}
         </div>
+        {special === "normal" ? <>
         <div className={styles.todayRow}>
           <button className={styles.todayBtn} onClick={onHow} aria-label="How today’s plan is built">
             <span role="progressbar" aria-label="Today’s goal" aria-valuemin={0} aria-valuemax={goal} aria-valuenow={Math.min(today, goal)} className={`${styles.goalWrap} ${celebrate ? styles.goalBurst : ""}`}>
@@ -119,10 +129,10 @@ export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filte
             </span>
             <ChevronRight size={18} className={styles.chev} />
           </button>
-          <div className={`${styles.streakChip} ${streak && studiedToday ? styles.streakLit : ""}`} role="img" aria-label={`${streak} day streak`}>
+          <button onClick={onStreak} className={`${styles.streakChip} ${streak && studiedToday ? styles.streakLit : ""}`} aria-label={`${streak} day streak`}>
             <Flame size={18} className={styles.flame} fill={streak && studiedToday ? "currentColor" : "none"} strokeWidth={2} />
             <b>{streak}</b>
-          </div>
+          </button>
         </div>
         <Button className={`${styles.big} ${styles.cta} ${!ready && !resuming ? styles.caughtUp : ""}`} disabled={!ready && !resuming} onClick={onStart}>
           {!ready && !resuming && <Check size={18} />}{roundLabel}
@@ -158,17 +168,42 @@ export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filte
             ))}
           </div>
         )}
+        </> : special === "done" ? <>
+          <h2 className={styles.examHeroTitle}>Fall finals done</h2>
+          <div className={styles.semesterStats}>
+            <div><b>{state.days.filter((d) => d.date >= "2026-08-01" && d.date <= e.today).reduce((n, d) => n + d.answered, 0)}</b><span>Answers given</span></div>
+            <div><b>{essaysWritten}</b><span>Essays written</span></div>
+            <div><b>{unitStatuses(e, syllabus).filter((u) => u.status === "solid").length}</b><span>Units Solid</span></div>
+          </div>
+          <Button variant="secondary" className={styles.big} onClick={onStart}>Keep practicing</Button>
+          {specialRow("How Lawstin works", onHow)}
+        </> : course && <>
+          <button className={styles.examHeroTitle} onClick={() => onCourse(course)}>{COURSES[course].name} {special === "eve" ? "tomorrow" : "today"}</button>
+          {special === "morning" ? <Button variant="secondary" className={styles.big} onClick={() => onRulebook(course, true)}>Warm up · 10 min</Button> : <>
+            <Button className={`${styles.big} ${styles.cta}`} onClick={onLastPass} disabled={!passNumbers.goal || (passNumbers.answered >= passNumbers.goal && !passNumbers.resuming)}>Last pass</Button>
+            <button className={styles.lastPassCount} onClick={onHow}>{passNumbers.answered} of {passNumbers.goal}</button>
+            <WeakSpots e={e} course={course} syllabus={syllabus} onTopic={(topic) => onTopic(course, topic)} />
+            <div className={`${styles.list} ${styles.flat} ${styles.heroRows}`}>
+              {specialRow("Rulebook", () => onRulebook(course))}
+              {course === "pr" ? <>{specialRow("Timed set", () => onExam(25), "25 questions")}{specialRow("Rule recall", () => onRulebook(course, false, true))}</> : <>
+                {hasTool("IssueSpot") && specialRow("Spot the issues", () => onTool("IssueSpot", course), "3 min")}
+                {specialRow("Write an essay", () => onEssay(course), "45 min")}
+              </>}
+            </div>
+          </>}
+        </>}
       </div>
 
       </div>
-          <div className={styles.o3}><DueSoonCard /></div>
+          {special !== "done" && <div className={styles.o3}><DueSoonCard /></div>}
         </div>
         <div className={styles.studyCol}>
           <div className={styles.o2}><FinalsCard e={e} courseNumbers={courseNumbers} onCourse={onCourse} /></div>
+          {special === "done" && <div className={styles.o3}><DueSoonCard /></div>}
           <div className={styles.o5}>
               <section className={styles.sec}>
                 <div className={`${styles.card} ${styles.list}`}>
-                  <button className={styles.row} onClick={onExam}>
+                  <button className={styles.row} onClick={() => onExam()}>
                     <span className={styles.dot} style={{ background: "var(--foreground)" }}><Timer size={13} color="var(--background)" /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
                     <ChevronRight size={18} className={styles.chev} />

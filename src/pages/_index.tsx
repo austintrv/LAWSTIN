@@ -1,4 +1,6 @@
 import { BarChart3, BookCheck, CalendarDays, LibraryBig } from "lucide-react";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
+import { createPortal } from "react-dom";
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { Aura, auraHost } from "../components/Aura";
 import { Button } from "../components/Button";
@@ -8,12 +10,12 @@ import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { MIN_ROUND, matchPairs } from "../helpers/matchPairs";
-import { isNetworkError } from "../helpers/offlineCache";
+import { readCache, writeCache, isNetworkError } from "../helpers/offlineCache";
 import { readPractice, savePractice, type SavedPractice } from "../helpers/practiceMemory";
 import { applyPrefs, readPrefs } from "../helpers/prefs";
-import { COURSES, EXAM_PACE, makeGreeting, studyEngine, type CourseCode, type Filter, type RoundItem, type SessionCard, type StudyMode } from "../helpers/studyEngine";
+import { COURSES, EXAM_PACE, itemId, momentGreeting, makeGreeting, studyEngine, type CourseCode, type Filter, type RoundItem, type SessionCard, type StudyMode } from "../helpers/studyEngine";
 import { reviewCard, type Flashcard, type Hypothetical } from "../helpers/studyMaterials";
-import { missedLessonBatch, mixRound, nextReviewDay, readyCards, reviewGreeting } from "../helpers/studySession";
+import { examMoment, lastPass, recapChanges, streakHistory, unitStatuses, type UnitStatus, missedLessonBatch, mixRound, nextReviewDay, readyCards, reviewGreeting } from "../helpers/studySession";
 import { toast } from "../helpers/toast";
 import { reviewEvidence } from "../helpers/topicReview";
 import { afterOverlayClose } from "../helpers/useBackClose";
@@ -37,6 +39,9 @@ const MatchGame = lazy(() => import("../components/MatchGame").then((m) => ({ de
 
 import { BottomSheet } from "../components/BottomSheet";
 import { ExamPicker } from "../components/ExamPicker";
+import { CourseSheet, CourseRulebook } from "../components/CourseSheet";
+import { SessionRecap } from "../components/SessionRecap";
+import { ToolHost } from "../components/ToolHost";
 import { HowItWorks } from "../components/HowItWorks";
 import { TopicTools } from "../components/TopicTools";
 import { ActivityView } from "./ActivityTab";
@@ -70,6 +75,8 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const state = query.data;
   // One study-progress store for the whole app: sessions here and the Courses tab share it.
   const store = useStudyMaterials(userId);
+  const relatedFetching = useIsFetching({ predicate: (q) => ["lawstin-written", "lawstin-syllabus"].includes(String(q.queryKey[0])) });
+  const queryClient = useQueryClient();
   const written = useWritten();
   const syllabus = useSyllabus();
   const log = useLogStudy();
@@ -94,10 +101,46 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>(() => (readPractice(userId)?.key.split(":")[1] as Filter | undefined) ?? "all");
-  const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot; seconds?: number; filter?: Filter } | null>(null);
+  const [session, setSessionState] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot; seconds?: number; filter?: Filter } | null>(null);
   // A practice session survives closing the app or refreshing, until the end of the study day.
   const [lastPractice, setLastPractice] = useState<SavedPractice | null>(() => readPractice(userId));
   const checkpoint = (saved: SavedPractice | null) => { setLastPractice(saved); savePractice(userId, saved); };
+  const sessionWork = useRef({ opened: 0, before: [] as UnitStatus[], answers: new Map<string, boolean>() });
+  const setSession = (value: typeof session) => {
+    if (value) {
+      const saved = readCache<{ day: string; key?: string; before: UnitStatus[] }>(`session-units:${userId}`);
+      const before = value.resume && saved?.day === day && saved.key === value.resumeKey ? saved.before : unitStatuses(e, syllabus);
+      const answers = new Map<string, boolean>();
+      value.resume?.items.forEach((it, i) => { const result = value.resume?.results[i]; if (typeof result === "boolean") answers.set(itemId(it), result); });
+      sessionWork.current = { opened: Date.now(), before, answers };
+      writeCache(`session-units:${userId}`, { day, key: value.resumeKey, before });
+    }
+    setSessionState(value);
+  };
+  const [recap, setRecap] = useState<{ answered: number; right: number; changes: ReturnType<typeof recapChanges>; nextReview: string | null; session: NonNullable<typeof session>; snap?: QuizSnapshot } | null>(null);
+  const [courseSheet, setCourseSheet] = useState<CourseCode | null>(null);
+  const [rulebook, setRulebook] = useState<{ course: CourseCode; warmup?: boolean; recall?: boolean } | null>(null);
+  const [streakOpen, setStreakOpen] = useState(false);
+  const [examSize, setExamSize] = useState(20);
+  const moment = examMoment(day);
+  const passKey = `last-pass:${userId}`;
+  const [pass, setPass] = useState<{ day: string; items: RoundItem[]; done: string[] } | null>(() => readCache<{ day: string; items: RoundItem[]; done: string[] }>(passKey) ?? null);
+  useEffect(() => {
+    if (!planReady || moment.kind !== "eve" || !moment.course || pass?.day === day) return;
+    if (navigator.onLine && ["lawstin-written", "lawstin-syllabus"].some((key) => queryClient.getQueryState([key])?.fetchStatus === "fetching")) return;
+    const value = { day, items: lastPass(e, moment.course, [...flashcards, ...e.ruleCards(moment.course)], store.record, syllabus), done: [] };
+    setPass(value); writeCache(passKey, value);
+  }, [planReady, day, pass, state, store.record, syllabus, relatedFetching]);
+  const relatedReady = !navigator.onLine || ["lawstin-written", "lawstin-syllabus"].every((key) => { const q = queryClient.getQueryState([key]); return !!q?.dataUpdatedAt || q?.status === "error"; });
+  const viewReady = planReady && relatedReady && (moment.kind !== "eve" || pass?.day === day);
+  const passNumbers = { goal: pass?.day === day ? pass.items.length : 0, answered: pass?.day === day ? pass.done.length : 0, resuming: lastPractice?.key === `missed:${moment.course}` };
+  const creditPass = (id: string) => {
+    if (moment.kind !== "eve" || session?.resumeKey !== `missed:${moment.course}`) return;
+    setPass((prev) => {
+      if (!prev || prev.day !== day || prev.done.includes(id)) return prev;
+      const next = { ...prev, done: [...prev.done, id] }; writeCache(passKey, next); return next;
+    });
+  };
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
   const [examSheet, setExamSheet] = useState(false);
   const [howOpen, setHowOpen] = useState(false);
@@ -188,7 +231,8 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     const pick = (s?: typeof state) => {
       if (greeted.current) return;
       greeted.current = true;
-      const g = makeGreeting(s, NAME, readRecent(), daily.numbers(filter).goal, daily.numbers(filter).review, filter, daily.numbers(filter).answered);
+      const kind = moment.kind === "eve" || moment.kind === "morning" ? moment.kind : streakHistory(s?.days ?? [], day).broken ? "welcome" : null;
+      const g = kind ? momentGreeting(kind, NAME, readRecent()) : moment.kind === "done" ? "Well done, counselor" : makeGreeting(s, NAME, readRecent(), daily.numbers(filter).goal, daily.numbers(filter).review, filter, daily.numbers(filter).answered);
       setGreeting(g); saveRecent(g);
     };
     if (planReady) { pick(state); return; }
@@ -212,26 +256,39 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
   // Daily goal: celebrate once when today's count crosses the goal.
   // The Home Screen badge counts ready question and card reviews across active courses.
-  const dueCount = planReady ? daily.numbers("all").review : null;
+  const dueCount = !planReady ? null : moment.kind === "eve" ? Math.max(0, passNumbers.goal - passNumbers.answered) : moment.kind === "normal" ? daily.numbers("all").review : 0;
   useEffect(() => {
     if (dueCount === null) return;
     const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
     (dueCount ? nav.setAppBadge?.(dueCount) : nav.clearAppBadge?.())?.catch(() => {});
   }, [dueCount]);
 
-  const todayAnswered = daily.numbers("all").answered;
+  const sessionNumbers = session?.resumeKey === `missed:${moment.course}` && moment.kind === "eve" ? passNumbers : daily.numbers(session?.filter ?? "all");
+  const todayAnswered = moment.kind === "eve" && (!session || session.resumeKey === `missed:${moment.course}`) ? passNumbers.answered : sessionNumbers.answered;
+  const celebrationGoal = moment.kind === "eve" && (!session || session.resumeKey === `missed:${moment.course}`) ? passNumbers.goal : sessionNumbers.goal;
+  const [quizNode, setQuizNode] = useState<Element | null>(null);
+  useEffect(() => {
+    if (!session) { setQuizNode(null); return; }
+    const find = () => setQuizNode(document.querySelector('[role="dialog"][aria-label="Practice"]'));
+    find(); const observer = new MutationObserver(find); observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [session?.key]);
   useEffect(() => {
     if (!state) return;
     const prev = prevToday.current;
     prevToday.current = todayAnswered;
-    if (prev !== null && prev < goal && todayAnswered >= goal) {
+    if ((moment.kind !== "eve" || session?.resumeKey === `missed:${moment.course}`) && moment.kind !== "morning" && moment.kind !== "done" && celebrationGoal > 0 && prev !== null && prev < celebrationGoal && todayAnswered >= celebrationGoal && readCache(`goal-celebrated:${userId}`) !== day) {
+      writeCache(`goal-celebrated:${userId}`, day);
       setCelebrate(true);
       haptic();
-      toast("Daily goal done");
-      const t = setTimeout(() => setCelebrate(false), 2400);
-      return () => clearTimeout(t);
+      if (!session) toast("Daily goal done");
     }
-  }, [todayAnswered, state, goal]);
+  }, [todayAnswered, state, celebrationGoal, day]);
+  useEffect(() => {
+    if (!celebrate) return;
+    const timer = setTimeout(() => setCelebrate(false), 2400);
+    return () => clearTimeout(timer);
+  }, [celebrate]);
 
   // Sources take an engine so a running session can ask for more while skipping what it already holds.
   const latest = useRef(state);
@@ -271,7 +328,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       if (restored.some((it) => !it.q && !it.card)) checkpoint(null);
       else {
         haptic();
-        setExamSheet(false); setTopicSheet(null);
+        setExamSheet(false); setTopicSheet(null); setCourseSheet(null);
         const snap = { ...last.snap, items: restored as RoundItem[] };
         setSession({ items: snap.items, mode, key: Date.now(), source, resumeKey, resume: snap, filter: sessionFilter });
         return;
@@ -280,7 +337,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     const items = source(engineFor(), NONE);
     if (!items.length) { toast("All caught up"); return; }
     haptic();
-    setExamSheet(false); setTopicSheet(null);
+    setExamSheet(false); setTopicSheet(null); setCourseSheet(null);
     setSession({ items, mode, key: Date.now(), source, resumeKey, seconds, filter: sessionFilter });
   };
   const resumeStudy = () => {
@@ -290,6 +347,28 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       : mixed(filter, kind === "due" || kind === "new" ? kind : "mixed");
     start(source, "practice", key);
   };
+
+  const startLastPass = () => {
+    const course = moment.course;
+    if (!course || !pass || pass.day !== day) return;
+    const source: Source = (_eng, exclude) => pass.items.filter((it) => !exclude.has(itemId(it)) && !pass.done.includes(itemId(it)));
+    start(source, "practice", `missed:${course}`, undefined, course);
+  };
+  const closeSession = (snap?: QuizSnapshot) => {
+    if (!session) return;
+    if (session.mode === "practice" && session.resumeKey) checkpoint(snap ? { key: session.resumeKey, snap, at: Date.now() } : null);
+    const work = sessionWork.current;
+    if (session.mode === "practice" && work.answers.size >= 3 && Date.now() - work.opened >= 2000) {
+      const dates = [...work.answers.keys()].flatMap((id) => {
+        const p = e.prog(id); const c = store.record.cards[id];
+        return p?.due ? [p.due] : c?.due ? [c.due] : [];
+      }).sort();
+      setRecap({ answered: work.answers.size, right: [...work.answers.values()].filter(Boolean).length, changes: recapChanges(work.before, unitStatuses(e, syllabus)), nextReview: dates[0] ?? null, session, snap });
+    }
+    setSession(null);
+  };
+  const courseGo = (go: () => void) => { setCourseSheet(null); afterOverlayClose(go); };
+  const openTool = (name: string, course: CourseCode) => courseGo(() => { window.location.hash = `/tool/${name}/${course}`; });
 
   // A question notification opens #/q/<id>: answer that question first, then keep going with the usual queue.
   const [deepLink, setDeepLink] = useState(() => window.location.hash.startsWith("#/q/") ? decodeURIComponent(window.location.hash.slice(4)) : null);
@@ -380,19 +459,19 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                 </div>
               )}
 
-              {state && k === "study" && !planReady && <LoadingCard />}
-              {state && planReady && k === "study" && (
-                <StudyView e={e} state={state} numbers={daily.numbers(filter)} cards={cardsFor(filter)} plan={plan.courses} courseNumbers={(c) => daily.numbers(c)} filter={filter} setFilter={setFilter} celebrate={celebrate}
+              {state && k === "study" && !viewReady && <LoadingCard />}
+              {state && viewReady && k === "study" && (
+                <StudyView e={e} syllabus={syllabus} moment={moment} passNumbers={passNumbers} essaysWritten={written.list.filter((w) => w.day >= "2026-08-01" && w.day <= day).length} onStreak={() => setStreakOpen(true)} onLastPass={startLastPass} onRulebook={(course, warmup, recall) => setRulebook({ course, warmup, recall })} onTopic={(course, topic) => setTopicSheet({ course, topic })} onTool={openTool} state={state} numbers={daily.numbers(filter)} cards={cardsFor(filter)} plan={plan.courses} courseNumbers={(c) => daily.numbers(c)} filter={filter} setFilter={setFilter} celebrate={celebrate}
                   resuming={!!lastPractice?.key.endsWith(`:${filter}`)}
                   onHow={() => { haptic(); setHowOpen(true); }}
                   nextReview={nextReviewDay(e, [...flashcards, ...e.ruleCards(filter)], store.record, filter)}
                   onMode={(mode) => start(mixed(filter, mode), "practice", mode === "ahead" ? undefined : `${mode}:${filter}`)}
                   onLesson={openLesson}
                   onStart={resumeStudy}
-                  onCourse={(c) => start(mixed(c), "practice", `round:${c}`, undefined, c)}
-                  onEssay={(c) => { haptic(); setWriting({ course: c }); }}
+                  onCourse={setCourseSheet}
+                  onEssay={(c) => { haptic(); setWriting({ course: c, full: moment.kind === "eve" }); }}
                   onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred), "practice", `starred:${filter}`)}
-                  onExam={() => { haptic(); setExamSheet(true); }}
+                  onExam={(size = 20) => { haptic(); setExamSize(size); setExamSheet(true); }}
                   onWrite={() => { haptic(); setWriting({}); }}
                   onMatch={canMatch ? () => { haptic(); setMatching(true); } : undefined}
                   onUpdate={(list, c) => start((eng) => {
@@ -446,16 +525,34 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         </BottomSheet>
       )}
 
+      {courseSheet && <CourseSheet course={courseSheet} e={e} syllabus={syllabus} numbers={daily.numbers(courseSheet)} onClose={() => setCourseSheet(null)}
+        onTopic={(topic) => { const course = courseSheet; courseGo(() => setTopicSheet({ course, topic })); }}
+        onStudy={(mode) => start(mixed(courseSheet, mode), "practice", `${mode}:${courseSheet}`, undefined, courseSheet)}
+        onEssay={(full) => { const course = courseSheet; courseGo(() => setWriting({ course, full })); }}
+        onExam={() => courseGo(() => { setExamSize(25); setExamSheet(true); })} onTool={(name) => openTool(name, courseSheet)} />}
+      {streakOpen && <BottomSheet title="Your streak" onClose={() => setStreakOpen(false)}>
+        <div className={styles.semesterStats}><div><b>{e.streak()}</b><span>Current streak</span></div><div><b>{streakHistory(state?.days ?? [], day).best}</b><span>Best streak</span></div></div>
+        <div className={styles.streakDots} aria-label="Last 14 days">{streakHistory(state?.days ?? [], day).dots.map((d) => <span key={d.day} title={d.day} aria-label={`${d.day}: ${d.studied ? "Studied" : "Rest"}`} data-studied={d.studied} />)}</div>
+      </BottomSheet>}
+      {rulebook && <CourseRulebook {...rulebook} state={state} e={e} onClose={() => setRulebook(null)} />}
+      <ToolHost />
+      {recap && <SessionRecap {...recap} onClose={() => setRecap(null)} onContinue={() => {
+        const saved = recap; setRecap(null);
+        if (saved.snap) { setSession({ ...saved.session, resume: saved.snap, key: Date.now() }); }
+        else start(mixed(saved.session.filter ?? filter), "practice", `round:${saved.session.filter ?? filter}`);
+      }} />}
+      {celebrate && quizNode && createPortal(<div className={styles.quizCelebration} role="status"><span className={styles.goalBurst}>✓</span><b>Daily goal done</b></div>, quizNode)}
+
       {examSheet && (
         <BottomSheet onClose={() => setExamSheet(false)} title="Practice exam">
-          <ExamPicker e={e} onStart={(f, n, timed) => start((eng) => eng.examRound(f, n), "exam", undefined, timed ? n * EXAM_PACE : undefined)}
+          <ExamPicker e={e} initialSize={examSize} onStart={(f, n, timed) => start((eng) => eng.examRound(f, n), "exam", undefined, timed ? n * EXAM_PACE : undefined)}
             onEssay={(c) => { haptic(); setExamSheet(false); setWriting({ course: c, full: true }); }} />
         </BottomSheet>
       )}
 
       {howOpen && (
         <BottomSheet onClose={() => setHowOpen(false)} title="How Lawstin works" className={styles.howSheet}>
-          <HowItWorks plan={plan.courses} planOn={planOn} goal={goal} />
+          <HowItWorks moment={moment} plan={plan.courses} planOn={planOn} goal={goal} />
         </BottomSheet>
       )}
 
@@ -484,27 +581,27 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           key={session.key}
           items={session.items}
           mode={session.mode}
-          day={session.mode === "practice" ? { answered: daily.numbers(session.filter).answered, goal: daily.numbers(session.filter).goal } : undefined}
+          day={session.mode === "practice" && moment.kind !== "morning" && moment.kind !== "done" ? sessionNumbers : undefined}
           getProgress={(id) => e.prog(id)}
-          onAnswer={onAnswer}
-          onCard={onCard}
+          onAnswer={async (q, choice) => { const ok = await onAnswer(q, choice); sessionWork.current.answers.set(q.id, ok); creditPass(q.id); return ok; }}
+          onCard={(card, ok) => { onCard(card, ok); sessionWork.current.answers.set(card.id, ok); creditPass(card.id); }}
           onExplain={onExplain}
           recallFirst={prefs.recall}
           seconds={session.seconds}
           after={session.mode === "practice" && planOn ? plan.courses.filter((c) => c.essay).map((c) => ({ label: `Write an ${COURSES[c.course].short} essay`, onGo: () => { setSession(null); setWriting({ course: c.course }); } })) : undefined}
-          onHarder={session.mode === "practice" ? onHarder : undefined}
+          onHarder={session.mode === "practice" && !session.resumeKey?.startsWith("missed:") ? onHarder : undefined}
           onStar={(q, starred) => mark.mutate({ action: "star", questionId: q.id, starred })}
           onGuess={(q) => mark.mutate({ action: "guess", questionId: q.id, localDate: dateKey.today() })}
           onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
-          onMore={(exclude) => session.source(engineFor(exclude), exclude)}
+          onMore={(exclude) => session.resumeKey?.startsWith("missed:") ? [] : session.source(engineFor(exclude), exclude)}
           onAnother={() => { const items = session.source(engineFor(), NONE); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now(), resume: undefined }); }}
           onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: () => [], filter: session.filter })}
           resume={session.resume}
-          onCheckpoint={session.mode === "practice" && session.resumeKey ? (snap) => checkpoint(snap ? { key: session.resumeKey!, snap, at: Date.now() } : null) : undefined}
-          onClose={(snap) => {
-            if (session.mode === "practice" && session.resumeKey) checkpoint(snap ? { key: session.resumeKey, snap, at: Date.now() } : null);
-            setSession(null);
-          }}
+          onCheckpoint={session.mode === "practice" ? (snap) => {
+            if (session.resumeKey) checkpoint(snap ? { key: session.resumeKey, snap, at: Date.now() } : null);
+            if (!snap) closeSession();
+          } : undefined}
+          onClose={closeSession}
         /></Suspense>
       )}
     </div>

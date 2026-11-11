@@ -83,7 +83,7 @@
 .todayText { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .todayHead { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; line-height: 1.2; }
 .ringNum { position: absolute; font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.streakChip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; height: 34px; padding: 0 12px 0 10px; border-radius: var(--radius-full); background: var(--fill); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.streakChip { flex-shrink: 0; display: inline-flex; align-items: center; gap: 5px; min-height: 44px; padding: 0 12px 0 10px; border-radius: var(--radius-full); background: var(--fill); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .streakChip b { font-weight: 600; }
 .heroRows { margin: 0 -20px; border-top: 0.5px solid var(--border); }
 .heroRows .row::before { left: 52px !important; }
@@ -404,3 +404,28 @@ button.calDay:active { transform: scale(0.92); }
 @media (min-width: 1000px) {
   .how { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 24px; }
 }
+
+.topicChips { display: flex; flex-wrap: wrap; gap: 8px; }
+.topicChips > * { display: inline-flex; align-items: center; min-height: 44px; padding: 10px 14px; border-radius: var(--radius); background: var(--fill); font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+.examHeroTitle { font-size: 28px; font-weight: 700; letter-spacing: -.03em; text-align: left; line-height: 1.15; }
+button.examHeroTitle { min-height: 44px; }
+.semesterStats { display: flex; gap: 12px; }
+.semesterStats > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; padding: 16px 10px; background: var(--fill); border-radius: var(--radius); }
+.semesterStats b { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.semesterStats span { font-size: 15px; font-weight: 600; }
+.lastPassCount { min-height: 44px; font-weight: 600; color: var(--muted-foreground); }
+.streakDots { display: grid; grid-template-columns: repeat(14,minmax(0,1fr)); gap: 6px; padding: 16px 0; }
+.streakDots span { aspect-ratio: 1; border-radius: 50%; background: var(--fill); }
+.streakDots [data-studied="true"] { background: var(--uh-red); }
+.recapBody { width: 100%; max-width: var(--study-width); margin: 0 auto; padding: 32px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 32px; }
+.recapStats, .recapDetails { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.recapStats h2 { font-size: 32px; font-weight: 700; }
+.recapDetails > button { width: 100%; }
+.quizCelebration { position: absolute; z-index: 5; top: 100px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; padding: 18px 24px; border-radius: var(--radius-lg); background: var(--card); color: var(--success); box-shadow: var(--shadow-md); pointer-events: none; white-space: nowrap; border: 1px solid var(--success); }
+.toolHost { position: fixed; inset: 0; z-index: var(--z-overlay); }
+@media (min-width: 1000px) {
+  .recapBody { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 64px; padding: 64px 48px; }
+  .recapStats .semesterStats b { font-size: 64px; }
+}
+
+.finalTile > b[data-today="true"] { font-size: 26px; letter-spacing: -.03em; }

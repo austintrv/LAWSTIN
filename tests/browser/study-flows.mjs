@@ -66,7 +66,7 @@ async function answer(page) {
   await dlg.getByRole('button',{name:'Check answer',exact:true}).click();
   await dlg.getByRole('heading',{name:'Correct',exact:true}).waitFor();
 }
-async function close(page) {await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});}
+async function close(page) {await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await page.waitForTimeout(450);if(await page.getByRole('dialog',{name:'Session recap',exact:true}).isVisible()) await page.getByRole('dialog').getByRole('button',{name:'Done',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});}
 try {
   const { Num } = await server.ssrLoadModule('/src/pages/StudyParts.tsx');
   assert.equal(renderToStaticMarkup(createElement(Num, { v: 37, suffix: '%' })), '37%');
@@ -140,9 +140,8 @@ try {
   const modes=await setup({questions:[question('new1'),question('new2'),question('due'),question('later')],prog:[progress('due',{due:today}),progress('later')]});
   await modes.page.getByRole('button',{name:'Study 2 new items',exact:true}).click();
   for(let n=0;n<2;n++){await answer(modes.page);await modes.page.getByRole('button',{name:'Next question',exact:true}).click();}
-  await modes.page.getByRole('heading',{name:'Session complete'}).waitFor();
+  await modes.page.getByRole('dialog').waitFor({state:'hidden'});
   assert.deepEqual(modes.answers.map(a=>a.questionId).sort(),['new1','new2']);
-  await modes.page.getByRole('button',{name:'Done',exact:true}).click();
   await modes.page.getByRole('button',{name:'Review 1 due items',exact:true}).click();
   await modes.page.keyboard.press('a');
   await modes.page.keyboard.press('Enter');
@@ -153,7 +152,7 @@ try {
   await modes.page.getByRole('heading',{name:'Correct',exact:true}).waitFor();
   assert.equal(modes.answers.length,3);
   await modes.page.getByRole('button',{name:'Next question',exact:true}).click();
-  await modes.page.getByRole('heading',{name:'Session complete'}).waitFor();
+  await modes.page.getByRole('dialog').waitFor({state:'hidden'});
   await modes.ctx.close();
   console.log('PASS: New and Due sessions, keyboard answers, targeted-session reload recovery');
 
@@ -181,8 +180,7 @@ try {
   const queue=await offline.page.evaluate(()=>JSON.parse(localStorage.getItem('lawstin-answer-queue')));
   assert.equal(queue.length,1);
   await offline.page.getByRole('button',{name:'Next question',exact:true}).click();
-  await offline.page.getByRole('heading',{name:'Session complete'}).waitFor();
-  await offline.page.getByRole('button',{name:'Done',exact:true}).click();
+  await offline.page.getByRole('dialog').waitFor({state:'hidden'});
   await offline.page.getByRole('button',{name:'All caught up',exact:true}).waitFor();
   await offline.page.reload();
   await offline.page.getByRole('button',{name:'All caught up',exact:true}).waitFor();
@@ -200,6 +198,7 @@ try {
   await mixed.page.getByRole('button',{name:'Start studying',exact:true}).click();
   await answer(mixed.page);
   await mixed.page.getByRole('button',{name:'Next question',exact:true}).click();
+  await mixed.page.waitForTimeout(2100);
   for(let n=0;n<cards.length;n++) {
     await mixed.page.getByRole('button',{name:'Reveal answer',exact:true}).click();
     await mixed.page.getByRole('button',{name:'Got it',exact:true}).click();
@@ -222,8 +221,7 @@ try {
   await onlyCards.page.getByRole('button', { name: 'Start studying', exact: true }).click();
   await onlyCards.page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
   await onlyCards.page.getByRole('button', { name: 'Got it', exact: true }).click();
-  await onlyCards.page.getByRole('heading', { name: 'Session complete', exact: true }).waitFor();
-  await onlyCards.page.getByRole('button', { name: 'Done', exact: true }).click();
+  await onlyCards.page.getByRole('dialog').waitFor({state:'hidden'});
   await onlyCards.page.getByText('Nothing ready today', { exact: true }).waitFor();
   await onlyCards.page.screenshot({ path: `${artifacts}/cards-only-desktop.png` });
   await onlyCards.ctx.close();
@@ -298,3 +296,6 @@ try {
 
 const { safetyFlows } = await import('./safety-flows.mjs');
 await safetyFlows();
+
+const { nextExamFlows } = await import('./next-exam-flows.mjs');
+await nextExamFlows();
