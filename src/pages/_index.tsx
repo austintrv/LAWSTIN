@@ -1,7 +1,7 @@
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { Aura, auraHost } from "../components/Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig, GraduationCap, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
+import { Layers3, Target, ChevronRight, BarChart3, BookCheck, CalendarDays, Star, X, Timer, Flame, PenLine, Check, Sparkles, LibraryBig, GraduationCap, RotateCcw, GitBranch, BookOpen, Columns3, ListChecks } from "lucide-react";
 const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
 import { Button } from "../components/Button";
@@ -90,6 +90,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const checkpoint = (saved: SavedPractice | null) => { setLastPractice(saved); savePractice(userId, saved); };
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
   const [examSheet, setExamSheet] = useState(false);
+  const [howOpen, setHowOpen] = useState(false);
   // Settings is a full page at #/settings so the system back gesture and button close it.
   const [settingsOpen, setSettingsOpen] = useState(() => window.location.hash === "#/settings");
   useEffect(() => {
@@ -359,7 +360,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               {state && k === "study" && (
                 <StudyView e={e} state={state} goal={goal} cards={cardsFor(filter)} plan={planOn ? plan.courses : []} filter={filter} setFilter={setFilter} celebrate={celebrate}
                   resuming={!!lastPractice?.key.endsWith(`:${filter}`)}
-                  onFresh={() => { checkpoint(null); const source = mixed(filter); const items = source(engineFor(), NONE); if (items.length) setSession({ items, mode: "practice", key: Date.now(), source, resumeKey: `round:${filter}` }); }}
+                  onHow={() => { haptic(); setHowOpen(true); }}
                   nextReview={nextReviewDay(e, [...flashcards, ...e.ruleCards(filter)], store.record, filter)}
                   onMode={(mode) => start(mixed(filter, mode), "practice", mode === "ahead" ? undefined : `${mode}:${filter}`)}
                   onLesson={openLesson}
@@ -375,7 +376,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                     return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
                   })} />
               )}
-              {state && k === "progress" && <ProgressView e={e} syllabus={syllabus} materials={store.materials} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
+              {state && k === "progress" && <ProgressView onHow={() => { haptic(); setHowOpen(true); }} e={e} syllabus={syllabus} materials={store.materials} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
               {state && k === "activity" && (
                 <ActivityView e={e} state={state} onLesson={openLesson}
                   onStudy={(list, c) => start((eng) => {
@@ -427,6 +428,12 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         </BottomSheet>
       )}
 
+      {howOpen && (
+        <BottomSheet onClose={() => setHowOpen(false)} title="How Lawstin works" className={styles.howSheet}>
+          <HowItWorks plan={plan.courses} planOn={planOn} goal={goal} />
+        </BottomSheet>
+      )}
+
       {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} /></Suspense>}
 
       {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(null)} course={writing.course} full={writing.full} hypo={writing.hypo}
@@ -448,6 +455,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           key={session.key}
           items={session.items}
           mode={session.mode}
+          day={session.mode === "practice" ? { answered: todayAnswered, goal } : undefined}
           getProgress={(id) => e.prog(id)}
           onAnswer={onAnswer}
           onCard={onCard}
@@ -541,7 +549,7 @@ function FinalsCard({ e, plan, onCourse }: { e: Engine; plan: PlanCourse[]; onCo
               <b>{days === 0 ? "Today" : days}</b>
               <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
               <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
-              <span className={styles.finalStats}>{today ? `${today} today${s.seen ? ` · ${s.acc}% correct` : ""}` : `${pct(s.seen, s.n)}% seen${s.seen ? ` · ${s.acc}% correct` : ""}`}</span>
+              <span className={styles.finalStats}>{today ? `${today} today` : `${pct(s.seen, s.n)}% seen`}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
             </button>
           );
         })}
@@ -637,10 +645,10 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onFresh, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onUpdate }: {
+function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onUpdate }: {
   resuming: boolean;
   nextReview: string | null;
-  onFresh: () => void;
+  onHow: () => void;
   onMode: (mode: StudyMode) => void;
   onLesson: (topics: MissedTopic[]) => void;
   goal: number;
@@ -657,7 +665,6 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
   }
   const qs = e.queues(filter);
   const today = e.todayCount?.answered ?? 0;
-  const week = e.lastNDays(7).reduce((a, d) => ({ a: a.a + d.answered, c: a.c + d.correct }), { a: 0, c: 0 });
   const ready = qs.due.length + qs.fresh.length + cards.list.length;
   const missed = e.missedTopics().filter((t) => filter === "all" || t.course === filter);
   const essays = plan.filter((c) => c.essay && (filter === "all" || filter === c.course));
@@ -669,23 +676,62 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
   const streak = e.streak();
   const studiedToday = today > 0;
   const showFinals = upcomingFinals().length > 0;
+  // Minutes left today: what is still needed (or ready, if less) at about 45 seconds an item, to the next 5.
+  const left = Math.min(Math.max(0, goal - today), ready);
+  const mins = Math.max(5, Math.ceil((left * 45) / 60 / 5) * 5);
   return (
-    <>
+    <div className={styles.studyCols}>
+      <div className={styles.studyCol}>
+      <div className={styles.o1}>
       <div className={`${styles.card} ${styles.hero}`}>
         <div className={styles.seg} role="group" aria-label="Course filter">
           {([["all", "All"], ["il", "Intl Law"], ["asy", "Asylum"], ["pr", "Pro Res"]] as const).map(([k, l]) => (
             <button key={k} aria-pressed={filter === k} className={filter === k ? styles.segOn : ""} onClick={() => { if (filter !== k) haptic(); setFilter(k); }}>{l}</button>
           ))}
         </div>
-        <div className={`${styles.split} ${styles.queueActions}`}>
-          <button disabled={!qs.due.length && !cards.due.length} onClick={() => onMode("due")} aria-label={`Review ${qs.due.length + cards.due.length} due items`}><b><Num v={qs.due.length + cards.due.length} /></b><span>Due <ChevronRight size={12} /></span></button>
-          <button disabled={!qs.fresh.length && !cards.fresh.length} onClick={() => onMode("new")} aria-label={`Study ${qs.fresh.length + cards.fresh.length} new items`}><b><Num v={qs.fresh.length + cards.fresh.length} /></b><span>New <ChevronRight size={12} /></span></button>
-          <button disabled={!missed.length} onClick={() => onLesson(missed.slice(0, 4))} aria-label={`Review ${missed.length} missed topics`}><b><Num v={missed.length} /></b><span>To revisit <ChevronRight size={12} /></span></button>
+        <div className={styles.todayRow}>
+          <button className={styles.todayBtn} onClick={onHow} aria-label="How today’s plan is built">
+            <span className={`${styles.goalWrap} ${celebrate ? styles.goalBurst : ""}`}>
+              <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
+                <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
+                <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct), opacity: today ? 1 : 0 }} />
+              </svg>
+              {goalDone ? <Check size={26} strokeWidth={3.2} className={styles.goalCheck} /> : <b className={styles.ringNum}><Num v={today} /></b>}
+            </span>
+            <span className={styles.todayText}>
+              <span className={styles.todayHead}>{goalDone ? "Done for today" : left ? `${goal - today} to go today` : "Nothing ready today"}</span>
+              {!goalDone && left > 0 && <span className={styles.rowSub}>About {mins} min</span>}
+            </span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+          <div className={`${styles.streakChip} ${streak && studiedToday ? styles.streakLit : ""}`} role="img" aria-label={`${streak} day streak`}>
+            <Flame size={18} className={styles.flame} fill={streak && studiedToday ? "currentColor" : "none"} strokeWidth={2} />
+            <b>{streak}</b>
+          </div>
         </div>
         <Button className={`${styles.big} ${styles.cta} ${!ready && !resuming ? styles.caughtUp : ""}`} disabled={!ready && !resuming} onClick={onStart}>
           {!ready && !resuming && <Check size={18} />}{roundLabel}
         </Button>
-        {resuming && ready > 0 && <button className={styles.freshStart} onClick={onFresh}>Start fresh</button>}
+        <div className={`${styles.list} ${styles.flat} ${styles.heroRows}`}>
+          <button className={styles.row} disabled={!qs.due.length && !cards.due.length} onClick={() => onMode("due")} aria-label={`Review ${qs.due.length + cards.due.length} due items`}>
+            <span className={styles.dot} style={{ background: "var(--uh-red)" }}><RotateCcw size={12} color="#fff" strokeWidth={2.4} /></span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Ready to review</span></span>
+            <span className={styles.rowEnd}><Num v={qs.due.length + cards.due.length} /></span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+          <button className={styles.row} disabled={!qs.fresh.length && !cards.fresh.length} onClick={() => onMode("new")} aria-label={`Study ${qs.fresh.length + cards.fresh.length} new items`}>
+            <span className={styles.dot} style={{ background: "var(--info)" }}><Sparkles size={12} color="#fff" strokeWidth={2.4} /></span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Not seen yet</span></span>
+            <span className={styles.rowEnd}><Num v={qs.fresh.length + cards.fresh.length} /></span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+          <button className={styles.row} disabled={!missed.length} onClick={() => onLesson(missed.slice(0, 4))} aria-label={`Review ${missed.length} missed topics`}>
+            <span className={styles.dot} style={{ background: "var(--warning)" }}><GraduationCap size={12} color="#fff" strokeWidth={2.4} /></span>
+            <span className={styles.rowMain}><span className={styles.rowTitle}>Missed topics</span></span>
+            <span className={styles.rowEnd}><Num v={missed.length} /></span>
+            <ChevronRight size={18} className={styles.chev} />
+          </button>
+        </div>
         {!ready && nextReview && <div className={styles.nextReview}>
           <span><CalendarDays size={16} />Next review · {new Date(`${nextReview}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
           <button onClick={() => onMode("ahead")}>Review ahead <ChevronRight size={14} /></button>
@@ -699,46 +745,12 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
         )}
       </div>
 
-      <div className={styles.tiles}>
-        <div className={`${styles.card} ${styles.tile} ${styles.streakTile} ${streak && studiedToday ? styles.streakLit : ""}`}>
-          <div className={styles.streakTop}>
-            <b><Num v={streak} /></b>
-            <Flame size={20} className={styles.flame} fill={streak && studiedToday ? "currentColor" : "none"} strokeWidth={2} />
-          </div>
-          <span>Day streak</span>
-        </div>
-        <div className={`${styles.card} ${styles.tile} ${goalDone ? styles.goalDone : ""} ${celebrate ? styles.goalBurst : ""}`}>
-          <div className={styles.streakTop}>
-            <b><Num v={today} /></b>
-            <span className={styles.goalWrap}>
-              <svg viewBox="0 0 40 40" className={styles.goalRing} aria-hidden="true">
-                <circle cx="20" cy="20" r="16" className={styles.goalTrack} />
-                <circle cx="20" cy="20" r="16" className={styles.goalVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - goalPct), opacity: today ? 1 : 0 }} />
-              </svg>
-              {goalDone && <Check size={12} strokeWidth={3.4} className={styles.goalCheck} />}
-            </span>
-          </div>
-          <span>of {goal} today</span>
-        </div>
-        <div className={`${styles.card} ${styles.tile}`}>
-          <div className={styles.streakTop}>
-            <b>{week.a ? <Num v={pct(week.c, week.a)} suffix="%" /> : "—"}</b>
-            <Target size={20} className={styles.flame} strokeWidth={2} />
-          </div>
-          <span>Last 7 days</span>
-        </div>
       </div>
-
-      <FinalsCard e={e} plan={plan} onCourse={onCourse} />
-
-      {/* Two independent columns from tablet width up; on a phone the wrappers vanish and `order` keeps the list order. */}
-      <div className={styles.studyCols}>
-        <div className={styles.studyCol}>
-          <div className={styles.o1}><DueSoonCard /></div>
-          {run && <div className={styles.o4}><UpdateCard e={e} run={run} onStudy={onUpdate} /></div>}
+          <div className={styles.o3}><DueSoonCard /></div>
         </div>
         <div className={styles.studyCol}>
-          <div className={styles.o3}>
+          <div className={styles.o2}><FinalsCard e={e} plan={plan} onCourse={onCourse} /></div>
+          <div className={styles.o5}>
               <section className={styles.sec}>
                 <div className={`${styles.card} ${styles.list}`}>
                   <button className={styles.row} onClick={onExam}>
@@ -766,7 +778,7 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
                 </div>
               </section>
           </div>
-          {!showFinals && <div className={styles.o2}>
+          {!showFinals && <div className={styles.o4}>
               <section className={styles.sec}>
                 <div className={styles.secH}><h2>Courses</h2></div>
                 <div className={`${styles.card} ${styles.list}`}>
@@ -787,9 +799,9 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
                 </div>
               </section>
           </div>}
+          {run && <div className={styles.o6}><UpdateCard e={e} run={run} onStudy={onUpdate} /></div>}
         </div>
       </div>
-    </>
   );
 }
 
@@ -842,7 +854,7 @@ const readOpen = (): Partial<Record<CourseCode, boolean>> => {
   try { const o = JSON.parse(localStorage.getItem(OPEN_KEY) ?? "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch { return {}; }
 };
 
-function ProgressView({ e, syllabus, materials, onTopic }: { e: Engine; syllabus: Syllabus; materials: StudyMaterial[]; onTopic: (c: CourseCode, t: string) => void }) {
+function ProgressView({ e, syllabus, materials, onTopic, onHow }: { onHow: () => void; e: Engine; syllabus: Syllabus; materials: StudyMaterial[]; onTopic: (c: CourseCode, t: string) => void }) {
   const wide = useWide();
   const m = e.missProfile();
   const misses = m.sneaky + m.average + m.bad;
@@ -875,7 +887,7 @@ function ProgressView({ e, syllabus, materials, onTopic }: { e: Engine; syllabus
         <div className={`${styles.card} ${styles.tile}`}><b><Num v={m.seen} /></b><span>Questions seen</span></div>
       </div>
       <section className={`${styles.sec} ${styles.fullRow}`}>
-        <div className={styles.secH}><h2>Which wrong answers catch you</h2></div>
+        <div className={styles.secH}><h2>Which wrong answers catch you</h2><button className={styles.feedToggle} onClick={onHow}>How this works</button></div>
         <div className={`${styles.card} ${styles.list} ${styles.flat} ${styles.missGrid}`}>
           {roleRow("Sneaky distractor", m.sneaky, "var(--course-pr)")}
           {roleRow("Average distractor", m.average, "var(--course-il)")}
@@ -1194,7 +1206,81 @@ function ExamPicker({ e, onStart, onEssay }: { e: Engine; onStart: (f: Filter, n
   );
 }
 
-function BottomSheet({ title, eyebrow, onClose, children }: { title: string; eyebrow?: string; onClose: () => void; children: React.ReactNode }) {
+/** The reasoning behind the numbers, from the same rules the code uses (finalsPlan, reviewSchedule, examDue, coverage). */
+function HowItWorks({ plan, planOn, goal }: { plan: PlanCourse[]; planOn: boolean; goal: number }) {
+  const chips: [CoverageStatus, string][] = [
+    ["unseen", "You haven’t answered any of its questions yet."],
+    ["shaky", "Under 70% right after at least 2 answers, or a low-scoring essay on it."],
+    ["learning", "Some questions unseen, or under 85% right."],
+    ["solid", "Every question seen and 85% right or better."],
+    ["none", "No questions written for it yet."],
+  ];
+  const steps = ["1 day", "3 days", "7 days", "16 days", "35 days"];
+  return (
+    <div className={styles.how}>
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>Today</h2></div>
+        <div className={`${styles.card} ${styles.list}`}>
+          {planOn ? plan.map((c) => (
+            <div key={c.course} className={styles.row}>
+              <span className={styles.dot} style={{ background: COURSES[c.course].color }}>{COURSES[c.course].short[0]}</span>
+              <span className={styles.rowMain}>
+                <span className={styles.rowTitle}>{COURSES[c.course].short}</span>
+                <span className={styles.rowSub}>{c.days === 0 ? "Final today" : `${c.days} ${c.days === 1 ? "day" : "days"} to the final`}</span>
+              </span>
+              <span className={styles.rowEnd}><b>{c.target}</b></span>
+            </div>
+          )) : (
+            <div className={styles.row}>
+              <span className={styles.rowMain}><span className={styles.rowTitle}>Daily goal</span></span>
+              <span className={styles.rowEnd}><b>{goal}</b></span>
+            </div>
+          )}
+          {planOn && (
+            <div className={styles.row}>
+              <span className={styles.rowMain}><span className={styles.rowTitle}>Today’s goal</span></span>
+              <span className={styles.rowEnd}><b>{goal}</b></span>
+            </div>
+          )}
+        </div>
+        {planOn && <p className={styles.howNote}>Each number is the course’s unseen material spread over the days left, finishing two days before its final, plus reviews that are ready.</p>}
+      </section>
+
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>When a question comes back</h2></div>
+        <div className={`${styles.card} ${styles.howCard}`}>
+          <ol className={styles.ladder}>
+            {steps.map((l, i) => (
+              <li key={l} className={styles.rung}>
+                <span className={styles.rungDot} style={{ background: i === 0 ? "var(--error)" : `color-mix(in srgb, var(--success) ${40 + i * 15}%, transparent)` }}>{i + 1}</span>
+                <span className={styles.rungLabel}>{l}</span>
+              </li>
+            ))}
+          </ol>
+          <p className={styles.howNote}>A miss comes back the next day. Each right answer moves it one step further out. Anything that would land on or after a final comes back in the last 5 days before it.</p>
+        </div>
+      </section>
+
+      <section className={styles.sec}>
+        <div className={styles.secH}><h2>What the labels mean</h2></div>
+        <div className={`${styles.card} ${styles.list}`}>
+          {chips.map(([k, line]) => (
+            <div key={k} className={styles.row}>
+              <span className={`${styles.status} ${styles.howChip} ${k === "none" ? styles.statusNone : ""}`} style={{ color: STATUS_COLOR[k], background: `color-mix(in srgb, ${STATUS_COLOR[k]} 13%, transparent)` }}>{STATUS_LABEL[k]}</span>
+              <span className={styles.rowMain}><span className={`${styles.rowSub} ${styles.wrapSub}`}>{line}</span></span>
+            </div>
+          ))}
+          <div className={styles.row}>
+            <span className={`${styles.status} ${styles.howChip}`} style={{ color: "var(--warning)", background: "color-mix(in srgb, var(--warning) 13%, transparent)" }}>Missed</span>
+            <span className={styles.rowMain}><span className={`${styles.rowSub} ${styles.wrapSub}`}>A topic is missed when your latest answer to one of its questions was wrong, or a guess. A later right answer or finishing its lesson clears it.</span></span>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function BottomSheet({ title, eyebrow, onClose, children, className }: { className?: string; title: string; eyebrow?: string; onClose: () => void; children: React.ReactNode }) {
   const [closing, setClosing] = useState(false);
   const close = () => { setClosing(true); setTimeout(onClose, 300); };
   useBackClose(close);
@@ -1207,7 +1293,7 @@ function BottomSheet({ title, eyebrow, onClose, children }: { title: string; eye
   });
   return (
     <div ref={modalRef} tabIndex={-1} className={`${styles.scrim} ${closing ? styles.scrimOut : ""}`} onClick={close}>
-      <div ref={swipe.ref} className={`${styles.bsheet} ${closing ? styles.bsheetOut : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(ev) => ev.stopPropagation()}>
+      <div ref={swipe.ref} className={`${styles.bsheet} ${className ?? ""} ${closing ? styles.bsheetOut : ""}`} role="dialog" aria-modal="true" aria-label={title} onClick={(ev) => ev.stopPropagation()}>
         <div {...swipe.handle}>
           <div className={styles.grab} />
           <div className={styles.bsheetHead}>
