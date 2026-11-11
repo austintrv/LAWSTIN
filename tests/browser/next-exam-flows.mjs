@@ -129,7 +129,7 @@ export async function nextExamFlows() {
     await pass.page.waitForFunction(()=>!localStorage.getItem('lawstin-answer-queue'));
     await pass.page.waitForTimeout(2100);
     for(let i=0;i<3;i++) await answer(pass);
-    await pass.page.getByRole('dialog',{name:'Session recap',exact:true}).waitFor();
+    await dialog(pass.page).getByRole('heading',{name:'Session complete',exact:true}).waitFor();
     await dialog(pass.page).getByRole('button',{name:'Done',exact:true}).click();
     assert.equal(pass.answers.length,6); assert.equal(new Set(pass.answers.map(a=>a.questionId)).size,6);
     assert(pass.answers.every(a=>a.questionId.startsWith('il-')));
