@@ -18,7 +18,7 @@ async function focusInside(p, label, turns = 30) {
 }
 async function startWriting(p) {
   await tap(p, 'Intl Law essay');
-  await tap(p, 'Get a fact pattern');
+  await tap(p, 'Write an essay');
   await written(p).getByPlaceholder('Your answer').waitFor();
 }
 const clearExpected = s => { assert(s.errors.every(e => /^console: Failed to load resource:/.test(e)), JSON.stringify(s.errors)); s.errors.length = 0; };

@@ -3,7 +3,7 @@
 .rulebook button:focus-visible{outline:3px solid var(--course-il);outline-offset:2px}
 .page{display:flex;flex-direction:column;gap:20px;padding:20px 16px 0;max-width:800px;margin:0 auto;width:100%}
 .seg{display:grid;grid-template-columns:1fr 1fr;gap:2px;padding:2px;border-radius:12px;background:var(--fill)}
-.seg button{min-height:40px;border-radius:10px;font-size:16px;font-weight:600;color:var(--muted-foreground);transition:background .2s,color .2s}
+.seg button{min-height:44px;border-radius:10px;font-size:16px;font-weight:600;color:var(--muted-foreground);transition:background .2s,color .2s}
 .seg button[aria-pressed=true]{background:var(--seg-on);color:var(--foreground);box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .chipBar{position:sticky;top:0;z-index:1;margin:-8px -16px;padding:8px 16px;background:var(--background)}
 .chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
@@ -37,3 +37,18 @@
  .section{margin-bottom:28px}
 }
 @media(prefers-reduced-motion:reduce){.rulebook *{transition:none!important;scroll-behavior:auto!important}}
+.search{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:0 12px;color:var(--muted-foreground);min-height:48px}
+.search input{font:inherit;min-width:0;flex:1;background:none;border:0;color:var(--foreground);height:46px;outline:none}
+.search:focus-within{outline:2px solid var(--course-il);outline-offset:2px}
+.search input::-webkit-search-cancel-button{display:none}
+.search button{display:grid;place-items:center;min-width:44px;min-height:44px}
+.sheet{position:fixed;inset:0;z-index:650;background:var(--background);padding-top:env(safe-area-inset-top,0px);display:flex}
+.panel{display:flex;flex-direction:column;min-width:0;min-height:0;background:var(--background);color:var(--foreground);flex:1}
+.panel>header{padding:12px 16px}
+.embedded .page{padding:16px;width:100%;max-width:none;gap:16px}
+.embedded .sections{display:flex;flex-direction:column;columns:auto}
+.embedded .section{margin-bottom:0}
+.embedded .chipBar{position:static;margin:0;padding:0}
+.embedded .chips{flex-wrap:nowrap;overflow-x:auto}
+.embedded .seg{width:100%}
+@media(min-width:1000px){.panel{border-left:1px solid var(--border);height:100%}}

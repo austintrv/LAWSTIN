@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useModalFocus } from "../helpers/useModalFocus";
-import { X, Check, ChevronRight, Target } from "lucide-react";
+import { X, Check, ChevronRight, ChevronLeft, Target, BookOpen } from "lucide-react";
 import { Button } from "./Button";
+import IssueSpot from "./tools/IssueSpot";
+import { RulesPanel } from "./Rulebook";
+import { readCache, writeCache } from "../helpers/offlineCache";
 import { Textarea } from "./Textarea";
 import { Skeleton } from "./Skeleton";
 import { useLawstinAi } from "../helpers/useLawstinAi";
 import { type GradeDTO, type SpotterDTO } from "../endpoints/ai_POST.schema";
 import { COURSES, EXAMS, type CourseCode } from "../helpers/studyEngine";
 import type { Hypothetical } from "../helpers/studyMaterials";
-import { readDrafts, saveDraft, removeDraft, draftKey, type WrittenDraft, type useWritten, type WrittenEntry } from "../helpers/useWritten";
+import { readDrafts, saveDraft, removeDraft, draftKey, defaultEssayLength, essayGroups, essayTrend, type SpotEntry, type WrittenDraft, type useWritten, type WrittenEntry } from "../helpers/useWritten";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { useBackClose } from "../helpers/useBackClose";
@@ -47,9 +50,14 @@ type Props = {
 export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos, weak, written, onGraded, onTopic, className }: Props) {
   const { spotter, grade } = useLawstinAi();
   const [drafts, setDrafts] = useState(readDrafts);
-  const saved = useState(() => hypo ? drafts[draftKey(fromHypo(hypo))] : !openCourse ? Object.values(drafts).slice(-1)[0] : undefined)[0];
+  const saved = useState(() => hypo ? drafts[draftKey(fromHypo(hypo))] : undefined)[0];
   const [course, setCourse] = useState<CourseCode>(hypo?.course ?? (openCourse === "pr" ? "il" : openCourse) ?? saved?.spot.course ?? "il");
-  const [length, setLength] = useState<Length>(full ? "full" : "short");
+  const lastLength = (c: CourseCode) => readCache<Partial<Record<CourseCode, Length>>>("written-length")?.[c] ?? "short";
+  const [length, setLength] = useState<Length>(() => full ? "full" : defaultEssayLength(course, lastLength(course)));
+  const [attemptOf, setAttemptOf] = useState(saved?.attemptOf);
+  const [resultEntry, setResultEntry] = useState<WrittenEntry | null>(null);
+  const [spotting, setSpotting] = useState<{ course: CourseCode; hypo?: Hypothetical; entry?: SpotEntry } | null>(null);
+  const [rules, setRules] = useState(false);
   const [spot, setSpot] = useState<SpotterDTO | null>(saved?.spot ?? (hypo ? fromHypo(hypo) : null));
   const [answer, setAnswer] = useState(saved?.answer ?? "");
   const [result, setResult] = useState<GradeDTO | null>(null);
@@ -67,7 +75,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
     try { saveDraft(draft); setDrafts(readDrafts()); }
     catch { toast.error("Couldn’t save your draft on this device"); }
   };
-  useEffect(() => { if (spot && !result) keep({ spot, answer, seconds, ready }); }, [spot, answer, result, seconds, ready]);
+  useEffect(() => { if (spot && !result) keep({ spot, answer, seconds, ready, attemptOf }); }, [spot, answer, result, seconds, ready, attemptOf]);
   useEffect(() => {
     const change = () => setOnline(navigator.onLine);
     window.addEventListener("online", change); window.addEventListener("offline", change);
@@ -89,15 +97,15 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
   }, [shown]);
 
   const close = () => { setClosing(true); setTimeout(onClose, 360); };
-  useBackClose(close);
-  const modalRef = useModalFocus<HTMLDivElement>();
+  useBackClose(close, !spotting);
+  const modalRef = useModalFocus<HTMLDivElement>(!spotting);
 
   const resumeDraft = (draft: WrittenDraft) => {
-    setSpot(draft.spot); setAnswer(draft.answer); setSeconds(draft.seconds ?? 0); setReady(!!draft.ready); setResult(null); setErr(draft.ready && !navigator.onLine ? savedMessage : null);
+    setAttemptOf(draft.attemptOf); setResultEntry(null); setCourse(draft.spot.course); setSpot(draft.spot); setAnswer(draft.answer); setSeconds(draft.seconds ?? 0); setReady(!!draft.ready); setResult(null); setErr(draft.ready && !navigator.onLine ? savedMessage : null);
   };
   const discard = () => {
     if (!spot) return;
-    const previous = { spot, answer, seconds, ready };
+    const previous = { spot, answer, seconds, ready, attemptOf };
     removeDraft(spot); setDrafts(readDrafts()); setSpot(null); setAnswer(""); setReady(false); setErr(null);
     toast("Draft discarded", { action: { label: "Undo", onClick: () => resumeDraft(previous) } });
   };
@@ -107,10 +115,11 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
     .sort((a, b) => Number(weak.has(`${b.course}|${b.topic}`)) - Number(weak.has(`${a.course}|${a.topic}`)) || b.class_date.localeCompare(a.class_date))[0];
   const newSpot = async () => {
     haptic();
-    setErr(null); setResult(null); setAnswer(""); setSeconds(0); setReady(false);
+    setErr(null); setResult(null); setResultEntry(null); setAttemptOf(undefined); setAnswer(""); setSeconds(0); setReady(false);
+    writeCache("written-length", { ...(readCache("written-length") ?? {}), [course]: length });
     const h = nextHypo();
     setSpot(null);
-    if (h) { setSpot(fromHypo(h)); return; }
+    if (h) { setSpot({ ...fromHypo(h), minutes: MINUTES[length] }); return; }
     try {
       const r = await spotter.mutateAsync({ course, length });
       setSpot({ ...r.spotter, minutes: r.spotter.minutes ?? MINUTES[length] });
@@ -119,7 +128,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
 
   const submit = async () => {
     if (!spot || !answer.trim() || grading) return;
-    haptic(); setReady(true); keep({ spot, answer, seconds, ready: true });
+    haptic(); setReady(true); keep({ spot, answer, seconds, ready: true, attemptOf });
     if (!navigator.onLine) { setErr(savedMessage); return; }
     const token = ++request.current;
     setErr(null); setGrading(true);
@@ -137,9 +146,9 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
       scroll.current?.scrollTo({ top: 0 });
       const at = new Date().toISOString();
       const entry: WrittenEntry = { id: crypto.randomUUID(), at, day: dateKey.today(), course: spot.course, topic: spot.topic, materialId: spot.materialId,
-        facts: spot.facts, call: spot.call, answer, words, seconds, minutes: spot.minutes, grade: r.grade };
+        facts: spot.facts, call: spot.call, answer, words, seconds, minutes: spot.minutes, grade: r.grade, attemptOf };
       written.add(entry);
-      setResult(r.grade); setReady(false); removeDraft(spot); setDrafts(readDrafts());
+      setResultEntry(entry); setResult(r.grade); setReady(false); removeDraft(spot); setDrafts(readDrafts());
       onGraded(entry, len);
     } catch (e) { if (token === request.current) setErr(errText(e)); }
     finally { clearTimeout(timer); window.removeEventListener("offline", offline); if (token === request.current) setGrading(false); }
@@ -155,51 +164,79 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
   // A verified hypothetical is read against its own checked analysis, not one the tutor wrote.
   const reference = view ? hypos.find((h) => h.id === view.materialId)?.answer : spot?.reference;
   const fmtDay = (d: string) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const currentEntry = view ?? resultEntry;
+  const firstAttempt = currentEntry?.attemptOf ? written.list.find(e => e.id === currentEntry.attemptOf) : undefined;
+  const trend = essayTrend(written.list, course);
+  const groups = essayGroups(written.list.filter(e => e.course === course));
+  const again = () => {
+    if (!currentEntry) return;
+    const e = currentEntry;
+    const prompt: SpotterDTO = { course: e.course, topic: e.topic, facts: e.facts, call: e.call, minutes: e.minutes ?? 15, materialId: e.materialId,
+      issues: reference?.map(a => a.issue) ?? [...e.grade.spotted, ...e.grade.missed].map(a => a.issue), reference };
+    const first = e.attemptOf ?? groups.find(g => g.some(a => a.id === e.id))?.[0].id ?? e.id;
+    const existing = readDrafts()[draftKey(prompt)];
+    if (existing) { setView(null); resumeDraft(existing); return; }
+    const draft = { spot: prompt, answer: "", seconds: 0, ready: false, attemptOf: first };
+    keep(draft); setView(null); resumeDraft(draft); setRules(false); scroll.current?.scrollTo({ top: 0 });
+  };
+  const home = () => { setView(null); setSpot(null); setResult(null); setResultEntry(null); setRules(false); setErr(null); setAnswer(""); setSeconds(0); };
+  const fromSpot = (h: Hypothetical) => {
+    const prompt = fromHypo(h);
+    setSpotting(null); setView(null); setCourse(h.course); setResult(null); setResultEntry(null); setAttemptOf(undefined); setRules(false);
+    resumeDraft(readDrafts()[draftKey(prompt)] ?? { spot: prompt, answer: "", seconds: 0, ready: false });
+  };
   const tone = (n: number) => (n >= 8 ? styles.scoreOk : n >= 6 ? styles.scoreMid : styles.scoreBad);
 
+  if (spotting) return <IssueSpot course={spotting.course} hypo={spotting.hypo} entry={spotting.entry} onClose={() => setSpotting(null)} onWrite={fromSpot} />;
   return (
     <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Written practice">
       <div className={styles.top}>
         <div className={styles.topIn}>
-          {cur ? <span className={`${styles.clock} ${!shown && time > limit ? styles.clockOver : ""}`} role="timer">{clock(time)}</span> : <span className={styles.spacer} />}
+          {cur ? <button className={styles.x} aria-label="Back to essays" disabled={grading} onClick={home}><ChevronLeft size={18} /></button> : <span className={styles.spacer} />}
           <span className={styles.topTitle}>Written practice</span>
           <button className={styles.x} onClick={close} aria-label="Close"><X size={17} strokeWidth={2.4} /></button>
         </div>
       </div>
 
-      <div className={styles.scroll} ref={scroll}>
+      <div className={`${styles.workspace} ${rules ? styles.withRules : ""}`}><div className={styles.scroll} ref={scroll}>
         <div className={styles.body}>
           {!cur && !spotter.isPending && (
             <>
-              <div className={styles.start}>
-                <h1 className={styles.startTitle}>Issue spotter</h1>
-                <div className={styles.seg} role="group" aria-label="Course">
-                  {(["il", "asy"] as const).map((k) => (
-                    <button key={k} aria-pressed={course === k} className={course === k ? styles.segOn : ""} onClick={() => { haptic(); setCourse(k); }}>{COURSES[k].short}</button>
-                  ))}
-                </div>
-                <div className={styles.seg} role="group" aria-label="Length">
-                  {(["short", "full"] as const).map((k) => (
-                    <button key={k} aria-pressed={length === k} className={length === k ? styles.segOn : ""} onClick={() => { haptic(); setLength(k); }}>{MINUTES[k]} minutes</button>
-                  ))}
-                </div>
-                {Object.values(drafts).filter(d => d.spot.course === course).map(d => <Button key={draftKey(d.spot)} variant="secondary" className={styles.big} onClick={() => resumeDraft(d)}>Continue your draft<span className={styles.draftTopic}>{d.spot.topic}</span></Button>)}
-                <Button className={`${styles.big} ${styles.cta}`} onClick={newSpot}>Get a fact pattern</Button>
-              </div>
-              {written.list.length > 0 && (
-                <section className={styles.sec}>
-                  <h3 className={styles.histH}>Your essays</h3>
-                  <div className={styles.card}>
-                    {written.list.slice(0, 30).map((e) => (
-                      <button key={e.id} className={styles.hist} onClick={() => { haptic(); setView(e); scroll.current?.scrollTo({ top: 0 }); }}>
-                        <span className={`${styles.score} ${tone(e.grade.score)}`}>{e.grade.score}</span>
-                        <span className={styles.histMain}><b>{e.topic}</b><span>{COURSES[e.course].short} · {fmtDay(e.day)} · {e.words} words · {clock(e.seconds)}</span></span>
-                        <ChevronRight size={16} />
-                      </button>
-                    ))}
+              <div className={styles.startGrid}>
+                <div className={styles.start}>
+                  <h1 className={styles.startTitle}>Written practice</h1>
+                  {Object.values(drafts).filter(d => d.spot.course === course).map(d => <Button key={draftKey(d.spot)} variant="secondary" className={styles.big} onClick={() => resumeDraft(d)}>Continue your draft<span className={styles.draftTopic}>{d.spot.topic}</span></Button>)}
+                  <div className={styles.seg} role="group" aria-label="Course">
+                    {(["il", "asy"] as const).map(k => <button key={k} aria-pressed={course === k} className={course === k ? styles.segOn : ""} onClick={() => { haptic(); setCourse(k); setLength(defaultEssayLength(k, lastLength(k))); }}>{COURSES[k].short}</button>)}
                   </div>
+                  <Button className={`${styles.big} ${styles.cta}`} disabled={!hypos.some(h => h.course === course)} onClick={() => setSpotting({ course })}>Spot the issues · 3 min</Button>
+                  <div className={styles.essayChoice}>
+                    <div className={styles.seg} role="group" aria-label="Length">{(["short", "full"] as const).map(k => <button key={k} aria-pressed={length === k} className={length === k ? styles.segOn : ""} onClick={() => { haptic(); setLength(k); writeCache("written-length", { ...(readCache("written-length") ?? {}), [course]: k }); }}>{MINUTES[k]} minutes</button>)}</div>
+                    <Button variant="secondary" className={styles.big} onClick={newSpot}>Write an essay</Button>
+                  </div>
+                </div>
+                <section className={styles.history}>
+                  {!!trend.essays.length && <section className={styles.sec}><h2 className={styles.histH}>Your trend</h2>
+                    <div className={styles.card}>
+                      <div className={styles.trendScroll}><div className={styles.trend} style={{ minWidth: Math.max(260, trend.essays.length * 48) }} aria-label="Essay scores">
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><polyline points={trend.essays.map((e, i, all) => `${all.length === 1 ? 50 : 10 + i / (all.length - 1) * 80},${90 - e.grade.score * 8}`).join(" ")} /></svg>
+                        {trend.essays.map((e, i, all) => <button key={e.id} style={{ left: `${all.length === 1 ? 50 : 10 + i / (all.length - 1) * 80}%`, top: `${90 - e.grade.score * 8}%` }} aria-label={`Essay ${fmtDay(e.day)}, ${e.grade.score} of 10`} onClick={() => { setView(e); scroll.current?.scrollTo({ top: 0 }); }}><span /><b>{e.grade.score}</b></button>)}
+                      </div></div>
+                      <div className={styles.bars}>{(["issues", "rules", "application"] as const).map(part => trend.rubric[part] !== null && <div key={part} className={styles.barRow}><span>{part[0].toUpperCase() + part.slice(1)}</span><i><b style={{ width: `${trend.rubric[part]! * 10}%` }} /></i><span>{trend.rubric[part]!.toFixed(1)}</span></div>)}</div>
+                    </div>
+                  </section>}
+                  {(groups.length > 0 || written.spots.some(e => e.course === course)) && <section className={styles.sec}><h2 className={styles.histH}>Your essays</h2>
+                    {[...groups.map(attempts => ({ at: attempts[attempts.length - 1].at, attempts })), ...written.spots.filter(e => e.course === course).map(entry => ({ at: entry.at, entry }))].sort((a, b) => b.at.localeCompare(a.at)).map(item => "attempts" in item ? <div key={item.attempts[0].id} className={styles.card}>
+                      <h3 className={styles.groupTitle}>{hypos.find(h => h.id === item.attempts[0].materialId)?.title ?? item.attempts[0].topic}</h3>
+                      {item.attempts.map((e, i) => <button key={e.id} className={styles.hist} onClick={() => { haptic(); setView(e); scroll.current?.scrollTo({ top: 0 }); }}>
+                        <span className={`${styles.score} ${tone(e.grade.score)}`}>{e.grade.score}</span><span className={styles.histMain}><b>{item.attempts.length > 1 ? `Attempt ${i + 1}` : e.topic}</b><span>{fmtDay(e.day)} · {e.words} words · {clock(e.seconds)}</span></span><ChevronRight size={16} />
+                      </button>)}
+                    </div> : <button key={`spot:${item.entry.id}`} className={`${styles.card} ${styles.hist}`} onClick={() => setSpotting({ course, entry: item.entry })}>
+                      <span className={styles.histMain}><b>{item.entry.caught} of {item.entry.total} issues</b><span>{hypos.find(h => h.id === item.entry.id)?.title ?? item.entry.topic} · {fmtDay(item.entry.day)}</span></span><ChevronRight size={16} />
+                    </button>)}
+                  </section>}
                 </section>
-              )}
+              </div>
             </>
           )}
 
@@ -213,6 +250,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
           {cur && (
             <div className={styles.spot}>
               <div className={styles.paneL}>
+              <div className={styles.writingTools}><span className={`${styles.clock} ${!shown && time > limit ? styles.clockOver : ""}`} role="timer">{clock(time)}</span><Button variant="secondary" onClick={() => setRules(true)} aria-expanded={rules}><BookOpen size={18} />Rules</Button></div>
               <div className={styles.meta}>
                 <span className={styles.chip} style={{ color: c.color, background: `color-mix(in srgb, ${c.color} 14%, transparent)` }}>{c.short}</span>
                 <span className={styles.topic}>{cur.topic}</span>
@@ -224,7 +262,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               <div className={styles.paneR}>
               {!shown ? (
                 <div className={styles.answerBox}>
-                  <Textarea className={styles.answer} value={answer} onChange={(e) => { setAnswer(e.target.value); if (spot) keep({ spot, answer: e.target.value, seconds, ready }); }} placeholder="Your answer" disabled={grading} />
+                  <Textarea className={styles.answer} value={answer} onChange={(e) => { setAnswer(e.target.value); if (spot) keep({ spot, answer: e.target.value, seconds, ready, attemptOf }); }} aria-label="Your answer" placeholder="Your answer" disabled={grading} />
                   <span className={styles.count}>{words} {words === 1 ? "word" : "words"}</span>
                 </div>
               ) : (
@@ -237,6 +275,11 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
                     <p className={styles.summary}>{shown.summary}</p>
                   </div>
 
+                  {firstAttempt && currentEntry && <section className={styles.sec}><h2 className={styles.histH}>Your attempts</h2><div className={styles.attempts}>
+                    {[firstAttempt, currentEntry].map((e, i) => <div key={e.id} className={`${styles.card} ${styles.bars}`}><h3>{i ? "This attempt" : "First attempt"}</h3><strong>{e.grade.score}/10 {i ? `(${e.grade.score - firstAttempt.grade.score >= 0 ? "+" : ""}${e.grade.score - firstAttempt.grade.score})` : ""}</strong>
+                      {(["issues", "rules", "application"] as const).map(part => <div key={part} className={styles.attemptPart}><span>{part[0].toUpperCase() + part.slice(1)}</span><b>{e.grade.rubric?.[part] ?? "Unscored"}{i && e.grade.rubric && firstAttempt.grade.rubric ? ` (${e.grade.rubric[part] - firstAttempt.grade.rubric[part] >= 0 ? "+" : ""}${e.grade.rubric[part] - firstAttempt.grade.rubric[part]})` : ""}</b></div>)}
+                    </div>)}
+                  </div></section>}
                   {shown.rubric && (
                     <div className={`${styles.card} ${styles.bars}`}>
                       {([["Issues", shown.rubric.issues], ["Rules", shown.rubric.rules], ["Application", shown.rubric.application]] as const).map(([label, n]) => (
@@ -294,12 +337,14 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
           {err && <p role="status" className={styles.err}>{err}</p>}
         </div>
       </div>
+      {rules && cur && <RulesPanel course={cur.course} topic={cur.topic} onClose={() => setRules(false)} />}
+      </div>
 
       {cur && (
         <div className={styles.foot}>
           <div className={styles.footIn}><div className={styles.footRow}>
             {view ? (
-              <Button variant="secondary" className={styles.big} onClick={() => { haptic(); setView(null); }}>Back</Button>
+              <><Button variant="secondary" className={styles.side} onClick={home}>Back</Button><Button className={`${styles.big} ${styles.cta}`} onClick={again}>Write it again</Button></>
             ) : !result ? (
               <>
                 <Button variant="secondary" className={styles.side} disabled={grading} onClick={() => { setSpot(null); setErr(null); }}>New</Button>
@@ -308,8 +353,9 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               </>
             ) : (
               <>
-                <Button variant="secondary" className={styles.side} onClick={() => { setSpot(null); setResult(null); setAnswer(""); setSeconds(0); }}>Essays</Button>
-                <Button className={`${styles.big} ${styles.cta}`} onClick={newSpot}>New fact pattern</Button>
+                <Button variant="secondary" className={styles.side} onClick={home}>Essays</Button>
+                <Button className={`${styles.big} ${styles.cta}`} onClick={again}>Write it again</Button>
+                <Button variant="secondary" className={styles.big} onClick={newSpot}>New fact pattern</Button>
               </>
             )}
           </div></div>

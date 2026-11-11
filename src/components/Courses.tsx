@@ -14,6 +14,7 @@ import { useLogStudy } from "../helpers/useLogStudy";
 import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, weakMaterialTopics, type Flashcard, type Hypothetical, type MaterialKind, type SchoolCourse, type StudyMaterial, type StudyRecord } from "../helpers/studyMaterials";
 import { EXAMS, type CourseCode } from "../helpers/studyEngine";
 import { Rulebook } from "./Rulebook";
+import IssueSpot from "./tools/IssueSpot";
 import { TaskList, type WorkspaceLink } from "./TaskList";
 import { dueSoon, sortTasks, useCourseTasks } from "../helpers/useCourseTasks";
 import styles from "./Courses.module.css";
@@ -329,7 +330,7 @@ function MaterialReader({ material: m, store, onQuiz, onWrite, onClose, onBack }
         {m.kind === "comparison" && <div className={styles.compareCards}>{m.rows.map((r, i) => <section key={i}><h3>{r.label}</h3><p className={styles.authority}>{r.authority}</p>{r.cells.map((c, k) => <div key={k}><span>{m.columns[k]}</span><p>{highlighted(c)}</p></div>)}</section>)}</div>}
         {m.kind === "outline" && m.sections.map((s, i) => <details key={i} className={styles.ruleSection} open><summary>{s.heading}</summary><p>{highlighted(s.text)}</p><p className={styles.authority}>{s.authority}</p></details>)}
         {m.kind === "drill" && <SortingDrill material={m} />}
-        {m.kind === "hypothetical" && <HypotheticalView material={m} onWrite={() => { haptic(); onWrite(m); }} />}
+        {m.kind === "hypothetical" && <HypotheticalView material={m} onWrite={h => { haptic(); onWrite(h ?? m); }} />}
       </div>
       {!!highlights.length && <details className={styles.highlights}><summary>Your highlights</summary>{highlights.map((text, i) => <div key={i}><mark>{text}</mark><button className={styles.iconButton} aria-label="Remove highlight" onClick={() => store.update(p => ({ ...p, highlights: { ...p.highlights, [m.id]: highlights.filter(t => t !== text) } }))}><X size={18} /></button></div>)}</details>}
       <SourceList material={m} />
@@ -383,7 +384,8 @@ function SortingDrill({ material }: { material: Extract<StudyMaterial, { kind: "
 }
 
 // The facts and the call; writing, timing and grading happen in Written practice. The checked analysis stays one tap away.
-function HypotheticalView({ material, onWrite }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; onWrite: () => void }) {
+function HypotheticalView({ material, onWrite }: { material: Extract<StudyMaterial, { kind: "hypothetical" }>; onWrite: (h?: Hypothetical) => void }) {
   const [revealed, setRevealed] = useState(false);
-  return <div className={styles.hypo}><div className={styles.hypoFacts}><p>{material.facts}</p><h3>{material.prompt}</h3></div><div className={styles.hypoWork}><button className={styles.primary} onClick={onWrite}><PenLine size={19} />Write and grade</button><button className={styles.secondary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div></div>;
+  const [spotting, setSpotting] = useState(false);
+  return <div className={styles.hypo}>{spotting && createPortal(<IssueSpot course={material.course} hypo={material} onClose={() => setSpotting(false)} onWrite={h => { setSpotting(false); onWrite(h); }} />, document.body)}<div className={styles.hypoFacts}><p>{material.facts}</p><h3>{material.prompt}</h3></div><div className={styles.hypoWork}><button className={styles.primary} onClick={() => onWrite()}><PenLine size={19} />Write and grade</button>{material.course !== "pr" && <button className={styles.secondary} onClick={() => setSpotting(true)}>Spot the issues</button>}<button className={styles.secondary} onClick={() => setRevealed(v => !v)} aria-expanded={revealed}>{revealed ? "Hide analysis" : "Reveal analysis"}<ArrowRight size={19} /></button>{revealed && <div>{material.answer.map((a, i) => <section key={i} className={styles.modelAnswer}><h3>{a.issue}</h3><p>{a.analysis}</p><p className={styles.authority}>{a.authority}</p></section>)}</div>}</div></div>;
 }
