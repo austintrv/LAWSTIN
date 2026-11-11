@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "./supabase";
 import { dateKey } from "./dateKey";
 import { toast } from "./toast";
-import { readCache, writeCache } from "./offlineCache";
+import { readCache, writeCache, settingQueue, acknowledgeSetting } from "./offlineCache";
 import { useEffect } from "react";
 
 export type TaskCourse = "clinic" | "tutoring";
@@ -29,6 +29,7 @@ export function dueSoon(list: CourseTask[], today = dateKey.today()) {
 }
 
 export function useCourseTasks() {
+  useWorkspaceSync();
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: KEY,
@@ -99,4 +100,36 @@ export function useCourseTasks() {
   };
 
   return { tasks: query.data ?? [], loading: query.isLoading, add, update, remove, removeWithUndo, completeWithUndo };
+}
+
+let syncingSettings: Promise<void> | null = null;
+let settingsRetry: ReturnType<typeof setTimeout> | undefined;
+let settingsDelay = 1000;
+export function flushSettings() {
+  if (syncingSettings || !navigator.onLine || !Object.keys(settingQueue()).length) return syncingSettings;
+  clearTimeout(settingsRetry);
+  syncingSettings = (async () => {
+    try {
+      for (const row of Object.values(settingQueue())) {
+        const { error } = await supabase.from("app_settings").upsert(row, { onConflict: "key" }).abortSignal(AbortSignal.timeout(10000));
+        if (error) throw error;
+        acknowledgeSetting(row);
+      }
+      settingsDelay = 1000;
+    } catch { toast.error("Couldn’t sync. Your changes are saved on this device."); settingsDelay = Math.min(settingsDelay * 2, 30000); }
+    finally {
+      syncingSettings = null;
+      if (Object.keys(settingQueue()).length) settingsRetry = setTimeout(() => void flushSettings(), settingsDelay);
+    }
+  })();
+  return syncingSettings;
+}
+export function useWorkspaceSync() {
+  useEffect(() => {
+    void flushSettings();
+    const flush = () => { void flushSettings(); };
+    window.addEventListener("online", flush); window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", flush);
+    return () => { flush(); window.removeEventListener("online", flush); window.removeEventListener("pagehide", flush); document.removeEventListener("visibilitychange", flush); };
+  }, []);
 }

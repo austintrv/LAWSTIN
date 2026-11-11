@@ -35,6 +35,8 @@ export function useStudyMaterials(userId: string) {
   const library = useStudyLibrary();
   const qc = useQueryClient();
   const current = useRef(cache), syncing = useRef(false);
+  const retryTimer = useRef<ReturnType<typeof setTimeout>>(), delay = useRef(1000);
+  const retryFlush = useRef<() => void>(() => {});
   const commit = useCallback((next: StudyCache) => {
     current.current = next; setCache(next);
     try { localStorage.setItem(key, JSON.stringify(next)); }
@@ -48,14 +50,21 @@ export function useStudyMaterials(userId: string) {
     if (!sent.length) return;
     syncing.current = true;
     try {
-      const { error } = await supabase.from("app_settings").upsert(sent, { onConflict: "key" });
+      const { error } = await supabase.from("app_settings").upsert(sent, { onConflict: "key" }).abortSignal(AbortSignal.timeout(10000));
       if (error) throw error;
-      commit(acknowledgeStudyRows(current.current, sent)); setSyncError(false);
+      commit(acknowledgeStudyRows(current.current, sent)); setSyncError(false); delay.current = 1000;
       // Lets the Study tab's ready-card count catch up.
       void qc.invalidateQueries({ queryKey: ["lawstin-material-progress", userId] });
-    } catch { setSyncError(true); }
+    } catch {
+      setSyncError(true);
+      clearTimeout(retryTimer.current);
+      retryTimer.current = setTimeout(() => retryFlush.current(), delay.current);
+      delay.current = Math.min(delay.current * 2, 30000);
+    }
     finally { syncing.current = false; }
   }, [commit]);
+  retryFlush.current = () => { void flush(); };
+  useEffect(() => () => clearTimeout(retryTimer.current), []);
   useEffect(() => {
     const t = window.setTimeout(() => { void flush(); }, 600);
     return () => window.clearTimeout(t);

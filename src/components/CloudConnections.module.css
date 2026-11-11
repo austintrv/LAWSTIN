@@ -19,7 +19,7 @@
 .field input[readonly]{font-family:var(--font-family-monospace);font-size:14px}
 .card textarea{height:240px;resize:vertical;font-family:var(--font-family-monospace);font-size:13px}
 .primary,.secondary{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:46px;padding:11px 18px;border-radius:12px;font-size:16px;font-weight:600;line-height:1.4}
-.primary{background:var(--uh-red);color:#fff}
+.primary{background:var(--uh-red-button);color:#fff}
 .secondary{background:var(--fill);color:var(--foreground)}
 .card details{border-top:1px solid var(--border);padding-top:18px;margin-top:22px}
 .card summary{font-weight:600;cursor:pointer;min-height:32px}

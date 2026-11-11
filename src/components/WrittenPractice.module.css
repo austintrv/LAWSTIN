@@ -1,4 +1,4 @@
-.modal { position: fixed; inset: 0; z-index: var(--z-overlay); background: var(--background); color: var(--foreground); display: flex; flex-direction: column; font-family: var(--font-family-base); animation: slideUp 0.46s var(--ease-ios); }
+.modal { position: fixed; inset: 0; z-index: 600; background: var(--background); color: var(--foreground); display: flex; flex-direction: column; font-family: var(--font-family-base); animation: slideUp 0.46s var(--ease-ios); }
 .closing { animation: slideDown 0.36s var(--ease-ios) forwards; }
 @keyframes slideUp { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes slideDown { to { transform: translateY(100%); } }
@@ -22,7 +22,7 @@
 .seg button.segOn { background: var(--seg-on); color: var(--foreground); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12); }
 .big { flex: 1; width: 100%; height: 52px; border-radius: var(--radius); font-size: 17px; font-weight: 600; transition: transform 0.2s var(--ease-ios); }
 .big:active:not(:disabled) { transform: scale(0.97); }
-.cta:not(:disabled) { background: var(--uh-red); color: #fff; border-color: transparent; }
+.cta:not(:disabled) { background: var(--uh-red-button); color: #fff; border-color: transparent; }
 .side { height: 52px; border-radius: var(--radius); padding-inline: 18px; font-size: 16px; font-weight: 600; flex-shrink: 0; }
 
 .loading { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; }
@@ -124,9 +124,14 @@
 .barRow { display: grid; grid-template-columns: 96px minmax(0, 1fr) 20px; align-items: center; gap: 12px; font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .barRow > span:last-child { text-align: right; color: var(--muted-foreground); }
 .barRow i { height: 8px; border-radius: 4px; background: var(--uh-red-soft); overflow: hidden; }
-.barRow i b { display: block; height: 100%; border-radius: 4px; background: var(--uh-red); transition: width 0.8s var(--ease-ios); }
+.barRow i b { display: block; height: 100%; border-radius: 4px; background: var(--uh-red-button); transition: width 0.8s var(--ease-ios); }
 .cite { color: var(--muted-foreground); font-size: 0.86em; }
 .modelBody b { font-weight: 600; }
 @media (min-width: 1000px) {
   .start > .big { grid-column: 1 / -1; }
 }
+
+.draftTopic { margin-left: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 400; }
+.footRow { flex-wrap: wrap; }
+
+.seg button { min-height: 44px; }

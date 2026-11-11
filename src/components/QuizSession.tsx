@@ -150,13 +150,15 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     setClosing(true);
     setTimeout(() => onClose(snapshot.current), 380);
   }, [onClose]);
+  const [endOpen, setEndOpen] = useState(false);
   // Leaving an exam partway shows results for what was answered; closing the results leaves.
   const exit = useCallback(() => {
+    if (timed && !done) { setEndOpen(true); return; }
     if (mode === "exam" && !done && results.some((r) => r !== undefined)) { haptic(); setDone(true); return; }
     close();
-  }, [mode, done, results, close]);
+  }, [mode, timed, done, results, close]);
   useBackClose(() => {
-    const stay = mode === "exam" && !done && results.some((r) => r !== undefined);
+    const stay = mode === "exam" && !done && (timed || results.some((r) => r !== undefined));
     exit();
     if (stay) return false;
   });
@@ -262,11 +264,10 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (asking) return;
+      if (asking || endOpen) return;
       if (submitting.current || moving.current || e.repeat) return;
       if ((e.target as HTMLElement)?.tagName === "TEXTAREA") return;
       const k = e.key.toUpperCase();
-      if (e.key === "Escape") { exit(); return; }
       if (done) { if (e.key === "ArrowLeft" && mode === "practice") goBack(); return; }
       if (e.key === "ArrowLeft" && mode === "practice") { goBack(); return; }
       if (card) {
@@ -286,7 +287,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [done, checked, check, goNext, goBack, exit, mode, asking, card, revealed, hidden, reveal, gradeCard]);
+  }, [done, checked, check, goNext, goBack, exit, mode, asking, endOpen, card, revealed, hidden, reveal, gradeCard]);
 
   const onTouchStart = (e: React.TouchEvent) => { touch.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }; };
   const onTouchEnd = (e: React.TouchEvent) => {
@@ -323,13 +324,11 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
     <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label={mode === "exam" ? "Practice exam" : "Practice"}>
       <div className={styles.top} onTouchStart={onTouchStart} onTouchEnd={onTopTouchEnd}>
         <div className={styles.topIn}>
-          {mode === "exam" && <button className={styles.x} onClick={exit} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>}
           {mode === "exam" ? (
             <>
-              <div className={styles.prog}>
-                {items.map((_, k) => <i key={k} className={results[k] !== undefined ? styles.done : k === i ? styles.cur : ""} />)}
-              </div>
               <span className={`${styles.count} ${timed && left < 60 ? styles.countLow : ""}`} role={timed ? "timer" : undefined}>{done ? "" : timed ? clock(left) : `${i + 1} of ${items.length}`}</span>
+              <span className={styles.examTitle}>Practice exam</span>
+              <button className={styles.x} onClick={exit} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
             </>
           ) : (
             <>
@@ -343,6 +342,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
             </>
           )}
         </div>
+        {mode === "exam" && <div className={styles.prog}>{items.map((_, k) => <i key={k} className={results[k] !== undefined ? styles.done : k === i ? styles.cur : ""} />)}</div>}
         {goalOn && (
           <div className={styles.goalBar} role="progressbar" aria-label="Today’s goal" aria-valuemin={0} aria-valuemax={day!.goal} aria-valuenow={Math.min(day!.answered, day!.goal)}>
             <i className={goalMet ? styles.goalMet : ""} style={{ width: `${Math.min(1, day!.answered / day!.goal) * 100}%` }} />
@@ -592,7 +592,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
                 <button className={`${styles.iconBtn} ${p?.starred ? styles.starOn : ""}`} aria-label={p?.starred ? "Unstar" : "Star"} onClick={() => { haptic(); onStar(q, !p?.starred); }}>
                   <Star size={20} fill={p?.starred ? "currentColor" : "none"} />
                 </button>
-                <button className={`${styles.iconBtn} ${isFlagged ? styles.flagOn : ""}`} aria-label="Flag a problem" onClick={() => { if (isFlagged) return; setFlagOpen((v) => !v); setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" }), 60); }}>
+                <button className={`${styles.iconBtn} ${isFlagged ? styles.flagOn : ""}`} aria-label="Flag a problem" onClick={() => { if (isFlagged) return; setFlagOpen((v) => !v); setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }), 60); }}>
                   <Flag size={20} fill={isFlagged ? "currentColor" : "none"} />
                 </button>
               </>
@@ -602,6 +602,7 @@ export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCar
         </div>
       )}
 
+      {endOpen && <EndExam onKeep={() => setEndOpen(false)} onEnd={() => { setEndOpen(false); if (results.some(r => r !== undefined)) setDone(true); else close(); }} />}
       {asking && !done && q && <AskPanel question={q} picked={(picked as "A" | "B" | "C" | "D" | undefined) ?? null} onClose={() => setAsking(false)} />}
     </div>
   );
@@ -749,4 +750,12 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
       </div>
     </div>
   );
+}
+
+function EndExam({ onKeep, onEnd }: { onKeep: () => void; onEnd: () => void }) {
+  const ref = useModalFocus<HTMLDivElement>();
+  useBackClose(() => { onKeep(); return false; });
+  return <div className={styles.confirmBackdrop}><div ref={ref} tabIndex={-1} role="alertdialog" aria-modal="true" aria-label="End exam?" className={styles.confirm}>
+    <h2>End exam?</h2><Button variant="secondary" onClick={onKeep}>Keep going</Button><Button onClick={onEnd}>End</Button>
+  </div></div>;
 }

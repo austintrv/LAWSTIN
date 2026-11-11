@@ -2,7 +2,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Plus, ArrowUp, ArrowUpRight, CalendarDays, Check, ChevronRight, FileText, Flag, Trash2, X } from "lucide-react";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
-import { sortTasks, useCourseTasks, type CourseTask, type TaskCourse } from "../helpers/useCourseTasks";
+import { sortTasks, useCourseTasks, useWorkspaceSync, flushSettings, type CourseTask, type TaskCourse } from "../helpers/useCourseTasks";
+import { readCache, writeCache, queueSetting, settingQueue } from "../helpers/offlineCache";
+import { toast } from "../helpers/toast";
 import { supabase } from "../helpers/supabase";
 import styles from "./TaskList.module.css";
 
@@ -161,99 +163,112 @@ function TaskRow({ task: t, leaving, open, onToggle, onComplete, onPatch, onDele
   );
 }
 
-const workspaceCache = new Map<string, string>();
-
-/** Free-form workspace notes (contacts, meeting times, requirements), saved to the owner's settings row. */
 function WorkspaceNotes({ course }: { course: TaskCourse }) {
   const key = `workspace:notes:${course}`;
-  const [text, setText] = useState<string | null>(() => workspaceCache.get(key) ?? null);
-  const saved = useRef(workspaceCache.get(key) ?? "");
+  const [text, setText] = useState<string | null>(() => settingQueue()[key]?.value ?? readCache<string>(key) ?? null);
+  const [failed, setFailed] = useState(false);
+  useWorkspaceSync();
   useEffect(() => {
     let live = true;
-    const before = workspaceCache.get(key) ?? "";
-    supabase.from("app_settings").select("value").eq("key", key).maybeSingle().then(({ data }) => {
+    const fetch = async () => {
+      const pending = settingQueue()[key];
+      const before = readCache<string>(key);
+      const { data, error } = await supabase.from("app_settings").select("value").eq("key", key).maybeSingle();
       if (!live) return;
-      const server = data?.value ?? "";
-      workspaceCache.set(key, server);
-      saved.current = server;
-      // Keep anything typed while the fresh copy loaded; the save effect then writes it.
-      setText((cur) => (cur === null || cur === before ? server : cur));
-    });
-    return () => { live = false; };
+      setFailed(!!error);
+      if (error) return;
+      const value = settingQueue()[key]?.value ?? (pending || readCache<string>(key) !== before ? readCache<string>(key) : data?.value) ?? "";
+      writeCache(key, value); setText(value);
+    };
+    void fetch();
+    window.addEventListener("online", fetch);
+    return () => { live = false; window.removeEventListener("online", fetch); };
   }, [key]);
   useEffect(() => {
-    if (text === null || text === saved.current) return;
-    const t = setTimeout(async () => {
-      const { error } = await supabase.from("app_settings").upsert({ key, value: text, updated_at: new Date().toISOString() }, { onConflict: "key" });
-      if (!error) { saved.current = text; workspaceCache.set(key, text); }
-    }, 700);
-    return () => clearTimeout(t);
-  }, [text, key]);
-  if (text === null) return <section className={`${styles.card} ${styles.notes} ${styles.placeholder}`} aria-hidden="true" />;
-  return (
-    <section className={`${styles.card} ${styles.notes}`}>
-      <h3>Notes</h3>
-      <textarea value={text} onChange={(e) => setText(e.target.value)} aria-label="Workspace notes" rows={Math.min(14, Math.max(4, text.split("\n").length + 1))} />
-    </section>
-  );
+    if (!settingQueue()[key]) return;
+    const timer = setTimeout(() => void flushSettings(), 700);
+    return () => clearTimeout(timer);
+  }, [key, text]);
+  if (text === null && !failed) return <section className={`${styles.card} ${styles.notes} ${styles.placeholder}`} aria-busy="true" />;
+  if (text === null) return <section className={`${styles.card} ${styles.notes}`}><h3>Notes</h3><button className={styles.ghost} onClick={() => window.dispatchEvent(new Event("online"))}>Retry</button></section>;
+  return <section className={`${styles.card} ${styles.notes}`}>
+    <h3>Notes</h3>
+    <textarea value={text} onChange={e => {
+      const value = e.target.value;
+      try { queueSetting(key, value); } catch { toast.error("Couldn’t save notes on this device"); }
+      setText(value);
+    }} onBlur={() => void flushSettings()} aria-label="Workspace notes" rows={Math.min(14, Math.max(4, text.split("\n").length + 1))} />
+  </section>;
 }
 
 type Hours = { logged: number; required: number; as_of: string };
-
-/** Clinic hour requirement: the official log lives in MyCase and the student's sheet; this keeps the running total in view. */
+type HoursDraft = { mode: "set" | "add"; text: string };
+function readHours(value?: string): Hours | null {
+  try {
+    const h = JSON.parse(value ?? "null");
+    return h && Number.isFinite(h.logged) && h.logged >= 0 && Number.isFinite(h.required) && h.required > 0 && /^\d{4}-\d{2}-\d{2}$/.test(h.as_of) ? h : null;
+  } catch { return null; }
+}
 function ClinicHours() {
   const key = "workspace:clinic:hours";
-  const [h, setH] = useState<Hours | null>(() => { try { const v = workspaceCache.get(key); return v ? JSON.parse(v) : null; } catch { return null; } });
-  const [editing, setEditing] = useState<null | "set" | "add">(null);
-  const [draft, setDraft] = useState("");
+  const [h, setH] = useState<Hours | null>(() => readHours(settingQueue()[key]?.value ?? readCache<string>(key)));
+  const [entry] = useState(() => readCache<HoursDraft>("clinic-hours-entry"));
+  const [editing, setEditing] = useState<null | "set" | "add">(entry?.mode ?? null);
+  const [draft, setDraft] = useState(entry?.text ?? "");
+  const saving = useRef(false);
+  const [loading, setLoading] = useState(true);
+  useWorkspaceSync();
   useEffect(() => {
-    supabase.from("app_settings").select("value").eq("key", key).maybeSingle().then(({ data }) => {
-      if (data?.value) workspaceCache.set(key, data.value);
-      try { setH(data?.value ? JSON.parse(data.value) : { logged: 0, required: 200, as_of: dateKey.today() }); } catch { setH({ logged: 0, required: 200, as_of: dateKey.today() }); }
-    });
+    let live = true;
+    const fetch = async () => {
+      const pending = settingQueue()[key];
+      const before = readCache<string>(key);
+      const { data, error } = await supabase.from("app_settings").select("value").eq("key", key).maybeSingle();
+      if (!live) return;
+      setLoading(false);
+      if (error) return;
+      const value = settingQueue()[key]?.value ?? (pending || readCache<string>(key) !== before ? readCache<string>(key) : data?.value);
+      const known = readHours(value);
+      if (known) { writeCache(key, value); setH(known); }
+    };
+    void fetch(); window.addEventListener("online", fetch);
+    return () => { live = false; window.removeEventListener("online", fetch); };
   }, []);
-  if (!h) return <section className={`${styles.card} ${styles.hours} ${styles.placeholder}`} aria-hidden="true" />;
+  if (!h && loading) return <section className={`${styles.card} ${styles.hours} ${styles.placeholder}`} aria-busy="true" />;
+  if (!h) return <section className={`${styles.card} ${styles.hours}`} aria-busy={loading}>
+    <span className={styles.hoursBig}>Hours unavailable</span>
+    <button className={styles.addGo} disabled aria-label="Add hours"><Plus size={18} /></button>
+  </section>;
   const save = async () => {
-    const mode = editing;
-    setEditing(null);
-    // Blank or invalid cancels. "Add" mode adds to the total; tapping the total replaces it.
-    const raw = draft.trim();
-    if (!raw) return;
-    const n = Number(raw);
-    if (!Number.isFinite(n) || n < 0) return;
-    const logged = Math.round((mode === "add" ? h.logged + n : n) * 100) / 100;
-    if (logged === h.logged) return;
+    if (saving.current) return;
+    const raw = draft.trim(), n = Number(raw);
+    if (!raw || !Number.isFinite(n) || n < 0) return;
+    const logged = Math.round((editing === "add" ? h.logged + n : n) * 100) / 100;
+    if (logged === h.logged) { setEditing(null); return; }
     const next = { ...h, logged, as_of: dateKey.today() };
-    setH(next); haptic();
-    workspaceCache.set(key, JSON.stringify(next));
-    await supabase.from("app_settings").upsert({ key, value: JSON.stringify(next), updated_at: new Date().toISOString() }, { onConflict: "key" });
+    saving.current = true;
+    try {
+      queueSetting(key, JSON.stringify(next)); setH(next); haptic(); setEditing(null);
+      writeCache("clinic-hours-entry", null);
+      if (!navigator.onLine) toast("Hours saved on this device");
+      await flushSettings();
+    } catch { toast.error("Couldn’t save hours. Your entry is kept."); }
+    finally { saving.current = false; }
   };
-  const pct = Math.min(1, h.logged / h.required);
-  const circ = 2 * Math.PI * 26;
+  const begin = (mode: HoursDraft["mode"]) => {
+    const text = mode === "set" ? String(h.logged) : "";
+    writeCache("clinic-hours-entry", { mode, text }); setDraft(text); setEditing(mode);
+  };
+  const pct = Math.min(1, h.logged / h.required), circ = 2 * Math.PI * 26;
   const asOf = new Date(`${h.as_of}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  return (
-    <section className={`${styles.card} ${styles.hours}`}>
-      <span className={styles.hoursRing}>
-        <svg viewBox="0 0 64 64" aria-hidden="true">
-          <circle cx="32" cy="32" r="26" className={styles.hoursTrack} />
-          <circle cx="32" cy="32" r="26" className={styles.hoursVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - pct) }} />
-        </svg>
-        <b>{Math.round(pct * 100)}%</b>
-      </span>
-      {editing ? (
-        <form className={styles.hoursEdit} onSubmit={(e) => { e.preventDefault(); void save(); }}>
-          <input autoFocus inputMode="decimal" value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={() => void save()} aria-label="Hours logged" />
-          <span>{editing === "add" ? "hours to add" : `of ${h.required} hours`}</span>
-        </form>
-      ) : (
-        <>
-        <button className={styles.hoursMain} onClick={() => { setDraft(String(h.logged)); setEditing("set"); }}>
-          <span className={styles.hoursBig}>{h.logged} <small>of {h.required} hours</small></span>
-          <span className={styles.hoursSub}>{Math.max(0, Math.round((h.required - h.logged) * 100) / 100)} to go · as of {asOf}</span>
-        </button>
-        <button className={styles.addGo} aria-label="Add hours" onClick={() => { haptic(); setDraft(""); setEditing("add"); }}><Plus size={18} strokeWidth={2.6} /></button>
-        </>
-      )}
-    </section>
-  );
+  return <section className={`${styles.card} ${styles.hours}`}>
+    <span className={styles.hoursRing}><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" className={styles.hoursTrack} /><circle cx="32" cy="32" r="26" className={styles.hoursVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - pct) }} /></svg><b>{Math.round(pct * 100)}%</b></span>
+    {editing ? <form className={styles.hoursEdit} onSubmit={e => { e.preventDefault(); void save(); }}>
+      <input autoFocus inputMode="decimal" value={draft} onChange={e => { setDraft(e.target.value); writeCache("clinic-hours-entry", { mode: editing, text: e.target.value }); }} onBlur={() => void save()} aria-label="Hours logged" />
+      <span>{editing === "add" ? "hours to add" : `of ${h.required} hours`}</span>
+    </form> : <>
+      <button className={styles.hoursMain} onClick={() => begin("set")}><span className={styles.hoursBig}>{h.logged} <small>of {h.required} hours</small></span><span className={styles.hoursSub}>{Math.max(0, Math.round((h.required - h.logged) * 100) / 100)} to go · as of {asOf}</span></button>
+      <button className={styles.addGo} aria-label="Add hours" onClick={() => { haptic(); begin("add"); }}><Plus size={18} strokeWidth={2.6} /></button>
+    </>}
+  </section>;
 }

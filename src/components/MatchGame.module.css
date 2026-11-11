@@ -55,7 +55,7 @@
 .actions { position: relative; display: flex; flex-direction: column; gap: 10px; }
 .big { width: 100%; height: 52px; border-radius: var(--radius); font-size: 17px; font-weight: 600; transition: transform 0.2s var(--ease-ios); }
 .big:active:not(:disabled) { transform: scale(0.97); }
-.cta:not(:disabled) { background: var(--uh-red); color: #fff; border-color: transparent; }
+.cta:not(:disabled) { background: var(--uh-red-button); color: #fff; border-color: transparent; }
 .big:focus-visible { outline: 3px solid var(--uh-red); outline-offset: 2px; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -79,3 +79,5 @@
   .result { max-width: 520px; width: 100%; align-self: center; gap: 20px; }
   .hero b { font-size: 88px; }
 }
+
+.seg button { min-height: 44px; }

@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
+import { readPendingWritten, WRITTEN_PREFIX } from "../helpers/useWritten";
+import { useBackClose } from "../helpers/useBackClose";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { clearCaches } from "../helpers/offlineCache";
 import { Bell, CalendarCheck, PenLine, ChevronLeft, ChevronRight, Download, Link2, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
@@ -57,11 +59,7 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
   useEffect(() => onPushEnabledChange(setPushOn), []);
   useEffect(() => { if (s?.summaryEmail) setEmail(s.summaryEmail); }, [s?.summaryEmail]);
   const close = () => { setClosing(true); setTimeout(onClose, 220); };
-  useEffect(() => {
-    const k = (ev: KeyboardEvent) => { if (ev.key === "Escape") close(); };
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  });
+  useBackClose(close, true, false);
 
   const pref = (patch: Parameters<typeof writePrefs>[0]) => setPrefs(writePrefs(patch));
   // While a final is ahead, the plan sets the daily goal; the stepper returns when it is off or finals are over.
@@ -121,12 +119,17 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
     haptic();
     setBusy("export");
     try {
+      const waiting = readPendingWritten();
       const [state, settings, tasks] = await Promise.all([
         getState(),
-        supabase.from("app_settings").select("key,value,updated_at").or("key.like.study:%,key.like.workspace:%"),
+        supabase.from("app_settings").select("key,value,updated_at").or("key.like.study:%,key.like.workspace:%,key.like.written:v1:%"),
         supabase.from("course_tasks").select("*"),
       ]);
-      const data = { exported_at: new Date().toISOString(), progress: state.progress, days: state.days, study: settings.data ?? [], tasks: tasks.data ?? [] };
+      if (settings.error) throw settings.error;
+      if (tasks.error) throw tasks.error;
+      const pending = [...waiting, ...readPendingWritten()].map(e => ({ key: `${WRITTEN_PREFIX}${e.id}`, value: JSON.stringify(e), updated_at: e.at }));
+      const study = [...new Map([...(settings.data ?? []), ...pending].map(r => [r.key, r])).values()];
+      const data = { exported_at: new Date().toISOString(), progress: state.progress, days: state.days, study, tasks: tasks.data ?? [] };
       const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
       const a = document.createElement("a"); a.href = url; a.download = `lawstin-${dateKey.today()}.json`; a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);

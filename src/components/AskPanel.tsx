@@ -5,6 +5,7 @@ import { useLawstinAi } from "../helpers/useLawstinAi";
 import { AiRequestError } from "../endpoints/ai_POST.schema";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import { haptic } from "../helpers/haptics";
+import { useModalFocus } from "../helpers/useModalFocus";
 import { useBackClose } from "../helpers/useBackClose";
 import { useSwipeDown } from "../helpers/useSwipeDown";
 import styles from "./AskPanel.module.css";
@@ -27,16 +28,12 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
     "How would this show up on the exam?",
   ];
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [msgs, ask.isPending]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth", block: "end" }); }, [msgs, ask.isPending]);
 
   const close = () => { setClosing(true); setTimeout(onClose, 320); };
   useBackClose(close);
   const swipe = useSwipeDown<HTMLDivElement>(close);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.preventDefault(); close(); } };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  });
+  const modalRef = useModalFocus<HTMLDivElement>();
 
   const send = async (text: string) => {
     const t = text.trim();
@@ -57,7 +54,7 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
   };
 
   return (
-    <div ref={swipe.ref} className={`${styles.panel} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Ask about this question">
+    <div ref={node => { (swipe.ref as React.MutableRefObject<HTMLDivElement | null>).current = node; (modalRef as React.MutableRefObject<HTMLDivElement | null>).current = node; }} tabIndex={-1} className={`${styles.panel} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Ask about this question">
       <div className={styles.head} {...swipe.handle}>
         <div className={styles.headIn}>
           <span className={styles.spacer} />

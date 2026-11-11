@@ -4,8 +4,9 @@ import { getState, type OutputType as StateType, type ProgressDTO } from "../end
 import { postAnswer, type InputType as AnswerInput } from "../endpoints/answer_POST.schema";
 import { postMark, type InputType as MarkInput } from "../endpoints/mark_POST.schema";
 import { dateKey } from "./dateKey";
-import { ANSWER_QUEUE, isNetworkError, readCache, writeCache } from "./offlineCache";
+import { ANSWER_QUEUE, applyStudyEvents, isNetworkError, readCache, writeCache } from "./offlineCache";
 import { toast } from "./toast";
+import { confirmQueuedStudy } from "./useLogStudy";
 import { applyLocalAnswer } from "./localAnswer";
 
 const KEY = ["lawstin-state"] as const;
@@ -43,8 +44,9 @@ export function useLawstinData() {
   const query = useQuery({
     queryKey: KEY,
     queryFn: async () => {
+      await confirmQueuedStudy();
       const state = await getState();
-      return readQueue().reduce((s, item) => applyLocalAnswer(s, item, item.at), state);
+      return applyStudyEvents(readQueue().reduce((s, item) => applyLocalAnswer(s, item, item.at), state));
     },
     initialData: () => readCache<StateType>("state"),
     initialDataUpdatedAt: 0,

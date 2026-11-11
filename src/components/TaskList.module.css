@@ -83,3 +83,6 @@
 .hoursEdit span { font-size: 16px; color: var(--muted-foreground); }
 .placeholder.notes { min-height: 220px; }
 .placeholder.hours { min-height: 96px; }
+
+.addGo { position: relative; }
+.addGo::after { content: ""; position: absolute; inset: -4px; }

@@ -245,20 +245,24 @@ export async function open(opts = {}) {
   const data = emptyState ? emptyOf(given) : given;
   const srv = await startServer(), br = await launch();
   let state = structuredClone(data.state), rows = structuredClone(data.rows), tasks = structuredClone(data.tasks), down = backendDown, failNext = false;
-  const answers = [], errors = [];
+  const answers = [], errors = [], events = [], failures = [];
+  let aiDelay = 0, loseAck = false;
   const ctx = await br.newContext({ viewport: { width, height }, colorScheme: dark ? 'dark' : 'light', reducedMotion: reducedMotion ? 'reduce' : 'no-preference', serviceWorkers: 'block', timezoneId: TZ, locale: 'en-US' });
+  await ctx.route("https://fonts.googleapis.com/**", route => route.fulfill({ contentType: "text/css", body: "" }));
   await ctx.addInitScript(({ auth, prefs, storage, down, user }) => {
     try {
       if (auth && !localStorage.getItem('lawstin-auth')) localStorage.setItem('lawstin-auth', JSON.stringify({ access_token: 'mock-access-token', refresh_token: 'mock-refresh-token', expires_at: 4102444800, expires_in: 36000, token_type: 'bearer', user }));
       if (prefs && !localStorage.getItem('lawstin-prefs')) localStorage.setItem('lawstin-prefs', JSON.stringify(prefs));
       for (const [k, v] of Object.entries(storage)) if (!localStorage.getItem(k)) localStorage.setItem(k, v);
     } catch { /* storage blocked */ }
-    if (down) Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => !(sessionStorage.getItem('lawstin-mock-offline') === 'true' || down) });
   }, { auth, prefs, storage, down, user: USER });
   await ctx.route(`${SUPABASE}/**`, async route => {
     const req = route.request(), u = new URL(req.url()), p = u.pathname, m = req.method();
     const json = (b, status = 200, headers = {}) => route.fulfill({ status, contentType: 'application/json', headers, body: JSON.stringify(b) });
     if (down) return route.abort('internetdisconnected');
+    const failure = failures.findIndex(f => p.endsWith(f.path) && m === f.method && (!f.key || u.searchParams.get('key') === `eq.${f.key}`));
+    if (failure >= 0) { const f = failures.splice(failure, 1)[0]; if (f.abort) return route.abort('failed'); return json({ message: 'Deliberate failure' }, f.status ?? 503); }
     if (m === 'OPTIONS') return route.fulfill({ status: 204 });
     let body = null; try { body = req.postDataJSON(); } catch { /* no body */ }
     const one = (req.headers().accept ?? '').includes('vnd.pgrst.object');
@@ -278,7 +282,7 @@ export async function open(opts = {}) {
       state.progress = state.progress.map(x => x.questionId !== body.p_question_id ? x : { ...x, ...(body.p_action === 'star' ? { starred: body.p_starred } : body.p_action === 'flag' ? { flagged: true } : { guessed: x.guessed + 1, box: 1 }) });
       return json({ ok: true });
     }
-    if (p.endsWith('/functions/v1/ai')) return json(ai(body));
+    if (p.endsWith('/functions/v1/ai')) { if (aiDelay) await new Promise(r => setTimeout(r, aiDelay)); return json(ai(body)); }
     if (p.includes('/functions/v1/course-cloud/setup/status')) return json({ quiz_ready: true, drive_configured: true, oauth_discovery_ready: true, chatgpt_plugin_url: null });
     if (p.includes('/functions/v1/notify')) return json({ result: 'Sent (mock)' });
     if (p.endsWith('/app_settings')) {
@@ -298,7 +302,18 @@ export async function open(opts = {}) {
     if (p.endsWith('/study_materials')) return json(data.materials.map(x => ({ data: x })));
     if (p.endsWith('/study_runs')) return json(data.studyRuns.map(x => ({ data: x })));
     if (p.endsWith('/push_subscriptions')) return route.fulfill({ status: m === 'GET' || m === 'HEAD' ? 200 : 204, headers: { 'content-range': '0-0/2' }, body: '' });
-    if (p.endsWith('/study_events')) return route.fulfill({ status: 201, body: '' });
+    if (p.endsWith('/study_events')) {
+      if (m === 'GET') return json(events);
+      for (const row of Array.isArray(body) ? body : [body]) {
+        if (events.some(e => e.id === row.id)) continue;
+        events.push(row);
+        const day = state.days.find(d => d.date === row.local_date);
+        if (day) { day.answered++; day.correct += Number(row.correct); }
+        else state.days.push({ date: row.local_date, answered: 1, correct: Number(row.correct) });
+      }
+      if (loseAck) { loseAck = false; return route.abort('failed'); }
+      return route.fulfill({ status: 201, body: '' });
+    }
     errors.push(`Unhandled backend request: ${m} ${p}${u.search}`);
     return json({ message: 'Unexpected test request' }, 400);
   });
@@ -315,8 +330,11 @@ export async function open(opts = {}) {
   };
   if (wait && !backendDown) await settle();
   return {
-    ctx, page, errors, answers, data, get rows() { return rows; }, get tasks() { return tasks; }, get state() { return state; }, settle,
-    setOffline: async on => { down = on; await page.evaluate(v => Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => !v }), on); await page.evaluate(v => window.dispatchEvent(new Event(v ? 'offline' : 'online')), on); },
+    ctx, page, errors, answers, events, data, get rows() { return rows; }, get tasks() { return tasks; }, get state() { return state; }, settle,
+    setOffline: async on => { down = on; await page.evaluate(v => sessionStorage.setItem('lawstin-mock-offline', String(v)), on); await page.evaluate(v => Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => !v }), on); await page.evaluate(v => window.dispatchEvent(new Event(v ? 'offline' : 'online')), on); },
+    failRequest: (path, method = 'GET', options = {}) => failures.push({ path, method, ...options }),
+    loseEventAck: () => { loseAck = true; },
+    delayAi: ms => { aiDelay = ms; },
     failNext: () => { failNext = true; },
     goto: async h => { await page.evaluate(x => { window.location.hash = x; }, h.startsWith('#') ? h : `#${h}`); await page.waitForTimeout(400); },
     close: () => ctx.close(),

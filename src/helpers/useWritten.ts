@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import type { GradeDTO } from "../endpoints/ai_POST.schema";
+import type { GradeDTO, SpotterDTO } from "../endpoints/ai_POST.schema";
 import { dateKey } from "./dateKey";
 import { readCache, writeCache } from "./offlineCache";
 import { supabase } from "./supabase";
@@ -8,6 +8,24 @@ import type { CourseCode } from "./studyEngine";
 
 export const WRITTEN_PREFIX = "written:v1:";
 const PENDING = "lawstin-written-pending";
+export type WrittenDraft = { spot: SpotterDTO; answer: string; seconds?: number; ready?: boolean };
+export const draftKey = (spot: SpotterDTO) => spot.materialId ?? JSON.stringify([spot.course, spot.topic, spot.facts, spot.call]);
+export function readDrafts(): Record<string, WrittenDraft> {
+  const drafts = readCache<Record<string, WrittenDraft>>("written-drafts") ?? {};
+  try {
+    const old = JSON.parse(localStorage.getItem("lawstin-written") ?? "null");
+    if (old?.spot && !old.grade) { drafts[draftKey(old.spot)] ??= old; writeCache("written-drafts", drafts); }
+    localStorage.removeItem("lawstin-written");
+  } catch { /* No legacy draft. */ }
+  return drafts;
+}
+export function saveDraft(draft: WrittenDraft) {
+  localStorage.setItem("lawstin-cache:written-drafts", JSON.stringify({ ...readDrafts(), [draftKey(draft.spot)]: draft }));
+}
+export function removeDraft(spot: SpotterDTO) {
+  const drafts = readDrafts(); delete drafts[draftKey(spot)];
+  localStorage.setItem("lawstin-cache:written-drafts", JSON.stringify(drafts));
+}
 /** One graded essay, kept with its prompt so it can be reread later. */
 export type WrittenEntry = {
   id: string; at: string; day: string; course: CourseCode; topic: string;
@@ -19,8 +37,8 @@ const valid = (e: unknown): e is WrittenEntry => {
   const x = e as WrittenEntry;
   return !!x && typeof x.id === "string" && typeof x.day === "string" && typeof x.topic === "string" && !!x.grade && typeof x.grade.score === "number";
 };
-const readPending = (): WrittenEntry[] => { try { return (JSON.parse(localStorage.getItem(PENDING) ?? "[]") as unknown[]).filter(valid); } catch { return []; } };
-const writePending = (list: WrittenEntry[]) => { try { if (list.length) localStorage.setItem(PENDING, JSON.stringify(list)); else localStorage.removeItem(PENDING); } catch { /* storage blocked */ } };
+export const readPendingWritten = (): WrittenEntry[] => { try { return (JSON.parse(localStorage.getItem(PENDING) ?? "[]") as unknown[]).filter(valid); } catch { return []; } };
+const writePending = (list: WrittenEntry[]) => { if (list.length) localStorage.setItem(PENDING, JSON.stringify(list)); else localStorage.removeItem(PENDING); };
 const KEY = ["lawstin-written"] as const;
 const sort = (list: WrittenEntry[]) => [...new Map(list.map((e) => [e.id, e])).values()].sort((a, b) => b.at.localeCompare(a.at));
 
@@ -32,24 +50,29 @@ export function useWritten() {
     const { error } = await supabase.from("app_settings").upsert(list.map((e) => ({ key: `${WRITTEN_PREFIX}${e.id}`, value: JSON.stringify(e), updated_at: e.at })), { onConflict: "key" });
     if (error) throw error;
     const sent = new Set(list.map((e) => e.id));
-    writePending(readPending().filter((e) => !sent.has(e.id)));
+    writePending(readPendingWritten().filter((e) => !sent.has(e.id)));
   }, []);
   const query = useQuery({
     queryKey: KEY,
     queryFn: async (): Promise<WrittenEntry[]> => {
-      await send(readPending()).catch(() => {});
+      await send(readPendingWritten()).catch(() => {});
       const { data, error } = await supabase.from("app_settings").select("value").like("key", `${WRITTEN_PREFIX}%`).order("updated_at", { ascending: false }).limit(200);
       if (error) throw error;
       const rows: WrittenEntry[] = [];
       for (const r of data ?? []) { try { const e = JSON.parse(r.value); if (valid(e)) rows.push(e); } catch { /* skip a malformed row */ } }
-      return sort([...readPending(), ...rows]);
+      return sort([...readPendingWritten(), ...rows]);
     },
-    initialData: () => readCache<WrittenEntry[]>("written"),
+    initialData: () => sort([...readPendingWritten(), ...(readCache<WrittenEntry[]>("written") ?? [])]),
     initialDataUpdatedAt: 0,
   });
+  useEffect(() => {
+    const retry = () => { if (navigator.onLine) void send(readPendingWritten()).catch(() => {}); };
+    const timer = setInterval(retry, 15000); window.addEventListener("online", retry);
+    return () => { clearInterval(timer); window.removeEventListener("online", retry); };
+  }, [send]);
   useEffect(() => { if (query.data) writeCache("written", query.data); }, [query.data]);
   const add = useCallback((entry: WrittenEntry) => {
-    writePending([...readPending(), entry]);
+    writePending([...readPendingWritten(), entry]);
     qc.setQueryData<WrittenEntry[]>(KEY, (old) => sort([entry, ...(old ?? [])]));
     void send([entry]).catch(() => {});
   }, [qc, send]);
