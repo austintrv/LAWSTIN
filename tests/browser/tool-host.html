@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tool contract test</title></head><body><div id="root"></div><script type="module">
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import IssueSpot from '../../src/components/tools/IssueSpot.tsx';
+import '../../src/base.css';
+const params = new URLSearchParams(location.search);
+const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+createRoot(document.getElementById('root')).render(React.createElement(QueryClientProvider, { client }, React.createElement(IssueSpot, { course: params.get('course') ?? undefined, arg: params.get('arg') ?? undefined, onClose: () => document.body.setAttribute('data-closed', 'true') })));
+</script></body></html>

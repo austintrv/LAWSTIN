@@ -232,7 +232,7 @@ function keyTest(u, body) { // PostgREST-style key filters on app_settings
 
 /**
  * Opens the app against the mocked backend.
- * opts: width, height, dark, reducedMotion (default true), state (richState() result; default richState({now})), emptyState (new account),
+ * opts: tool (standalone IssueSpot contract host), course, arg, width, height, dark, reducedMotion (default true), state (richState() result; default richState({now})), emptyState (new account),
  *   prefs (localStorage lawstin-prefs; default {recall:false, plan:true}), hash ('#/study'), now (Date|'YYYY-MM-DD' fake clock, set before load),
  *   nightBefore (final tomorrow: now = the day before the first final), auth (default true; false shows sign-in), backendDown (every backend call fails, device offline),
  *   storage (extra localStorage entries to seed), wait (default true: wait for the app to settle).
@@ -245,7 +245,7 @@ export async function open(opts = {}) {
   const data = emptyState ? emptyOf(given) : given;
   const srv = await startServer(), br = await launch();
   let state = structuredClone(data.state), rows = structuredClone(data.rows), tasks = structuredClone(data.tasks), down = backendDown, failNext = false;
-  const answers = [], errors = [], events = [], failures = [];
+  const answers = [], errors = [], events = [], failures = [], settingWrites = [];
   let aiDelay = 0, loseAck = false;
   const ctx = await br.newContext({ viewport: { width, height }, colorScheme: dark ? 'dark' : 'light', reducedMotion: reducedMotion ? 'reduce' : 'no-preference', serviceWorkers: 'block', timezoneId: TZ, locale: 'en-US' });
   await ctx.route("https://fonts.googleapis.com/**", route => route.fulfill({ contentType: "text/css", body: "" }));
@@ -286,7 +286,7 @@ export async function open(opts = {}) {
     if (p.includes('/functions/v1/course-cloud/setup/status')) return json({ quiz_ready: true, drive_configured: true, oauth_discovery_ready: true, chatgpt_plugin_url: null });
     if (p.includes('/functions/v1/notify')) return json({ result: 'Sent (mock)' });
     if (p.endsWith('/app_settings')) {
-      if (m === 'POST') { for (const r of Array.isArray(body) ? body : [body]) rows = [...rows.filter(x => x.key !== r.key), { updated_at: new Date().toISOString(), ...r }]; return route.fulfill({ status: 201, body: '' }); }
+      if (m === 'POST') { settingWrites.push(...(Array.isArray(body) ? body : [body])); for (const r of Array.isArray(body) ? body : [body]) rows = [...rows.filter(x => x.key !== r.key), { updated_at: new Date().toISOString(), ...r }]; return route.fulfill({ status: 201, body: '' }); }
       if (m === 'DELETE' || m === 'PATCH') return route.fulfill({ status: 204, body: '' });
       const test = keyTest(u), hit = rows.filter(r => test(r.key)).sort((a, b) => a.key.localeCompare(b.key));
       const range = req.headers().range?.split('-').map(Number), list = range ? hit.slice(range[0], range[1] + 1) : hit;
@@ -321,7 +321,7 @@ export async function open(opts = {}) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); });
   if (now) await page.clock.install({ time: new Date(`${typeof now === 'string' ? now : dayKey(now)}T18:00:00.000Z`) });
-  const url = srv.url + (hash.startsWith('#') ? hash : `#${hash}`);
+  const url = opts.tool ? `${new URL('/tests/browser/tool-host.html', srv.url)}?${new URLSearchParams({ course: opts.course ?? 'il', ...(opts.arg ? { arg: opts.arg } : {}) })}` : srv.url + (hash.startsWith('#') ? hash : `#${hash}`);
   await page.goto(url);
   const settle = async () => {
     await page.locator('nav[aria-label="Sections"], form, h1').first().waitFor({ timeout: 20000 }).catch(() => {});
@@ -330,7 +330,7 @@ export async function open(opts = {}) {
   };
   if (wait && !backendDown) await settle();
   return {
-    ctx, page, errors, answers, events, data, get rows() { return rows; }, get tasks() { return tasks; }, get state() { return state; }, settle,
+    ctx, page, errors, answers, events, settingWrites, data, get rows() { return rows; }, get tasks() { return tasks; }, get state() { return state; }, settle,
     setOffline: async on => { down = on; await page.evaluate(v => sessionStorage.setItem('lawstin-mock-offline', String(v)), on); await page.evaluate(v => Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => !v }), on); await page.evaluate(v => window.dispatchEvent(new Event(v ? 'offline' : 'online')), on); },
     failRequest: (path, method = 'GET', options = {}) => failures.push({ path, method, ...options }),
     loseEventAck: () => { loseAck = true; },

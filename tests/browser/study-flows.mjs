@@ -298,3 +298,6 @@ try {
 
 const { safetyFlows } = await import('./safety-flows.mjs');
 await safetyFlows();
+
+const { essayFlows } = await import('./essay-flows.mjs');
+await essayFlows();

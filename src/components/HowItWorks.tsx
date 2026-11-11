@@ -8,7 +8,7 @@ import { STATUS_COLOR } from "../pages/StudyParts";
 export function HowItWorks({ plan, planOn, goal }: { plan: PlanCourse[]; planOn: boolean; goal: number }) {
   const chips: [CoverageStatus, string][] = [
     ["unseen", "You haven’t answered any of its questions yet."],
-    ["shaky", "Under 70% right after at least 2 answers, or a low-scoring essay on it."],
+    ["shaky", "Under 70% right after at least 2 answers, an essay below 7, or fewer than half the issues spotted on it."],
     ["learning", "Some questions unseen, or under 85% right."],
     ["solid", "Every question seen and 85% right or better."],
     ["none", "No questions written for it yet."],
@@ -69,6 +69,9 @@ export function HowItWorks({ plan, planOn, goal }: { plan: PlanCourse[]; planOn:
           {[
             ["Ready to review", "Questions + recall cards due today or earlier"],
             ["To go today", "Remaining target, up to what is ready"],
+            ["Spot the issues", "2 answers, scored by the issues caught"],
+            ["Written practice", "5 answers at 15 minutes; 10 at 45, scored by the grade"],
+            ["Weak topics", "A low essay or issue result lasts 2 weeks, until a stronger attempt"],
             ["Streak", "Consecutive days with a question, card, drill or essay"],
           ].map(([label, line]) => <div className={styles.row} key={label}><span className={styles.rowMain}><span className={styles.rowTitle}>{label}</span><span className={`${styles.rowSub} ${styles.wrapSub}`}>{line}</span></span></div>)}
           {chips.map(([k, line]) => (

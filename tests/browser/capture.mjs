@@ -19,7 +19,7 @@ quiz-recall quiz-question quiz-selected quiz-review-wrong quiz-review-facts ask-
 exam-question exam-results lesson-rule lesson-slipped lesson-check lesson-correct lesson-complete
 flashcard-front flashcard-back flashcards-done written-setup written-prompt written-typed written-graded written-history written-essay match-board match-picked match-result
 courses-home courses-tool course-il course-asy course-pr course-next course-kind reader-flowchart reader-outline reader-comparison reader-drill reader-drill-answered reader-hypothetical rulebook-read rulebook-recall workspace-clinic workspace-clinic-task workspace-tutoring
-progress-top progress-full progress-expanded topic-sheet progress-how activity-top activity-full activity-day activity-updates settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-activity night-before-study night-before-finals deep-link`.split(/\s+/);
+progress-top progress-full progress-expanded topic-sheet progress-how activity-top activity-full activity-day activity-updates settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-activity night-before-study night-before-finals deep-link spot-prompt spot-reveal spot-result spot-rules written-rules written-rewrite written-trend`.split(/\s+/);
 
 const index = [], log = [];
 let W, T, ctxTag;
@@ -197,12 +197,31 @@ const SCENES = {
   async written() {
     const s = await O({});
     const P = s.page;
-    await step('written-setup', async () => { await tap(P, 'Written practice'); await P.getByRole('heading', { name: 'Issue spotter' }).waitFor(); await snap(s, 'written-setup', 'Written practice setup with essay history.', 'Study > Written practice', { full: true }); }, s);
-    await step('written-prompt', async () => { await dialog(P).getByRole('button', { name: 'Intl Law', exact: true }).click(); await dialog(P).getByRole('button', { name: 'Get a fact pattern' }).click(); await P.getByRole('button', { name: 'Grade my answer' }).waitFor(); await snap(s, 'written-prompt', 'Written practice: fact pattern, empty answer.', 'Written practice > Intl Law > Get a fact pattern', { full: true }); }, s);
+    await step('written-setup', async () => { await tap(P, 'Written practice'); await P.getByRole('heading', { name: 'Written practice' }).waitFor(); await snap(s, 'written-setup', 'Written practice setup with essay history.', 'Study > Written practice', { full: true }); }, s);
+    await step('written-prompt', async () => { await dialog(P).getByRole('button', { name: 'Intl Law', exact: true }).click(); await dialog(P).getByRole('button', { name: 'Write an essay' }).click(); await P.getByRole('button', { name: 'Grade my answer' }).waitFor(); await snap(s, 'written-prompt', 'Written practice: fact pattern, empty answer.', 'Written practice > Intl Law > Write an essay', { full: true }); }, s);
     await step('written-typed', async () => { await dialog(P).locator('textarea').fill('The first issue is whether the threshold element is met. The rule looks to the facts at the time of the act. Applying it here, the prosecutor knew of the evidence before trial, so the disclosure duty was triggered. The second issue is timing: a disclosure made after the plea is not timely. Therefore the duty was breached.'); await P.waitForTimeout(300); await snap(s, 'written-typed', 'Written practice with an answer typed in.', 'Written practice > type an answer', { full: true }); }, s);
+    await step('written-rules', async () => { await tap(P, 'Rules'); await P.getByRole('searchbox', { name: 'Search rules' }).waitFor(); await snap(s, 'written-rules', 'Rules beside the essay, filtered to its topic.', 'Essay > Rules', { full: true }); await tap(P, 'Close rules'); }, s);
     await step('written-graded', async () => { await tap(P, 'Grade my answer'); await P.getByText(/Mock grader output/).first().waitFor({ state: 'attached' }).catch(() => {}); await P.waitForTimeout(500); await snap(s, 'written-graded', 'Graded essay: score, rubric, spotted and missed issues.', 'Written practice > Grade my answer', { full: true }); }, s);
+    await step('written-rewrite', async () => { await tap(P, 'Write it again'); await dialog(P).getByPlaceholder('Your answer').fill('A fresh attempt applying the rules to these facts.'); await tap(P, 'Grade my answer'); await P.getByRole('heading', { name: 'Your attempts' }).waitFor(); await snap(s, 'written-rewrite', 'Two essay attempts, scores and rubric changes.', 'Graded essay > Write it again > Grade', { full: true }); }, s);
     await step('written-history', async () => { await tap(P, 'Essays'); await P.getByRole('heading', { name: 'Your essays' }).waitFor(); await snap(s, 'written-history', 'Essay history list.', 'Graded result > Essays', { full: true }); }, s);
-    await step('written-essay', async () => { await dialog(P).locator('button').filter({ hasText: /Laws of War/ }).first().click(); await P.waitForTimeout(400); await snap(s, 'written-essay', 'A saved graded essay reopened.', 'Essay history > an essay', { full: true }); }, s);
+    await step('written-trend', async () => { await snap(s, 'written-trend', 'Course scores over time and average rubric bars.', 'Written practice > essay history', { full: true }); }, s);
+    await step('written-essay', async () => { await dialog(P).getByRole('button', { name: /^Essay / }).first().click(); await P.waitForTimeout(400); await snap(s, 'written-essay', 'A saved graded essay reopened.', 'Essay history > an essay', { full: true }); }, s);
+    await s.close();
+  },
+
+  async spot() {
+    const s = await O({}); const P = s.page;
+    await tap(P, 'Written practice'); await tap(P, 'Spot the issues · 3 min');
+    await P.getByRole('textbox', { name: 'Your issues' }).fill('Classification of the conflict\nProtection of civilians');
+    await step('spot-prompt', async () => { await snap(s, 'spot-prompt', 'Verified facts with an optional issue list.', 'Written practice > Spot the issues', { full: true }); }, s);
+    await step('spot-rules', async () => { await tap(P, 'Rules'); await P.getByRole('searchbox', { name: 'Search rules' }).waitFor(); await snap(s, 'spot-rules', 'Rules while spotting issues.', 'Spot the issues > Rules', { full: true }); await tap(P, 'Close rules'); }, s);
+    await tap(P, 'Show the issues');
+    const n = await dialog(P).getByRole('button', { name: 'Got it', exact: true }).count();
+    for (let i = 0; i < n; i++) await dialog(P).getByRole('button', { name: i ? 'Got it' : 'Missed it', exact: true }).nth(i).click();
+    await dialog(P).locator('summary').nth(1).click();
+    await step('spot-reveal', async () => { await snap(s, 'spot-reveal', 'Checked issue cards with analysis and self-marking.', 'Spot the issues > Show the issues', { full: true }); }, s);
+    await tap(P, 'See result');
+    await step('spot-result', async () => { await snap(s, 'spot-result', 'Issue score, missed issues first, next pattern and writing actions.', 'Spot the issues > See result', { full: true }); }, s);
     await s.close();
   },
 
