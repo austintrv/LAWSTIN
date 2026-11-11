@@ -70,7 +70,7 @@ Course codes (`course_code` enum): `il` = International Law, `asy` = Asylum Law,
     {"id":"B", ...}, {"id":"C", ...}, {"id":"D", ...}
   ],
   "answer": "A",
-  "rule": "The rule in one to three sentences, stated so it could go in an outline.",
+  "rule": "The rule in one or two sentences, 240 characters at most, stated so it could go in an outline. The first sentence alone must state the rule.",
   "authority": "Case names, rule numbers, page cites",
   "verified": {"at": "2026-10-29T12:58:00Z", "rounds": 1, "notes": "Passed independent check"}
 }
@@ -207,7 +207,7 @@ WHERE answered_at > coalesce((SELECT max(created_at) FROM runs), '1970-01-01');
 - Skip a course whose final has passed and give its share to the others in the same proportion.
 - Within each course’s allotment, in this order:
   1. **Classes held since the last run**: 2–3 questions (newest first), so new material is never left uncovered.
-  2. **Uncovered units, oldest first**: 3 questions per unit (4 for Pro Res) until the allotment runs out. Finish one unit before starting the next, and spread its questions over different rules.
+  2. **Uncovered units, oldest first**: 3 questions per unit (4 for Pro Res) until the allotment runs out. Finish one unit before starting the next, and spread its questions over different rules. While any taught unit of a course has no questions, none of that course’s allotment goes to a unit that already has questions (flag fixes aside).
   3. **Thin units**: bring each up to 4 (6 for Pro Res).
   4. **Weak topics** (1–2): a new fact pattern on the same rule, built on a different case where possible (never a reworded copy of the missed question).
   5. Anything left goes to the units with the fewest questions per rule taught.
@@ -228,7 +228,7 @@ Read the DAY notes for classes since the last run, the outline sections (or DAY 
 ### Step 5 — Double check (required)
 No question reaches the app until it passes both checks below. Draft about 20% more questions than the target so dropped ones can be replaced without another round.
 
-**5a. Structure check (script).** Validate the batch with a short script: JSON parses; four choices A–D; one of each role; `answer` matches the `correct` choice; ids unique and not already in the app (unless it is a flag fix); `course` is il/asy/pr; `class_date` ≤ today; `source_files` and `source_section` present; `topic` equals a syllabus unit’s `topic` or `also` string for that course; correct letters spread over A–D; every choice within 20% of its question’s average choice length; the correct choice the longest in no more than a quarter of the batch.
+**5a. Structure check (script).** Validate the batch with a short script: JSON parses; four choices A–D; one of each role; `answer` matches the `correct` choice; ids unique and not already in the app (unless it is a flag fix); `course` is il/asy/pr; `class_date` ≤ today; `source_files` and `source_section` present; `topic` equals a syllabus unit’s `topic` or `also` string for that course; correct letters spread over A–D; every choice within 20% of its question’s average choice length; `rule` is 240 characters or fewer; the correct choice the longest in no more than a quarter of the batch.
 
 **5b. Independent accuracy check (separate agent).** Launch one `general-purpose` subagent with the Agent tool (`model: "sonnet"`, `run_in_background: false`) for the whole batch. It must not see your drafting notes or reasoning: give it only the path of a single file holding all the drafts and the instructions below, so it judges the questions cold. Prompt it with:
 

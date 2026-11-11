@@ -12,9 +12,15 @@ Then tell Claude the package is ready. Claude reviews it, runs the checks, merge
 |---|---|---|---|
 | 1 Trust | 1A Numbers you can trust | `1A-numbers.md` | 1B |
 | 1 Trust | 1B Nothing gets lost | `1B-safety.md` | 1A |
-| 2 Fit each exam | 2A, 2B, 2C | written after stage 1 merges | |
-| 3 Find and own | 3A, 3B | written after stage 2 merges | |
-| 4 Polish, joy, longevity | 4A, 4B | written after stage 3 merges | |
+| 2 Fit each exam | 2A The next exam drives Study | `2A-next-exam.md` | 2B, 2C |
+| 2 Fit each exam | 2B Essays he will actually write | `2B-essays.md` | 2A, 2C |
+| 2 Fit each exam | 2C Pro Res under exam conditions | `2C-exam-conditions.md` | 2A, 2B |
+| 3 Find and own | 3A Search and tabs | `3A-search.md` | 3B |
+| 3 Find and own | 3B Topic pages and notes | `3B-topics-notes.md` | 3A |
+| 4 Polish, joy, longevity | 4A One design | `4A-one-design.md` | run alone |
+| 4 Polish, joy, longevity | 4B Joy and longevity | `4B-joy-longevity.md` | run alone, after 4A |
+
+Start a stage only after Claude has merged the stage before it; each brief says so.
 
 Rollback point: branch `rollback-2026-11-11` is `main` as it was before this work.
 
