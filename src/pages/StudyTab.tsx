@@ -82,9 +82,6 @@ export function StudyView({ e, state, numbers, courseNumbers, cards, plan, filte
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
   onStart: () => void; onCourse: (c: CourseCode) => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onMatch?: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
-  if (!e.questions.length) {
-    return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2></div>;
-  }
   const qs = e.queues(filter);
   const { answered: today, goal, ready, left, minutes: mins, review, fresh } = numbers;
   const missed = e.missedTopics().filter((t) => activeCourses(e.today, filter).includes(t.course));

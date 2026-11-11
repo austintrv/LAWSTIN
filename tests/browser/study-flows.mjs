@@ -57,7 +57,7 @@ async function setup({width=390,height=844,dark=false,questions,prog=[],material
   const page=await ctx.newPage();
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto('http://127.0.0.1:5174/LAWSTIN/');
-  await page.getByRole('button',{name:'Start studying',exact:true}).waitFor();
+  await page.getByRole('button',{name:'How today’s plan is built',exact:true}).waitFor();
   return {ctx,page,setOffline:async on=>{down=on;await page.evaluate(v=>{localStorage.setItem('lawstin-test-offline',v?'1':'0');Object.defineProperty(navigator,'onLine',{configurable:true,get:()=>!v});window.dispatchEvent(new Event(v?'offline':'online'));},on);},get state(){return state},get rows(){return rows},get answers(){return answers},fail(){failNext=true},miss(id){state=applyLocalAnswer(state,{questionId:id,choice:'B',localDate:today},new Date().toISOString())}};
 }
 async function answer(page) {
@@ -210,6 +210,24 @@ try {
   assert.equal(grades.length,2);assert(grades.every(r=>JSON.parse(r.value).seen===1));
   await mixed.ctx.close();
   console.log('PASS: mixed questions and flashcards grade once, finish, and save spaced progress');
+
+  const empty = await setup({ questions: [] });
+  await empty.page.getByText('Nothing ready today', { exact: true }).waitFor();
+  assert.equal(await empty.page.getByRole('button', { name: 'All caught up', exact: true }).isDisabled(), true);
+  await empty.page.screenshot({ path: `${artifacts}/empty-ready-phone.png` });
+  await empty.ctx.close();
+  const onlyCards = await setup({ width: 1440, height: 900, questions: [], materials: cards.slice(0, 1) });
+  await onlyCards.page.getByRole('button', { name: 'Study 1 new items', exact: true }).waitFor();
+  await onlyCards.page.getByText('1 to go today', { exact: true }).waitFor();
+  await onlyCards.page.getByRole('button', { name: 'Start studying', exact: true }).click();
+  await onlyCards.page.getByRole('button', { name: 'Reveal answer', exact: true }).click();
+  await onlyCards.page.getByRole('button', { name: 'Got it', exact: true }).click();
+  await onlyCards.page.getByRole('heading', { name: 'Session complete', exact: true }).waitFor();
+  await onlyCards.page.getByRole('button', { name: 'Done', exact: true }).click();
+  await onlyCards.page.getByText('Nothing ready today', { exact: true }).waitFor();
+  await onlyCards.page.screenshot({ path: `${artifacts}/cards-only-desktop.png` });
+  await onlyCards.ctx.close();
+  console.log('PASS: empty bank shows nothing ready, and cards alone remain studyable');
 
   const numbers = await setup({ questions: ['il', 'asy', 'pr'].flatMap(c => Array.from({ length: 30 }, (_, i) => question(`${c}-${i}`, 'Topic', c))) });
   const hero = numbers.page.locator('[data-pane="study"]');
