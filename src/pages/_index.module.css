@@ -81,6 +81,18 @@
 .split div { display: flex; flex-direction: column; gap: 2px; }
 .split b { font-size: 26px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
 .split span { font-size: 13px; color: var(--muted-foreground); }
+.queueActions { gap: 8px; }
+.queueActions button { min-height: 76px; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 4px; padding: 10px 2px; margin: -4px 0; border-radius: 12px; text-align: left; transition: background .2s; }
+.queueActions button:active:not(:disabled) { background: var(--fill); }
+.queueActions button:disabled { cursor: default; }
+.queueActions span { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.queueActions button:disabled svg { visibility: hidden; }
+.caughtUp:disabled { background: var(--success-soft); color: var(--success); opacity: 1; }
+.freshStart { color: var(--uh-red); font-size: 15px; font-weight: 600; min-height: 36px; margin-top: -10px; }
+.nextReview { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 16px; }
+.nextReview span, .nextReview button { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-size: 14px; }
+.nextReview span { color: var(--muted-foreground); }
+.nextReview button { color: var(--uh-red); font-weight: 600; }
 .big { width: 100%; height: 52px; border-radius: var(--radius); font-size: 17px; font-weight: 600; transition: transform 0.2s var(--ease-ios), background 0.2s; }
 .big:active:not(:disabled) { transform: scale(0.97); }
 .cta:not(:disabled) { background: var(--uh-red); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -6px var(--uh-red-soft), 0 2px 6px -2px rgba(200, 16, 46, 0.35); }
@@ -322,6 +334,10 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 /* Essays due today, under the main button */
 .essays { display: flex; gap: 10px; }
 .essays > * { flex: 1; min-width: 0; gap: 8px; }
+@media (max-width: 380px) {
+  .essays { flex-direction: column; }
+  .essays > * { flex: auto; }
+}
 /* Coverage status on Progress rows */
 .status { flex-shrink: 0; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-full); white-space: nowrap; }
 .statusNone { background: none !important; box-shadow: inset 0 0 0 1px var(--border); }

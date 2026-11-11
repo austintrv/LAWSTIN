@@ -1,8 +1,10 @@
 import type { OutputType as State, QuestionDTO, ProgressDTO } from "../endpoints/state_GET.schema";
 import { dateKey } from "./dateKey";
+import { needsTopicReview, type TopicReview } from "./topicReview";
 
 export type CourseCode = "il" | "asy" | "pr";
 export type Filter = "all" | CourseCode;
+export type StudyMode = "mixed" | "due" | "new" | "ahead";
 /** A recall card in a study session: a library flashcard, or a rule to state from memory. */
 export type SessionCard = { id: string; course: CourseCode; topic: string; front: string; back: string; reason: string; authority: string; rule?: boolean };
 export type QuestionItem = { q: QuestionDTO; review: boolean; card?: undefined };
@@ -76,7 +78,7 @@ function byCourse<T extends RoundItem>(items: T[]): T[][] {
 }
 
 /** Pure study logic over the loaded state. */
-export function studyEngine(state: State | undefined, todayKey?: string, opts?: { weakExtra?: string[] }) {
+export function studyEngine(state: State | undefined, todayKey?: string, opts?: { weakExtra?: string[]; reviews?: Record<string, TopicReview> }) {
   const questions = state?.questions ?? [];
   const pmap = new Map<string, ProgressDTO>((state?.progress ?? []).map((p) => [p.questionId, p]));
   const days = new Map((state?.days ?? []).map((d) => [d.date, d]));
@@ -92,7 +94,7 @@ export function studyEngine(state: State | undefined, todayKey?: string, opts?: 
       const p = prog(q.id);
       if (p?.starred) starred.push(q);
       if (!p || !p.seen) { fresh.push(q); continue; }
-      if (p.lastCorrect === false) missed.push(q);
+      if (p.lastCorrect === false && needsTopicReview(p, opts?.reviews?.[`${q.course}|${q.topic}`])) missed.push(q);
       if ((examDue(p.due, dayOf(p.lastAt), FINALS[q.course], today) ?? today) <= today) due.push(q); else ahead.push(q);
     }
     const order = (a: QuestionDTO, b: QuestionDTO) => {
@@ -123,15 +125,15 @@ export function studyEngine(state: State | undefined, todayKey?: string, opts?: 
   }
 
   /**
-   * Topics with missed or guessed questions, worst first: questions still missed count most, then
-   * past misses and guesses. Each carries its missed questions (still-missed first) for a lesson.
+   * Unresolved misses and guesses, worst first. Successful answers and topic lessons clear
+   * the review queue; new misses bring a topic back without erasing its history.
    */
   function missedTopics() {
     const m = new Map<string, { course: CourseCode; topic: string; items: { q: QuestionDTO; p: ProgressDTO }[]; c: number; w: number; score: number }>();
     for (const q of questions) {
       const p = prog(q.id);
-      if (!p || !(p.wrong > 0 || p.guessed > 0 || p.lastCorrect === false)) continue;
       const k = `${q.course}|${q.topic}`;
+      if (!p || !needsTopicReview(p, opts?.reviews?.[k])) continue;
       if (!m.has(k)) m.set(k, { course: q.course, topic: q.topic, items: [], c: 0, w: 0, score: 0 });
       const t = m.get(k)!;
       t.items.push({ q, p });
@@ -167,13 +169,15 @@ export function studyEngine(state: State | undefined, todayKey?: string, opts?: 
     return interleave(lists).slice(0, n);
   }
 
-  function buildRound(f: Filter): QuestionItem[] {
+  function buildRound(f: Filter, mode: StudyMode = "mixed"): QuestionItem[] {
     const { due, fresh, ahead } = queues(f);
+    if (mode === "due") return interleave(byCourse(due.slice(0, ROUND_SIZE).map((q) => ({ q, review: true }))));
+    if (mode === "new") return pickFresh(fresh, ROUND_SIZE).map((q) => ({ q, review: false }));
+    if (mode === "ahead") return interleave(byCourse(ahead.slice(0, ROUND_SIZE).map((q) => ({ q, review: true }))));
     let rev = due.slice(0, Math.ceil(ROUND_SIZE / 2));
     const nw = pickFresh(fresh, ROUND_SIZE - rev.length);
     if (rev.length + nw.length < ROUND_SIZE) rev = due.slice(0, ROUND_SIZE - nw.length);
     const items: QuestionItem[] = [...rev.map((q) => ({ q, review: true })), ...nw.map((q) => ({ q, review: false }))];
-    if (items.length < ROUND_SIZE) items.push(...ahead.slice(0, ROUND_SIZE - items.length).map((q) => ({ q, review: true })));
     return interleave(byCourse(items));
   }
 

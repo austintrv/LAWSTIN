@@ -31,10 +31,12 @@ import { useStudyMaterials } from "../helpers/useStudyMaterials";
 import { useSyllabus } from "../helpers/useSyllabus";
 import { useWritten } from "../helpers/useWritten";
 import { useLogStudy } from "../helpers/useLogStudy";
-import { finalsPlan, mixRound, readyCards, type PlanCourse } from "../helpers/studySession";
+import { finalsPlan, mixRound, nextReviewDay, readyCards, type PlanCourse } from "../helpers/studySession";
 import { readPrefs } from "../helpers/prefs";
 import { dueLabel } from "../components/TaskList";
-import { COURSES, COURSE_KEYS, DAILY_GOAL, EXAMS, EXAM_PACE, FINALS, STATUS_LABEL, studyEngine, makeGreeting, type CoverageStatus, type Filter, type RoundItem, type CourseCode, type SessionCard, type Syllabus } from "../helpers/studyEngine";
+import { readPractice, savePractice, type SavedPractice } from "../helpers/practiceMemory";
+import { reviewEvidence } from "../helpers/topicReview";
+import { COURSES, COURSE_KEYS, DAILY_GOAL, EXAMS, EXAM_PACE, FINALS, STATUS_LABEL, studyEngine, makeGreeting, type CoverageStatus, type Filter, type RoundItem, type CourseCode, type SessionCard, type StudyMode, type Syllabus } from "../helpers/studyEngine";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import styles from "./_index.module.css";
 
@@ -67,7 +69,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const written = useWritten();
   const syllabus = useSyllabus();
   const log = useLogStudy();
-  const e = useMemo(() => studyEngine(state, undefined, { weakExtra: written.weak }), [state, written.weak]);
+  const e = useMemo(() => studyEngine(state, undefined, { weakExtra: written.weak, reviews: store.record.reviews }), [state, written.weak, store.record.reviews]);
   const flashcards = useMemo(() => store.materials.filter((m): m is Flashcard => m.kind === "flashcard"), [store.materials]);
   const hypos = useMemo(() => store.materials.filter((m): m is Hypothetical => m.kind === "hypothetical"), [store.materials]);
   const cardsFor = (f: Filter) => readyCards(flashcards, e.ruleCards(f), store.record, state, f);
@@ -80,10 +82,11 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const goal = planOn ? plan.goal : settings.query.data?.settings.dailyGoal ?? DAILY_GOAL;
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
-  const [filter, setFilter] = useState<Filter>("all");
+  const [filter, setFilter] = useState<Filter>(() => (readPractice(userId)?.key.split(":")[1] as Filter | undefined) ?? "all");
   const [session, setSession] = useState<{ items: RoundItem[]; mode: QuizMode; key: number; source: Source; resumeKey?: string; resume?: QuizSnapshot; seconds?: number } | null>(null);
-  // The last practice session closed partway, so starting the same one again within a few hours resumes it.
-  const lastPractice = useRef<{ key: string; snap: QuizSnapshot; at: number } | null>(null);
+  // A practice session survives closing the app or refreshing, until the end of the study day.
+  const [lastPractice, setLastPractice] = useState<SavedPractice | null>(() => readPractice(userId));
+  const checkpoint = (saved: SavedPractice | null) => { setLastPractice(saved); savePractice(userId, saved); };
   const [topicSheet, setTopicSheet] = useState<{ course: CourseCode; topic: string } | null>(null);
   const [examSheet, setExamSheet] = useState(false);
   // Settings is a full page at #/settings so the system back gesture and button close it.
@@ -129,7 +132,8 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       const shown = new Set(t.items.slice(0, 3).map((it) => it.q.id));
       const others = e.questions.filter((q) => q.course === t.course && q.topic === t.topic && !shown.has(q.id));
       const check = others.find((q) => !e.prog(q.id)?.seen) ?? others[0] ?? t.items[0].q;
-      return { course: t.course, topic: t.topic, rules: e.topicRules(t.course, t.topic), items: t.items, check };
+      return { course: t.course, topic: t.topic, rules: e.topicRules(t.course, t.topic), items: t.items, check,
+        evidence: reviewEvidence(state?.progress.filter((p) => e.questions.some((q) => q.id === p.questionId && q.course === t.course && q.topic === t.topic)) ?? []) };
     }));
   };
   const [celebrate, setCelebrate] = useState(false);
@@ -215,15 +219,16 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   latest.current = state;
   const engineFor = (exclude: Set<string> = NONE) => {
     const s = latest.current;
-    return studyEngine(s && exclude.size ? { ...s, questions: s.questions.filter((q) => !exclude.has(q.id)) } : s, undefined, { weakExtra: written.weak });
+    return studyEngine(s && exclude.size ? { ...s, questions: s.questions.filter((q) => !exclude.has(q.id)) } : s, undefined, { weakExtra: written.weak, reviews: store.record.reviews });
   };
   // The everyday session: questions with recall cards mixed in, read from the latest card progress.
   const cardState = useRef({ flashcards, record: store.record });
   cardState.current = { flashcards, record: store.record };
-  const mixed = (f: Filter): Source => (eng, exclude) => {
+  const mixed = (f: Filter, mode: StudyMode = "mixed"): Source => (eng, exclude) => {
     const { flashcards: fc, record } = cardState.current;
-    const cards = readyCards(fc, eng.ruleCards(f), record, latest.current, f).list.filter((c) => !exclude.has(c.id));
-    return mixRound(eng.buildRound(f), cards, record);
+    // Rule cards use the full bank even when the question source excludes this session's items.
+    const cards = readyCards(fc, studyEngine(latest.current).ruleCards(f), record, latest.current, f, eng.today, mode).list.filter((c) => !exclude.has(c.id));
+    return mixRound(eng.buildRound(f, mode), cards, record);
   };
   const onCard = (card: SessionCard, correct: boolean) => {
     store.update((prev) => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
@@ -237,19 +242,31 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     } catch { return null; }
   };
   const start = (source: Source, mode: QuizMode = "practice", resumeKey?: string, seconds?: number) => {
-    const last = lastPractice.current;
-    if (mode === "practice" && resumeKey && last?.key === resumeKey && Date.now() - last.at < 3 * 3600 * 1000) {
-      haptic();
-      lastPractice.current = null;
-      setExamSheet(false); setTopicSheet(null);
-      setSession({ items: last.snap.items, mode, key: Date.now(), source, resumeKey, resume: last.snap });
-      return;
+    const last = lastPractice;
+    if (mode === "practice" && resumeKey && last?.key === resumeKey && dateKey.today(new Date(last.at)) === dateKey.today()) {
+      const restored = last.snap.items.map((it) => it.q ? { ...it, q: it.q.id.startsWith("ai-") ? it.q : latest.current?.questions.find((q) => q.id === it.q.id) } : it);
+      if (restored.some((it) => !it.q && !it.card)) checkpoint(null);
+      else {
+        haptic();
+        setExamSheet(false); setTopicSheet(null);
+        const snap = { ...last.snap, items: restored as RoundItem[] };
+        setSession({ items: snap.items, mode, key: Date.now(), source, resumeKey, resume: snap });
+        return;
+      }
     }
     const items = source(engineFor(), NONE);
-    if (!items.length) { toast("Nothing to study here yet"); return; }
+    if (!items.length) { toast("All caught up"); return; }
     haptic();
     setExamSheet(false); setTopicSheet(null);
     setSession({ items, mode, key: Date.now(), source, resumeKey, seconds });
+  };
+  const resumeStudy = () => {
+    const key = lastPractice?.key.endsWith(`:${filter}`) ? lastPractice.key : `round:${filter}`;
+    const kind = key.split(":")[0];
+    const source: Source = kind === "missed" ? (eng) => eng.listRound(eng.queues(filter).missed)
+      : kind === "starred" ? (eng) => eng.listRound(eng.queues(filter).starred)
+      : mixed(filter, kind === "due" || kind === "new" ? kind : "mixed");
+    start(source, "practice", key);
   };
 
   // A question notification opens #/q/<id>: answer that question first, then keep going with the usual queue.
@@ -293,7 +310,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     } catch (err) {
       if (isNetworkError(err)) return queue();
       toast.error("Couldn’t save that answer");
-      return choice === q.answer;
+      throw err;
     }
   };
 
@@ -340,7 +357,12 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
               {state && k === "study" && (
                 <StudyView e={e} state={state} goal={goal} cards={cardsFor(filter)} plan={planOn ? plan.courses : []} filter={filter} setFilter={setFilter} celebrate={celebrate}
-                  onStart={() => start(mixed(filter), "practice", `round:${filter}`)}
+                  resuming={!!lastPractice?.key.endsWith(`:${filter}`)}
+                  onFresh={() => { checkpoint(null); const source = mixed(filter); const items = source(engineFor(), NONE); if (items.length) setSession({ items, mode: "practice", key: Date.now(), source, resumeKey: `round:${filter}` }); }}
+                  nextReview={nextReviewDay(e, [...flashcards, ...e.ruleCards(filter)], store.record, filter)}
+                  onMode={(mode) => start(mixed(filter, mode), "practice", mode === "ahead" ? undefined : `${mode}:${filter}`)}
+                  onLesson={openLesson}
+                  onStart={resumeStudy}
                   onCourse={(c) => start(mixed(c), "practice", `round:${c}`)}
                   onEssay={(c) => { haptic(); setWriting({ course: c }); }}
                   onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed), "practice", `missed:${filter}`)}
@@ -414,6 +436,10 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         onTopic={(course, topic) => { setWriting(null); start((eng) => eng.topicRound(course, topic)); }} /></Suspense>}
 
       {lesson && <Suspense fallback={null}><MissedLesson topics={lesson} away={lessonAway} onAnswer={onAnswer} onClose={endLesson}
+        onReviewed={(t) => {
+          store.update((prev) => ({ ...prev, reviews: { ...prev.reviews, [`${t.course}|${t.topic}`]: { at: new Date().toISOString(), questions: t.evidence } } }));
+          toast(`${t.topic} reviewed`);
+        }}
         onDrill={(qs) => { endLesson(); start((eng) => { const ids = new Set(eng.questions.map((q) => q.id)); return eng.listRound(qs.filter((q) => ids.has(q.id))); }); }}
         tools={(course, topic) => <TopicTools course={course} topic={topic} topicCards onGo={openLessonTool} />} /></Suspense>}
 
@@ -435,11 +461,11 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           onFlag={(q, note) => { mark.mutate({ action: "flag", questionId: q.id, note }); toast("Flagged for the next update"); }}
           onMore={(exclude) => session.source(engineFor(exclude), exclude)}
           onAnother={() => { const items = session.source(engineFor(), NONE); if (!items.length) { setSession(null); toast("All caught up"); return; } setSession({ ...session, items, key: Date.now(), resume: undefined }); }}
-          onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: session.source })}
+          onRetry={(items) => setSession({ items, mode: "practice", key: Date.now(), source: () => [] })}
           resume={session.resume}
+          onCheckpoint={session.mode === "practice" && session.resumeKey ? (snap) => checkpoint(snap ? { key: session.resumeKey!, snap, at: Date.now() } : null) : undefined}
           onClose={(snap) => {
-            lastPractice.current = session.mode === "practice" && session.resumeKey && snap?.results.some((r) => r !== undefined)
-              ? { key: session.resumeKey, snap, at: Date.now() } : null;
+            if (session.mode === "practice" && session.resumeKey) checkpoint(snap ? { key: session.resumeKey, snap, at: Date.now() } : null);
             setSession(null);
           }}
         /></Suspense>
@@ -601,7 +627,12 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, onStart, onCourse, onEssay, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onFresh, onMode, onLesson, onStart, onCourse, onEssay, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+  resuming: boolean;
+  nextReview: string | null;
+  onFresh: () => void;
+  onMode: (mode: StudyMode) => void;
+  onLesson: (topics: MissedTopic[]) => void;
   goal: number;
   /** Recall cards ready now for the chosen filter. */
   cards: ReturnType<typeof readyCards>;
@@ -617,10 +648,10 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
   const qs = e.queues(filter);
   const today = e.todayCount?.answered ?? 0;
   const week = e.lastNDays(7).reduce((a, d) => ({ a: a.a + d.answered, c: a.c + d.correct }), { a: 0, c: 0 });
-  const avail = qs.due.length + qs.fresh.length + qs.ahead.length + cards.list.length;
   const ready = qs.due.length + qs.fresh.length + cards.list.length;
+  const missed = e.missedTopics().filter((t) => filter === "all" || t.course === filter);
   const essays = plan.filter((c) => c.essay && (filter === "all" || filter === c.course));
-  const roundLabel = !avail ? "All caught up" : !ready ? "Review ahead" : today > 0 ? "Keep going" : "Start studying";
+  const roundLabel = resuming ? "Resume studying" : !ready ? "All caught up" : today > 0 ? "Keep going" : "Start studying";
   const run = state.runs[0];
   const goalPct = Math.min(1, today / goal);
   const goalDone = today >= goal;
@@ -635,14 +666,19 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
             <button key={k} aria-pressed={filter === k} className={filter === k ? styles.segOn : ""} onClick={() => { if (filter !== k) haptic(); setFilter(k); }}>{l}</button>
           ))}
         </div>
-        <div className={styles.split}>
-          <div><b><Num v={qs.due.length + cards.due.length} /></b><span>Reviews due</span></div>
-          <div><b><Num v={qs.fresh.length + cards.fresh.length} /></b><span>New</span></div>
-          <div><b><Num v={qs.missed.length} /></b><span>Missed</span></div>
+        <div className={`${styles.split} ${styles.queueActions}`}>
+          <button disabled={!qs.due.length && !cards.due.length} onClick={() => onMode("due")} aria-label={`Review ${qs.due.length + cards.due.length} due items`}><b><Num v={qs.due.length + cards.due.length} /></b><span>Due <ChevronRight size={12} /></span></button>
+          <button disabled={!qs.fresh.length && !cards.fresh.length} onClick={() => onMode("new")} aria-label={`Study ${qs.fresh.length + cards.fresh.length} new items`}><b><Num v={qs.fresh.length + cards.fresh.length} /></b><span>New <ChevronRight size={12} /></span></button>
+          <button disabled={!missed.length} onClick={() => onLesson(missed.slice(0, 4))} aria-label={`Review ${missed.length} missed topics`}><b><Num v={missed.length} /></b><span>To revisit <ChevronRight size={12} /></span></button>
         </div>
-        <Button className={`${styles.big} ${styles.cta}`} disabled={!avail} onClick={onStart}>
-          {roundLabel}
+        <Button className={`${styles.big} ${styles.cta} ${!ready && !resuming ? styles.caughtUp : ""}`} disabled={!ready && !resuming} onClick={onStart}>
+          {!ready && !resuming && <Check size={18} />}{roundLabel}
         </Button>
+        {resuming && ready > 0 && <button className={styles.freshStart} onClick={onFresh}>Start fresh</button>}
+        {!ready && nextReview && <div className={styles.nextReview}>
+          <span><CalendarDays size={16} />Next review · {new Date(`${nextReview}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+          <button onClick={() => onMode("ahead")}>Review ahead <ChevronRight size={14} /></button>
+        </div>}
         {essays.length > 0 && (
           <div className={styles.essays}>
             {essays.map((c) => (

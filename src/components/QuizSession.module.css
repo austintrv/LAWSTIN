@@ -68,6 +68,8 @@
 .dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes blink { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
 .history { margin: 0; font-size: 13px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.scheduleRow { cursor: default; }
+.scheduleDate { margin-left: auto; color: var(--success); font-size: 15px; font-weight: 600; white-space: nowrap; }
 .flagBox { display: flex; flex-direction: column; gap: 8px; }
 .actions { display: flex; gap: 8px; align-items: center; }
 .iconBtn { width: 50px; height: 50px; border-radius: var(--radius); border: 0; background: var(--fill); color: var(--muted-foreground); display: grid; place-items: center; flex-shrink: 0; cursor: pointer; transition: color 0.2s, transform 0.2s var(--ease-ios); }

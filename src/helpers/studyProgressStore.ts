@@ -7,6 +7,11 @@ export const emptyStudyCache = (): StudyCache => ({ record: emptyStudyRecord(), 
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
 const fields = Object.keys(emptyStudyRecord()) as (keyof StudyRecord)[];
 function validValue(field: keyof StudyRecord, value: unknown): boolean {
+  if (field === "reviews") {
+    if (!object(value) || typeof value.at !== "string" || !Number.isFinite(Date.parse(value.at)) || !object(value.questions)) return false;
+    return Object.values(value.questions).every((p) => object(p)
+      && Number.isInteger(p.wrong) && Number(p.wrong) >= 0 && Number.isInteger(p.guessed) && Number(p.guessed) >= 0);
+  }
   if (field === "completed" || field === "starred") return typeof value === "boolean";
   if (field === "notes") return typeof value === "string";
   if (field === "highlights") return Array.isArray(value) && value.every(v => typeof v === "string");

@@ -2,8 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { examDue, studyEngine, FINALS, type SyllabusUnit } from "../src/helpers/studyEngine";
 import { emptyStudyRecord, reviewCard, type Flashcard } from "../src/helpers/studyMaterials";
-import { finalsPlan, mixRound, readyCards } from "../src/helpers/studySession";
+import { finalsPlan, mixRound, nextReviewDay, readyCards } from "../src/helpers/studySession";
 import type { OutputType as State, ProgressDTO, QuestionDTO } from "../src/endpoints/state_GET.schema";
+import { reviewEvidence } from "../src/helpers/topicReview";
+import { applyLocalAnswer } from "../src/helpers/localAnswer";
+import { restorePractice } from "../src/helpers/practiceMemory";
+import { changeStudyRecord, emptyStudyCache, mergeStudyRows, restoreStudyCache } from "../src/helpers/studyProgressStore";
 
 const q = (id: string, course: QuestionDTO["course"], topic: string, subtopic = topic): QuestionDTO => ({
   id, course, topic, subtopic, classDay: 1, classDate: "2026-10-01", source: null, batch: null, stem: "Facts.", prompt: "Result?",
@@ -100,4 +104,106 @@ test("the finals plan spreads new material over the days left and schedules essa
   assert.equal(plan.goal, 10); // never below ten a day
   const after = finalsPlan(studyEngine(state(qs), "2026-12-20"), { cards: none, lastEssay: {}, fallbackGoal: 20 });
   assert.deepEqual([after.active, after.goal], [false, 20]);
+});
+
+test("daily practice stops at due and unseen items; reviewing ahead is explicit", () => {
+  const s = state([q("due", "il", "A"), q("fresh", "asy", "B"), q("ahead", "pr", "C")], [p("due", { due: "2026-11-09" }), p("ahead")]);
+  const e = studyEngine(s, "2026-11-10");
+  const ids = (mode?: Parameters<typeof e.buildRound>[1]) => e.buildRound("all", mode).map((it) => it.q.id).sort();
+  assert.deepEqual(ids(), ["due", "fresh"]);
+  assert.deepEqual(ids("due"), ["due"]);
+  assert.deepEqual(ids("new"), ["fresh"]);
+  assert.deepEqual(ids("ahead"), ["ahead"]);
+  assert.deepEqual(studyEngine(state([q("ahead", "pr", "C")], [p("ahead")]), "2026-11-10").buildRound("pr"), []);
+});
+
+test("finishing more than one batch never repeats an item or pulls reviews forward", () => {
+  const qs = Array.from({ length: 24 }, (_, i) => q(`pr-${i}`, "pr", "Fees"));
+  const s = state(qs, qs.slice(20).map((q) => p(q.id)));
+  const done = new Set<string>();
+  for (;;) {
+    const eng = studyEngine({ ...s, questions: qs.filter((q) => !done.has(q.id)) }, "2026-11-10");
+    const round = eng.buildRound("pr");
+    if (!round.length) break;
+    for (const it of round) { assert.equal(done.has(it.q.id), false); done.add(it.q.id); }
+  }
+  assert.equal(done.size, 20);
+});
+
+test("Due, New, and Ahead card sessions stay in their own lanes, including rule cards", () => {
+  const record = emptyStudyRecord();
+  record.cards.due = { ...reviewCard(undefined, false, "2026-11-09"), last_at: "2026-11-09T12:00:00Z" };
+  record.cards.ahead = { ...reviewCard(undefined, true, "2026-11-09"), last_at: "2026-11-09T12:00:00Z" };
+  const cards = [card("due", "il"), card("new", "asy"), card("ahead", "pr")];
+  const rule = { id: "rule:new", course: "pr" as const, topic: "T", front: "Rule?", back: "Rule.", reason: "", authority: "", rule: true };
+  const ids = (mode: "mixed" | "due" | "new" | "ahead") => readyCards(cards, [rule], record, undefined, "all", "2026-11-10", mode).list.map((c) => c.id).sort();
+  assert.deepEqual(ids("mixed"), ["due", "new", "rule:new"]);
+  assert.deepEqual(ids("due"), ["due"]);
+  assert.deepEqual(ids("new"), ["new", "rule:new"]);
+  assert.deepEqual(ids("ahead"), ["ahead"]);
+});
+
+test("missed topics clear after a confident answer or a successful lesson, and reopen on a new miss or guess", () => {
+  const qs = [q("miss", "il", "Treaties"), q("recovered", "il", "Treaties"), q("guess", "pr", "Fees")];
+  const progress = [p("miss", { lastCorrect: false, wrong: 2 }), p("recovered", { wrong: 3, guessed: 1, box: 3 }), p("guess", { guessed: 1, box: 1 })];
+  const s = state(qs, progress);
+  const topics = studyEngine(s, "2026-11-10").missedTopics();
+  assert.deepEqual(topics.flatMap((t) => t.items.map((it) => it.q.id)).sort(), ["guess", "miss"]);
+  const reviews = { "il|Treaties": { at: "2026-11-10T12:00:00Z", questions: reviewEvidence(progress) } };
+  assert.deepEqual(studyEngine(s, "2026-11-10", { reviews }).missedTopics().map((t) => t.topic), ["Fees"]);
+  assert.equal(studyEngine(s, "2026-11-10", { reviews }).queues("il").missed.length, 0);
+  assert.equal(s.progress[0].wrong, 2); // History is untouched.
+  const missedAgain = state(qs, [{ ...progress[0], wrong: 3 }, ...progress.slice(1)]);
+  assert.equal(studyEngine(missedAgain, "2026-11-10", { reviews }).missedTopics().length, 2);
+  const guessedAgain = state(qs, [{ ...progress[0], lastCorrect: true, box: 1, guessed: 1 }, ...progress.slice(1)]);
+  assert.equal(studyEngine(guessedAgain, "2026-11-10", { reviews }).missedTopics().length, 2);
+});
+
+test("review checkpoints survive local restore and cloud hydration without clearing newer local reviews", () => {
+  const review = { at: "2026-11-10T12:00:00Z", questions: { miss: { wrong: 2, guessed: 1 } } };
+  let cache = emptyStudyCache();
+  cache = changeStudyRecord(cache, { ...cache.record, reviews: { "il|Treaties": review } }, review.at);
+  const rows = Object.values(cache.pending);
+  assert.equal(rows[0].key, "study:v1:reviews:il|Treaties");
+  assert.deepEqual(restoreStudyCache(JSON.parse(JSON.stringify(cache))).record.reviews, cache.record.reviews);
+  assert.deepEqual(mergeStudyRows(emptyStudyCache(), rows).record.reviews["il|Treaties"], review);
+  const invalid = { ...rows[0], key: "study:v1:reviews:bad", value: '{"at":"bad","questions":{}}' };
+  assert.deepEqual(mergeStudyRows(emptyStudyCache(), [invalid]).record.reviews, {});
+});
+
+test("offline answers advance spacing and count misses, so restarting cannot immediately repeat them", () => {
+  const qs = [q("right", "il", "T"), q("wrong", "pr", "T")];
+  const before = state(qs);
+  let after = applyLocalAnswer(before, { questionId: "right", choice: "A", localDate: "2026-11-10" }, "2026-11-10T12:00:00Z");
+  after = applyLocalAnswer(after, { questionId: "wrong", choice: "B", localDate: "2026-11-10" }, "2026-11-10T12:01:00Z");
+  assert.deepEqual(after.progress.map((p) => [p.box, p.due]), [[2, "2026-11-13"], [1, "2026-11-11"]]);
+  assert.deepEqual(after.days, [{ date: "2026-11-10", answered: 2, correct: 1 }]);
+  assert.equal(after.progress[1].missSneaky, 1);
+  assert.deepEqual(studyEngine(after, "2026-11-10").buildRound("all"), []);
+  assert.deepEqual(before.progress, []);
+});
+
+test("saved practice restores unanswered JSON positions and expires with the study day", () => {
+  const at = new Date("2026-11-10T12:00:00").getTime();
+  const saved = { key: "round:all", at, snap: { items: [{ q: q("1", "il", "T"), review: false }, { q: q("2", "pr", "T"), review: false }], i: 1,
+    picks: ["A", undefined], results: [true, undefined], shown: [true, undefined], typed: ["My answer", undefined] } };
+  const restored = restorePractice(JSON.parse(JSON.stringify(saved)), at + 1000)!;
+  assert.equal(restored.snap.picks[1], undefined);
+  assert.equal(restored.snap.results[1], undefined);
+  assert.equal(restored.snap.i, 1);
+  assert.equal(restored.snap.typed?.[0], "My answer");
+  assert.equal(restorePractice(saved, at + 86400000), null);
+  assert.equal(restorePractice({ ...saved, snap: { ...saved.snap, i: 3 } }, at), null);
+  assert.equal(restorePractice({ key: "round:all" }, at), null);
+  assert.equal(restorePractice({ ...saved, snap: { ...saved.snap, items: [{ card: { id: "broken", course: "il" } }] } }, at), null);
+});
+
+test("the next review includes flashcards and final-exam dates, with course filtering", () => {
+  const e = studyEngine(state([q("q", "il", "T")], [p("q", { due: "2026-12-20" })]), "2026-11-10");
+  const record = emptyStudyRecord();
+  record.cards.card = { seen: 1, correct: 1, box: 2, due: "2026-11-14", last_at: "2026-11-09T12:00:00Z" };
+  const cards = [card("card", "pr")];
+  assert.equal(nextReviewDay(e, cards, record), "2026-11-14");
+  assert.equal(nextReviewDay(e, cards, record, "il"), "2026-11-27");
+  assert.equal(nextReviewDay(e, cards, record, "asy"), null);
 });

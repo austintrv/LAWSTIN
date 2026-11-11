@@ -6,6 +6,7 @@ import { postMark, type InputType as MarkInput } from "../endpoints/mark_POST.sc
 import { dateKey } from "./dateKey";
 import { ANSWER_QUEUE, isNetworkError, readCache, writeCache } from "./offlineCache";
 import { toast } from "./toast";
+import { applyLocalAnswer } from "./localAnswer";
 
 const KEY = ["lawstin-state"] as const;
 
@@ -41,7 +42,10 @@ export function useLawstinData() {
   const qc = useQueryClient();
   const query = useQuery({
     queryKey: KEY,
-    queryFn: () => getState(),
+    queryFn: async () => {
+      const state = await getState();
+      return readQueue().reduce((s, item) => applyLocalAnswer(s, item, item.at), state);
+    },
     initialData: () => readCache<StateType>("state"),
     initialDataUpdatedAt: 0,
     placeholderData: (prev) => prev,
@@ -61,14 +65,9 @@ export function useLawstinData() {
 
   /** Keeps an answer on this device and counts it now; the server scores it when the connection returns. */
   const queueAnswer = useCallback((input: AnswerInput, correct: boolean) => {
-    writeQueue([...readQueue(), { ...input, at: new Date().toISOString() }]);
-    qc.setQueryData<StateType>(KEY, (old) => {
-      if (!old) return old;
-      const base = old.progress.find((p) => p.questionId === input.questionId) ?? blank(input.questionId);
-      const p = { ...base, seen: base.seen + 1, correct: base.correct + Number(correct), wrong: base.wrong + Number(!correct),
-        lastChoice: input.choice, lastCorrect: correct, lastAt: new Date().toISOString() };
-      return bumpDay(upsertProgress(old, p), input.localDate, correct);
-    });
+    const at = new Date().toISOString();
+    writeQueue([...readQueue(), { ...input, at }]);
+    qc.setQueryData<StateType>(KEY, (old) => old && applyLocalAnswer(old, input, at));
   }, [qc]);
 
   const flushing = useRef(false);

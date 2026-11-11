@@ -1,7 +1,7 @@
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
 import { dateKey } from "./dateKey";
 import { cardQueue, type Flashcard, type StudyRecord } from "./studyMaterials";
-import { COURSE_KEYS, EXAMS, FINALS, examDue, type CardItem, type CourseCode, type Filter, type QuestionItem, type RoundItem, type SessionCard, type studyEngine } from "./studyEngine";
+import { COURSE_KEYS, EXAMS, FINALS, examDue, type CardItem, type CourseCode, type Filter, type QuestionItem, type RoundItem, type SessionCard, type StudyMode, type studyEngine } from "./studyEngine";
 
 type Engine = ReturnType<typeof studyEngine>;
 const inFilter = (c: CourseCode, f: Filter) => f === "all" || c === f;
@@ -10,14 +10,16 @@ const inFilter = (c: CourseCode, f: Filter) => f === "all" || c === f;
  * Recall cards ready now for a session: library flashcards in their usual order, then rules to
  * state from memory. `due` are reviews; `fresh` have never been graded.
  */
-export function readyCards(flashcards: Flashcard[], rules: SessionCard[], record: StudyRecord, state: QuestionState | undefined, f: Filter = "all", today = dateKey.today()) {
-  const cards: SessionCard[] = cardQueue(flashcards.filter((c) => inFilter(c.course, f)), record, state, today)
+export function readyCards(flashcards: Flashcard[], rules: SessionCard[], record: StudyRecord, state: QuestionState | undefined, f: Filter = "all", today = dateKey.today(), mode: StudyMode = "mixed") {
+  const cards: SessionCard[] = cardQueue(flashcards.filter((c) => inFilter(c.course, f)), record, state, today, mode === "ahead")
     .map((c) => ({ id: c.id, course: c.course, topic: c.topic, front: c.front, back: c.back, reason: c.reason, authority: c.authority }));
-  const dueRule = (c: SessionCard) => {
+  const ready = (c: SessionCard) => {
     const p = record.cards[c.id];
-    return !p || (examDue(p.due, dateKey.today(new Date(p.last_at)), FINALS[c.course], today) ?? today) <= today;
+    if (!p) return mode === "mixed" || mode === "new";
+    const due = (examDue(p.due, dateKey.today(new Date(p.last_at)), FINALS[c.course], today) ?? today) <= today;
+    return mode === "ahead" ? !due : mode !== "new" && due;
   };
-  const list = [...cards, ...rules.filter((c) => inFilter(c.course, f) && dueRule(c))];
+  const list = [...cards.filter(ready), ...rules.filter((c) => inFilter(c.course, f) && ready(c))];
   const due = list.filter((c) => record.cards[c.id]);
   const fresh = list.filter((c) => !record.cards[c.id]);
   return { list: [...due, ...fresh], due, fresh };
@@ -32,6 +34,23 @@ export function mixRound(questions: QuestionItem[], cards: SessionCard[], record
     if (i % 2 === 1 && pool.length) out.push(pool.shift()!);
   });
   return [...out, ...pool];
+}
+
+/** Earliest scheduled return, including cards and the final-exam adjustment. */
+export function nextReviewDay(e: Engine, cards: SessionCard[], record: StudyRecord, f: Filter = "all"): string | null {
+  const dates: string[] = [];
+  for (const q of e.queues(f).ahead) {
+    const p = e.prog(q.id)!;
+    const due = examDue(p.due, p.lastAt ? dateKey.today(new Date(p.lastAt)) : null, FINALS[q.course], e.today);
+    if (due) dates.push(due);
+  }
+  for (const c of cards) {
+    const p = record.cards[c.id];
+    if (!p || !inFilter(c.course, f)) continue;
+    const due = examDue(p.due, dateKey.today(new Date(p.last_at)), FINALS[c.course], e.today);
+    if (due && due > e.today) dates.push(due);
+  }
+  return dates.sort()[0] ?? null;
 }
 
 export type PlanCourse = {
