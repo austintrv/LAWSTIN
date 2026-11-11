@@ -250,7 +250,7 @@ try {
   for (const label of ['Intl Law', 'Asylum', 'Pro Res']) {
     await hero.getByRole('group', { name: 'Course filter' }).getByRole('button', { name: label, exact: true }).click();
     const tile = hero.getByRole('button').filter({ has: numbers.page.locator('span', { hasText: label }).filter({ hasText: new RegExp(`^${label}$`) }) }).filter({ hasText: /days ·/ });
-    const left = Number((await tile.getByText(/\d+ today/).textContent()).match(/\d+/)[0]);
+    const left = Number((await tile.getByText(/\d+ to go|Done today/).textContent()).match(/(\d+) to go/)?.[1] ?? 0);
     const headline = left ? await toGo() : (await hero.getByText('Done for today', { exact: true }).count() ? 0 : await toGo());
     assert.equal(headline, left);
     if (left) {
