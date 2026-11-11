@@ -78,7 +78,7 @@ function whyPill(p: ProgressDTO | undefined, guessed: boolean): { text: string; 
 }
 const VERDICT: Record<ExplainDTO["verdict"], string> = { solid: "Solid", partial: "Partly there", off: "Not yet" };
 
-export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, onCheckpoint, day = { answered: 12, goal: 38 }, className }: Props) {
+export function QuizSession({ items: initial, mode, getProgress, onAnswer, onCard, onExplain, recallFirst, seconds, after, onStar, onGuess, onFlag, onMore, onAnother, onRetry, onClose, onHarder, resume, onCheckpoint, day, className }: Props) {
   const [items, setItems] = useState(resume?.items ?? initial);
   const [i, setI] = useState(resume?.i ?? 0);
   const [sel, setSel] = useState<string | null>(null);

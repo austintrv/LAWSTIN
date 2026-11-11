@@ -304,7 +304,6 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   .heroRows .row { min-height: 64px; padding: 14px 32px; }
   .heroRows .row::before { left: 84px !important; }
   .howSheet { max-width: 1160px; }
-  .how { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 24px; }
   .studyCols { grid-column: 1/-1; display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr); column-gap: inherit; gap: 36px; align-items: start; }
   .studyCol { display: flex; flex-direction: column; gap: 36px; min-width: 0; }
   .barAvatar { display: grid; margin-left: -8px; }
@@ -408,3 +407,7 @@ button.calDay:active { transform: scale(0.92); }
 .rungLabel { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .howChip { min-width: 92px; text-align: center; }
 .wrapSub { font-size: 14px; }
+
+@media (min-width: 1000px) {
+  .how { grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: 24px; }
+}
