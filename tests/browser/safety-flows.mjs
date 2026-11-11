@@ -147,15 +147,15 @@ export async function safetyFlows() {
     await focusInside(o, 'Practice exam');
     const closeBox = await dialog(o).getByRole('button', { name: 'Close', exact: true }).boundingBox();
     assert(closeBox.x > o.viewportSize().width / 2);
-    await o.keyboard.press('Escape'); await o.getByRole('alertdialog', { name: 'End exam?' }).waitFor();
-    await o.getByRole('alertdialog').getByRole('button', { name: 'Keep going', exact: true }).click(); await tap(o, 'Close'); await o.getByRole('alertdialog', { name: 'End exam?' }).waitFor();
-    await o.getByRole('alertdialog').getByRole('button', { name: 'End', exact: true }).click(); await o.getByRole('dialog').waitFor({ state: 'hidden' });
+    await o.keyboard.press('Escape'); await o.getByRole('alertdialog', { name: 'Leave exam?' }).waitFor();
+    await o.getByRole('alertdialog').getByRole('button', { name: 'Go back', exact: true }).click(); await tap(o, 'Close'); await o.getByRole('alertdialog', { name: 'Leave exam?' }).waitFor();
+    await o.getByRole('alertdialog').getByRole('button', { name: 'Leave', exact: true }).click(); await o.getByRole('dialog').waitFor({ state: 'hidden' });
     await o.getByRole('button', { name: /Review \d+ missed topics/ }).click(); await focusInside(o, 'Missed topics lesson'); await escape(o);
     await overlays.goto('#/q/il-03'); await dialog(o).getByRole('group', { name: 'Answer choices' }).getByRole('button').first().click(); await tap(o, 'Check answer');
     await dialog(o).getByRole('button', { name: /Ask/ }).first().click(); await focusInside(o, 'Ask about this question'); await escape(o);
     assert.equal(await o.getByRole('dialog', { name: 'Practice', exact: true }).count(), 1); await escape(o);
     assert.deepEqual(overlays.errors, []); await overlays.close();
-    console.log('PASS: Match Escape, exam Close on right, End/Keep going confirmation, lesson and nested Ask focus');
+    console.log('PASS: Match Escape, exam Close on right, Leave/Go back confirmation, lesson and nested Ask focus');
 
     const drill = await O({ hash: '#/courses/il/drill' }); const r = drill.page;
     const material = drill.data.materials.find(m => m.kind === 'drill' && m.course === 'il');

@@ -69,9 +69,9 @@ const dayOf = (iso: string | null | undefined) => (iso ? dateKey.today(new Date(
 
 export const ROLE_LABEL: Record<string, string> = {
   correct: "Correct answer",
-  sneaky: "Sneaky distractor",
-  average: "Average distractor",
-  bad: "Really bad answer",
+  sneaky: "Close call",
+  average: "Plausible",
+  bad: "Way off",
 };
 export const ROUND_SIZE = 10;
 export const DAILY_GOAL = 20;

@@ -175,12 +175,21 @@ export function richState(opts = {}) {
   });
   const hypo = id => materials.find(m => m.kind === 'hypothetical' && m.course === id)?.id;
   const written = [essay('sample-essay-1', -3, 'il', 'Laws of War', 6, hypo('il')), essay('sample-essay-2', -9, 'asy', 'Particular Social Group', 8, hypo('asy'))];
+  const exams = [3, 7, 12].map((off, i) => ({ at: iso(-off), course: 'pr', size: 10, timed: true, seconds: 830 + i * 60, score: 8 - i, total: 10,
+    byTopic: [{ topic: 'Judicial Conduct', right: 8 - i, total: 10 }], wrong: questions.filter(q => q.course === 'pr').slice(0, 2 + i).map(q => q.id), flagged: [],
+    picks: Object.fromEntries(questions.filter(q => q.course === 'pr').slice(0, 2 + i).map(q => [q.id, q.choices.find(c => c.role === 'sneaky').id])) }));
+  const answerHistory = progress.filter(p => p.seen && p.lastAt).map((p, i) => ({ id: i + 1, question_id: p.questionId, choice: p.lastChoice, is_correct: p.lastCorrect,
+    role: questions.find(q => q.id === p.questionId).choices.find(c => c.id === p.lastChoice).role, local_date: dayKey(new Date(p.lastAt)), answered_at: p.lastAt }));
+  for (const p of progress.filter(p => p.missSneaky > 0 && p.lastCorrect)) answerHistory.push({ id: answerHistory.length + 1, question_id: p.questionId,
+    choice: questions.find(q => q.id === p.questionId).choices.find(c => c.role === 'sneaky').id, is_correct: false, role: 'sneaky', local_date: d(-4), answered_at: iso(-4) });
+  answerHistory.sort((a, b) => a.answered_at.localeCompare(b.answered_at)).forEach((a, i) => { a.id = i + 1; });
   const card = (i, o) => ({ seen: 2, correct: 2, box: 2, due: d(2), last_at: iso(-1), ...o, id: i });
   const cards = ['il', 'asy', 'pr'].flatMap(c => materials.filter(m => m.kind === 'flashcard' && m.course === c).slice(0, 4).map((m, i) => card(m.id, i === 0 ? { due: d(-1), box: 1, seen: 1, correct: 1 } : i === 1 ? { due: d(0) } : i === 2 ? { due: d(6), box: 3, seen: 4, correct: 3 } : { due: d(2) })));
   const pick = (kind, course) => materials.find(m => m.kind === kind && m.course === course)?.id;
   const rows = [
     ...Object.entries(syllabus).map(([c, units]) => [`syllabus:v1:${c}`, JSON.stringify({ units })]),
     ...written.map(e => [`written:v1:${e.id}`, JSON.stringify(e)]),
+    ...exams.map(e => [`exam:v1:${e.at}`, JSON.stringify(e)]),
     ...cards.map(({ id, ...c }) => [`study:v1:cards:${id}`, JSON.stringify(c)]),
     [`study:v1:starred:${pick('outline', 'il')}`, 'true'], [`study:v1:confidence:${pick('flowchart', 'il')}`, '"shaky"'], [`study:v1:confidence:${pick('comparison', 'asy')}`, '"solid"'],
     [`study:v1:completed:${pick('outline', 'pr')}`, 'true'], [`study:v1:notes:${pick('outline', 'il')}`, '"Remember: classification decides which body of rules applies."'],
@@ -189,12 +198,12 @@ export function richState(opts = {}) {
     ['workspace:clinic:hours', JSON.stringify({ logged: 87.5, required: 200, as_of: d(-2) })],
     ['daily_goal', '20'], ['summary_email', 'austin@example.com'], ['notify_evening', '1'], ['notify_nudges', '1'],
   ].map(([key, value]) => ({ key, value, updated_at: iso(-1, 12) }));
-  const data = { today, now, state: { questions, progress, runs, days }, rows, tasks, materials, studyRuns };
+  const data = { today, now, state: { questions, progress, runs, days }, answerHistory, rows, tasks, materials, studyRuns };
   return opts.empty ? emptyOf(data) : data;
 }
 /** A brand-new account: the question bank and study library exist, but no progress, days, runs, essays, tasks or study rows. */
 function emptyOf(d) {
-  return { ...d, state: { questions: d.state.questions.map(q => ({ ...q, batch: null })), progress: [], runs: [], days: [] }, tasks: [], studyRuns: [],
+  return { ...d, state: { questions: d.state.questions.map(q => ({ ...q, batch: null })), progress: [], runs: [], days: [] }, tasks: [], studyRuns: [], answerHistory: [],
     rows: d.rows.filter(r => r.key.startsWith('syllabus:v1:') || r.key === 'daily_goal') };
 }
 
@@ -245,6 +254,7 @@ export async function open(opts = {}) {
   const data = emptyState ? emptyOf(given) : given;
   const srv = await startServer(), br = await launch();
   let state = structuredClone(data.state), rows = structuredClone(data.rows), tasks = structuredClone(data.tasks), down = backendDown, failNext = false;
+  let answerHistory = structuredClone(data.answerHistory ?? []);
   const answers = [], errors = [], events = [], failures = [], settingWrites = [];
   let aiDelay = 0, loseAck = false;
   const ctx = await br.newContext({ viewport: { width, height }, colorScheme: dark ? 'dark' : 'light', reducedMotion: reducedMotion ? 'reduce' : 'no-preference', serviceWorkers: 'block', timezoneId: TZ, locale: 'en-US' });
@@ -268,6 +278,7 @@ export async function open(opts = {}) {
     const one = (req.headers().accept ?? '').includes('vnd.pgrst.object');
     const reply = list => one ? (list.length ? json(list[0]) : json({ message: 'no rows' }, 406)) : json(list);
     if (p.endsWith('/auth/v1/user')) return json(USER);
+    if (p.endsWith('/auth/v1/logout')) return json({});
     if (p.includes('/auth/v1/')) return json({ message: 'unexpected auth call' }, 400);
     if (p.endsWith('/rpc/get_state')) return json(state);
     if (p.endsWith('/rpc/record_answer')) {
@@ -275,6 +286,8 @@ export async function open(opts = {}) {
       const input = { questionId: body.p_question_id, choice: body.p_choice, localDate: body.p_local_date };
       state = applyLocalAnswer(state, input, new Date().toISOString()); answers.push(input);
       const q = state.questions.find(x => x.id === input.questionId);
+      answerHistory.push({ id: Math.max(0, ...answerHistory.map(a => a.id)) + 1, question_id: q.id, choice: input.choice, is_correct: input.choice === q.answer,
+        role: q.choices.find(c => c.id === input.choice).role, local_date: input.localDate, answered_at: new Date().toISOString() });
       return json({ correct: input.choice === q?.answer, progress: state.progress.find(x => x.questionId === input.questionId) });
     }
     if (p.endsWith('/rpc/mark_question')) {
@@ -291,6 +304,10 @@ export async function open(opts = {}) {
       const test = keyTest(u), hit = rows.filter(r => test(r.key)).sort((a, b) => a.key.localeCompare(b.key));
       const range = req.headers().range?.split('-').map(Number), list = range ? hit.slice(range[0], range[1] + 1) : hit;
       return reply(list);
+    }
+    if (p.endsWith('/answers') && m === 'GET') {
+      const offset = Number(u.searchParams.get('offset') ?? 0), limit = Number(u.searchParams.get('limit') ?? 1000);
+      return json(answerHistory.slice(offset, offset + limit));
     }
     if (p.endsWith('/course_tasks')) {
       const id = u.searchParams.get('id')?.replace('eq.', '');
@@ -321,7 +338,7 @@ export async function open(opts = {}) {
   page.on('pageerror', e => errors.push(`pageerror: ${e.message}`));
   page.on('console', msg => { if (msg.type() === 'error') errors.push(`console: ${msg.text()}`); });
   if (now) await page.clock.install({ time: new Date(`${typeof now === 'string' ? now : dayKey(now)}T18:00:00.000Z`) });
-  const url = opts.tool ? `${new URL('/tests/browser/tool-host.html', srv.url)}?${new URLSearchParams({ course: opts.course ?? 'il', ...(opts.arg ? { arg: opts.arg } : {}) })}` : srv.url + (hash.startsWith('#') ? hash : `#${hash}`);
+  const url = opts.tool && hash.startsWith('#/tool') ? new URL('/tests/browser/tools.html?harness=1', srv.url).href + hash : opts.tool ? `${new URL('/tests/browser/tool-host.html', srv.url)}?${new URLSearchParams({ course: opts.course ?? 'il', ...(opts.arg ? { arg: opts.arg } : {}) })}` : srv.url + (hash.startsWith('#') ? hash : `#${hash}`);
   await page.goto(url);
   const settle = async () => {
     await page.locator('nav[aria-label="Sections"], form, h1').first().waitFor({ timeout: 20000 }).catch(() => {});
@@ -337,6 +354,7 @@ export async function open(opts = {}) {
     delayAi: ms => { aiDelay = ms; },
     failNext: () => { failNext = true; },
     goto: async h => { await page.evaluate(x => { window.location.hash = x; }, h.startsWith('#') ? h : `#${h}`); await page.waitForTimeout(400); },
+    gotoTool: async (name, course = '', arg = '') => { await page.goto(`${new URL('/tests/browser/tools.html?tool=' + name, srv.url).href}#/tool/${name}/${course}/${encodeURIComponent(arg)}`); await settle(); },
     close: () => ctx.close(),
   };
 }

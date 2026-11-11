@@ -48,6 +48,7 @@ async function setup({width=390,height=844,dark=false,questions,prog=[],material
       return json(rows.filter(r=>key.includes('study:v1')?r.key.startsWith('study:v1:'):key.includes('written:v1')?r.key.startsWith('written:v1:'):key.includes('syllabus:v1')?r.key.startsWith('syllabus:v1:'):false));
     }
     if (u.pathname.endsWith('/study_materials')) return json(materials.map(data=>({data})));
+    if (u.pathname.endsWith('/answers')) return json([]);
     if (u.pathname.endsWith('/study_runs') || u.pathname.endsWith('/course_tasks')) return json([]);
     if (u.pathname.endsWith('/push_subscriptions')) return route.fulfill({status:200,headers:{'content-range':'0-0/0'},body:''});
     if (u.pathname.endsWith('/study_events')) return json(null);
@@ -301,3 +302,5 @@ const { nextExamFlows } = await import('./next-exam-flows.mjs');
 await nextExamFlows();
 const { essayFlows } = await import('./essay-flows.mjs');
 await essayFlows();
+const { examFlows } = await import('./exam-flows.mjs');
+await examFlows();

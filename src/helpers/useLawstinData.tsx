@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getState, type OutputType as StateType, type ProgressDTO } from "../endpoints/state_GET.schema";
 import { postAnswer, type InputType as AnswerInput } from "../endpoints/answer_POST.schema";
@@ -10,6 +10,7 @@ import { confirmQueuedStudy } from "./useLogStudy";
 import { applyLocalAnswer } from "./localAnswer";
 
 const KEY = ["lawstin-state"] as const;
+let flushing = false;
 
 function upsertProgress(state: StateType, p: ProgressDTO): StateType {
   const rest = state.progress.filter((x) => x.questionId !== p.questionId);
@@ -72,10 +73,9 @@ export function useLawstinData() {
     qc.setQueryData<StateType>(KEY, (old) => old && applyLocalAnswer(old, input, at));
   }, [qc]);
 
-  const flushing = useRef(false);
-  const flush = useCallback(async () => {
-    if (flushing.current || !navigator.onLine || !readQueue().length) return;
-    flushing.current = true;
+  const flush = useCallback(async (quiet = false) => {
+    if (flushing || !navigator.onLine || !readQueue().length) return;
+    flushing = true;
     let sent = 0;
     try {
       for (let list = readQueue(); list.length; list = readQueue()) {
@@ -85,9 +85,9 @@ export function useLawstinData() {
         // Sent, or refused by the server (for example a retired question): either way it leaves the queue.
         writeQueue(readQueue().filter((x) => !(x.at === item.at && x.questionId === item.questionId)));
       }
-    } finally { flushing.current = false; }
+    } finally { flushing = false; }
     if (sent) {
-      toast(sent === 1 ? "Offline answer synced" : `${sent} offline answers synced`);
+      if (!quiet) toast(sent === 1 ? "Offline answer synced" : `${sent} offline answers synced`);
       void qc.invalidateQueries({ queryKey: KEY });
     }
   }, [qc]);
@@ -117,5 +117,5 @@ export function useLawstinData() {
     onError: () => qc.invalidateQueries({ queryKey: KEY }),
   });
 
-  return { query, answer, queueAnswer, mark, refresh: () => qc.invalidateQueries({ queryKey: KEY }) };
+  return { query, answer, queueAnswer, mark, flush, refresh: () => qc.invalidateQueries({ queryKey: KEY }) };
 }
