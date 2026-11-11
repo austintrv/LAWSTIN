@@ -14,6 +14,7 @@ const QuizSession = lazy(() => loadQuiz().then((m) => ({ default: m.QuizSession 
 const SettingsPage = lazy(() => import("../components/SettingsPage").then((m) => ({ default: m.SettingsPage })));
 const MissedLesson = lazy(() => import("../components/MissedLesson").then((m) => ({ default: m.MissedLesson })));
 const WrittenPractice = lazy(() => import("../components/WrittenPractice").then((m) => ({ default: m.WrittenPractice })));
+import { useWide } from "../helpers/useWide";
 import { useLawstinData } from "../helpers/useLawstinData";
 import { useLawstinAi } from "../helpers/useLawstinAi";
 import { useLawstinSettings } from "../helpers/useLawstinSettings";
@@ -365,7 +366,6 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   onStart={resumeStudy}
                   onCourse={(c) => start(mixed(c), "practice", `round:${c}`)}
                   onEssay={(c) => { haptic(); setWriting({ course: c }); }}
-                  onMissed={() => start((eng) => eng.listRound(eng.queues(filter).missed), "practice", `missed:${filter}`)}
                   onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred), "practice", `starred:${filter}`)}
                   onExam={() => { haptic(); setExamSheet(true); }}
                   onWrite={() => { haptic(); setWriting({}); }}
@@ -481,11 +481,16 @@ const dayDiff = (from: string, to: string) => Math.round((Date.parse(`${to}T12:0
 
 /** Topics with misses, worst first, each opening a short lesson; the top row mixes the weakest few. */
 function MissedTopics({ topics, onLesson }: { topics: MissedTopic[]; onLesson: (topics: MissedTopic[]) => void }) {
+  const [open, setOpen] = useState(false);
   const mix = topics.slice(0, 4);
   const count = mix.reduce((a, t) => a + Math.min(3, t.items.length), 0);
+  const more = topics.length - 4;
   return (
-    <section className={styles.sec}>
-      <div className={styles.secH}><h2>Missed topics</h2></div>
+    <section className={`${styles.sec} ${styles.fullRow}`}>
+      <div className={styles.secH}>
+        <h2>Missed topics</h2>
+        {more > 0 && <button className={styles.feedToggle} aria-expanded={open} onClick={() => { haptic(); setOpen((v) => !v); }}>{open ? "Show less" : `${more} more`}</button>}
+      </div>
       {topics.length > 1 && (
         <button className={`${styles.card} ${styles.lessonHero} ${auraHost}`} onClick={() => onLesson(mix)}>
           <Aura colors={[COURSES[mix[0].course].color, "var(--uh-red)", COURSES[mix[1].course].color]} />
@@ -495,7 +500,7 @@ function MissedTopics({ topics, onLesson }: { topics: MissedTopic[]; onLesson: (
         </button>
       )}
       <div className={`${styles.card} ${styles.list}`}>
-        {topics.map((t) => {
+        {(open ? topics : topics.slice(0, 4)).map((t) => {
           const c = COURSES[t.course], still = t.items.filter((it) => it.p.lastCorrect === false).length;
           return (
             <button key={`${t.course}|${t.topic}`} className={styles.row} onClick={() => onLesson([t])}>
@@ -513,11 +518,16 @@ function MissedTopics({ topics, onLesson }: { topics: MissedTopic[]; onLesson: (
   );
 }
 
-/** Days to each final, soonest first, with how much of that course's bank is seen and answered correctly. */
-function FinalsCard({ e, plan, onCourse }: { e: Engine; plan: PlanCourse[]; onCourse: (c: CourseCode) => void }) {
+/** Finals that have not passed yet, soonest first. */
+const upcomingFinals = () => {
   const today = dateKey.today();
-  const list = COURSE_KEYS.map((k) => ({ k, date: FINALS[k], days: dayDiff(today, FINALS[k]) }))
+  return COURSE_KEYS.map((k) => ({ k, date: FINALS[k], days: dayDiff(today, FINALS[k]) }))
     .filter((f) => f.days >= 0).sort((a, b) => a.days - b.days);
+};
+
+/** Days to each final, soonest first, with the day's target and how well that course's questions are going. */
+function FinalsCard({ e, plan, onCourse }: { e: Engine; plan: PlanCourse[]; onCourse: (c: CourseCode) => void }) {
+  const list = upcomingFinals();
   if (!list.length) return null;
   return (
     <section className={`${styles.sec} ${styles.finals}`}>
@@ -531,7 +541,7 @@ function FinalsCard({ e, plan, onCourse }: { e: Engine; plan: PlanCourse[]; onCo
               <b>{days === 0 ? "Today" : days}</b>
               <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
               <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
-              <span className={styles.finalStats}>{today ? `${today} today` : `${pct(s.seen, s.n)}% seen${s.seen ? ` · ${s.acc}% correct` : ""}`}</span>
+              <span className={styles.finalStats}>{today ? `${today} today${s.seen ? ` · ${s.acc}% correct` : ""}` : `${pct(s.seen, s.n)}% seen${s.seen ? ` · ${s.acc}% correct` : ""}`}</span>
             </button>
           );
         })}
@@ -627,7 +637,7 @@ function LoadingCard() {
   );
 }
 
-function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onFresh, onMode, onLesson, onStart, onCourse, onEssay, onMissed, onStarred, onExam, onWrite, onUpdate }: {
+function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onFresh, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onUpdate }: {
   resuming: boolean;
   nextReview: string | null;
   onFresh: () => void;
@@ -640,7 +650,7 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
   plan: PlanCourse[];
   onEssay: (c: CourseCode) => void;
   e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; filter: Filter; setFilter: (f: Filter) => void; celebrate: boolean;
-  onStart: () => void; onCourse: (c: CourseCode) => void; onMissed: () => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
+  onStart: () => void; onCourse: (c: CourseCode) => void; onStarred: () => void; onExam: () => void; onWrite: () => void; onUpdate: (items: QuestionDTO[], course: CourseCode | null) => void;
 }) {
   if (!e.questions.length) {
     return <div className={`${styles.card} ${styles.empty}`}><h2>No questions yet</h2></div>;
@@ -658,6 +668,7 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
   const circ = 2 * Math.PI * 16;
   const streak = e.streak();
   const studiedToday = today > 0;
+  const showFinals = upcomingFinals().length > 0;
   return (
     <>
       <div className={`${styles.card} ${styles.hero}`}>
@@ -724,6 +735,9 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
       <div className={styles.studyCols}>
         <div className={styles.studyCol}>
           <div className={styles.o1}><DueSoonCard /></div>
+          {run && <div className={styles.o4}><UpdateCard e={e} run={run} onStudy={onUpdate} /></div>}
+        </div>
+        <div className={styles.studyCol}>
           <div className={styles.o3}>
               <section className={styles.sec}>
                 <div className={`${styles.card} ${styles.list}`}>
@@ -743,12 +757,6 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Written practice</span></span>
                     <ChevronRight size={18} className={styles.chev} />
                   </button>
-                  <button className={styles.row} onClick={onMissed} disabled={!qs.missed.length}>
-                    <span className={styles.dot} style={{ background: "var(--error)" }}>!</span>
-                    <span className={styles.rowMain}><span className={styles.rowTitle}>Missed questions</span></span>
-                    <span className={styles.rowEnd}>{qs.missed.length}</span>
-                    <ChevronRight size={18} className={styles.chev} />
-                  </button>
                   <button className={styles.row} onClick={onStarred} disabled={!qs.starred.length}>
                     <span className={styles.dot} style={{ background: "#e0a100" }}><Star size={12} color="#fff" fill="#fff" /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Starred</span></span>
@@ -758,9 +766,7 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
                 </div>
               </section>
           </div>
-        </div>
-        <div className={styles.studyCol}>
-          <div className={styles.o2}>
+          {!showFinals && <div className={styles.o2}>
               <section className={styles.sec}>
                 <div className={styles.secH}><h2>Courses</h2></div>
                 <div className={`${styles.card} ${styles.list}`}>
@@ -780,8 +786,7 @@ function StudyView({ e, state, goal, cards, plan, filter, setFilter, celebrate, 
                   })}
                 </div>
               </section>
-          </div>
-          {run && <div className={styles.o4}><UpdateCard e={e} run={run} onStudy={onUpdate} /></div>}
+          </div>}
         </div>
       </div>
     </>
@@ -832,9 +837,25 @@ function UpdateCard({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items:
 }
 
 const STATUS_COLOR: Record<CoverageStatus, string> = { none: "var(--faint-foreground)", unseen: "var(--muted-foreground)", shaky: "var(--error)", learning: "var(--warning)", solid: "var(--success)" };
+const OPEN_KEY = "lawstin-progress-open";
+const readOpen = (): Partial<Record<CourseCode, boolean>> => {
+  try { const o = JSON.parse(localStorage.getItem(OPEN_KEY) ?? "{}"); return o && typeof o === "object" && !Array.isArray(o) ? o : {}; } catch { return {}; }
+};
+
 function ProgressView({ e, syllabus, materials, onTopic }: { e: Engine; syllabus: Syllabus; materials: StudyMaterial[]; onTopic: (c: CourseCode, t: string) => void }) {
+  const wide = useWide();
   const m = e.missProfile();
   const misses = m.sneaky + m.average + m.bad;
+  // On phones only the course with the nearest final starts open; what you open or close is remembered.
+  const nearest = (upcomingFinals()[0]?.k ?? COURSE_KEYS[0]) as CourseCode;
+  const [stored, setStored] = useState(readOpen);
+  const isOpen = (k: CourseCode) => wide || (stored[k] ?? k === nearest);
+  const toggle = (k: CourseCode) => {
+    haptic();
+    const next = { ...stored, [k]: !isOpen(k) };
+    setStored(next);
+    try { localStorage.setItem(OPEN_KEY, JSON.stringify(next)); } catch { /* storage unavailable */ }
+  };
   const byTopic = new Map<string, number>();
   for (const x of materials) byTopic.set(`${x.course}|${x.topic}`, (byTopic.get(`${x.course}|${x.topic}`) ?? 0) + 1);
   const roleRow = (label: string, n: number, color: string) => (
@@ -853,9 +874,9 @@ function ProgressView({ e, syllabus, materials, onTopic }: { e: Engine; syllabus
         <div className={`${styles.card} ${styles.tile}`}><b><Num v={m.correct + m.wrong} /></b><span>Answers given</span></div>
         <div className={`${styles.card} ${styles.tile}`}><b><Num v={m.seen} /></b><span>Questions seen</span></div>
       </div>
-      <section className={styles.sec}>
+      <section className={`${styles.sec} ${styles.fullRow}`}>
         <div className={styles.secH}><h2>Which wrong answers catch you</h2></div>
-        <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
+        <div className={`${styles.card} ${styles.list} ${styles.flat} ${styles.missGrid}`}>
           {roleRow("Sneaky distractor", m.sneaky, "var(--course-pr)")}
           {roleRow("Average distractor", m.average, "var(--course-il)")}
           {roleRow("Really bad answer", m.bad, "var(--error)")}
@@ -868,27 +889,43 @@ function ProgressView({ e, syllabus, materials, onTopic }: { e: Engine; syllabus
         if (!rows.length) return null;
         const c = COURSES[k];
         const covered = rows.filter((r) => r.n > 0).length;
+        const open = isOpen(k);
+        const head = (
+          <>
+            <span className={styles.dot} style={{ background: c.color }}>{c.short[0]}</span>
+            <span className={styles.rowMain}>
+              <span className={styles.rowTitle}>{c.name}</span>
+              <span className={styles.rowSub}>{covered} of {rows.length} covered</span>
+              <span className={styles.segBar} aria-hidden="true">{rows.map((r) => <i key={r.topic} style={{ background: STATUS_COLOR[r.status] }} />)}</span>
+            </span>
+            {!wide && <ChevronRight size={18} className={`${styles.chev} ${styles.courseChev} ${open ? styles.courseChevOn : ""}`} />}
+          </>
+        );
         return (
           <section key={k} className={styles.sec}>
-            <div className={styles.secH}><h2>{c.name}</h2><small>{covered} of {rows.length} covered</small></div>
-            <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
-              {rows.map((t) => {
-                const a = t.c + t.w, acc = pct(t.c, a), col = STATUS_COLOR[t.status];
-                const body = (
-                  <>
-                    <span className={styles.rowMain}>
-                      <span className={`${styles.rowTitle} ${styles.wrap}`}>{t.topic}</span>
-                      <span className={styles.rowSub}>{t.n ? `${t.seen} of ${t.n} seen${a ? ` · ${acc}%` : ""}` : t.materials ? `${t.materials} materials` : "No questions"}</span>
-                      <span className={styles.meter}><i style={{ width: `${t.n ? pct(t.seen, t.n) : 0}%`, background: col }} /></span>
-                    </span>
-                    <span className={`${styles.status} ${t.status === "none" ? styles.statusNone : ""}`} style={{ color: col, background: `color-mix(in srgb, ${col} 13%, transparent)` }}>{STATUS_LABEL[t.status]}</span>
-                    {t.n > 0 && <ChevronRight size={18} className={styles.chev} />}
-                  </>
-                );
-                return t.n > 0
-                  ? <button key={t.topic} className={styles.row} onClick={() => onTopic(k, t.topics[0])}>{body}</button>
-                  : <div key={t.topic} className={styles.row}>{body}</div>;
-              })}
+            <div className={`${styles.card} ${styles.course}`}>
+              {wide
+                ? <div className={`${styles.row} ${styles.courseHead}`}>{head}</div>
+                : <button className={`${styles.row} ${styles.courseHead}`} aria-expanded={open} onClick={() => toggle(k)}>{head}</button>}
+              {open && <div className={`${styles.list} ${styles.flat} ${styles.courseBody}`}>
+                {rows.map((t) => {
+                  const a = t.c + t.w, acc = pct(t.c, a), col = STATUS_COLOR[t.status];
+                  const body = (
+                    <>
+                      <span className={styles.rowMain}>
+                        <span className={`${styles.rowTitle} ${styles.wrap}`}>{t.topic}</span>
+                        <span className={styles.rowSub}>{t.n ? `${t.seen} of ${t.n} seen${a ? ` · ${acc}%` : ""}` : t.materials ? `${t.materials} materials` : "No questions"}</span>
+                        <span className={styles.meter}><i style={{ width: `${t.n ? pct(t.seen, t.n) : 0}%`, background: col }} /></span>
+                      </span>
+                      <span className={`${styles.status} ${t.status === "none" ? styles.statusNone : ""}`} style={{ color: col, background: `color-mix(in srgb, ${col} 13%, transparent)` }}>{STATUS_LABEL[t.status]}</span>
+                      {t.n > 0 && <ChevronRight size={18} className={styles.chev} />}
+                    </>
+                  );
+                  return t.n > 0
+                    ? <button key={t.topic} className={styles.row} onClick={() => onTopic(k, t.topics[0])}>{body}</button>
+                    : <div key={t.topic} className={styles.row}>{body}</div>;
+                })}
+              </div>}
             </div>
           </section>
         );
@@ -896,17 +933,56 @@ function ProgressView({ e, syllabus, materials, onTopic }: { e: Engine; syllabus
     </>
   );
 }
+
+const fmtDay = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, o);
+const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+/** Fill step for a day: 0 is the empty track, 1 to 4 get darker with more answers. */
+const dayLevel = (n: number) => (n <= 0 ? 0 : n < 10 ? 1 : n < 20 ? 2 : n < 40 ? 3 : 4);
+
+/** The last five weeks (Sunday first, ending with this week): darker green for more answers; tap a day for its numbers. */
+function StudyCalendar({ days }: { days: { date: string; answered: number; correct: number }[] }) {
+  const today = dateKey.today();
+  const [sel, setSel] = useState(today);
+  const byDate = new Map(days.map((d) => [d.date, d]));
+  const dow = new Date(`${today}T12:00:00`).getDay();
+  const start = dateKey.addDays(today, -dow - 28);
+  const cells = Array.from({ length: 35 }, (_, i) => dateKey.addDays(start, i));
+  const cur = byDate.get(sel);
+  return (
+    <section className={styles.sec}>
+      <div className={styles.secH}>
+        <h2>Study calendar</h2>
+        <small>{cur?.answered ? `${cur.answered} answered · ${pct(cur.correct, cur.answered)}%` : fmtDay(sel, { month: "short", day: "numeric" })}</small>
+      </div>
+      <div className={`${styles.card} ${styles.cal}`}>
+        <div className={styles.calGrid} aria-hidden="true">{WEEKDAYS.map((w, i) => <span key={i} className={styles.calHead}>{w}</span>)}</div>
+        <div className={styles.calGrid}>
+          {cells.map((d) => {
+            if (d > today) return <span key={d} className={`${styles.calDay} ${styles.calFuture}`} aria-hidden="true" />;
+            const n = byDate.get(d)?.answered ?? 0;
+            return (
+              <button key={d} aria-pressed={sel === d} aria-label={`${fmtDay(d, { month: "short", day: "numeric" })}: ${n} answered`}
+                className={`${styles.calDay} ${styles[`calL${dayLevel(n)}`]} ${d === today ? styles.calToday : ""} ${sel === d ? styles.calSel : ""}`}
+                onClick={() => { if (sel !== d) haptic(); setSel(d); }}>{Number(d.slice(8))}</button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ActivityView({ e, state, onStudy, onLesson }: { e: Engine; state: NonNullable<ReturnType<typeof useLawstinData>["query"]["data"]>; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void; onLesson: (topics: MissedTopic[]) => void }) {
   const days = e.lastNDays(14);
   const max = Math.max(10, ...days.map((d) => d.answered));
-  const studied = [...state.days].filter((d) => d.answered).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
-  const fmt = (d: string, o: Intl.DateTimeFormatOptions) => new Date(`${d}T12:00:00`).toLocaleDateString(undefined, o);
+  const fmt = fmtDay;
   const library = useStudyLibrary();
   const total = days.reduce((a, d) => a + d.answered, 0);
   const missed = e.missedTopics();
   return (
     <>
       {missed.length > 0 && <MissedTopics topics={missed} onLesson={onLesson} />}
+      <StudyCalendar days={state.days} />
       {total > 0 && <section className={styles.sec}>
         <div className={styles.secH}><h2>Last 14 days</h2><small>{total} answers</small></div>
         <div className={`${styles.card} ${styles.bars}`}>
@@ -921,18 +997,6 @@ function ActivityView({ e, state, onStudy, onLesson }: { e: Engine; state: NonNu
           <div className={styles.barsX}>{days.map((d, i) => <span key={d.date}>{i % 2 ? "" : Number(d.date.slice(8))}</span>)}</div>
           <div className={styles.legend}><span><i style={{ background: "var(--success)" }} />Correct</span><span><i style={{ background: "var(--error)", opacity: 0.75 }} />Missed</span></div>
         </div>
-      </section>}
-      {studied.length > 0 && <section className={styles.sec}>
-        <div className={styles.secH}><h2>Days you studied</h2></div>
-        {(
-          <div className={`${styles.card} ${styles.list} ${styles.flat}`}>
-            {studied.map((d) => (
-              <div key={d.date} className={styles.row}>
-                <span className={styles.rowMain}><span className={styles.rowTitle}>{fmt(d.date, { weekday: "long", month: "short", day: "numeric" })}</span><span className={styles.rowSub}>{d.answered} answered · {pct(d.correct, d.answered)}% correct</span></span>
-              </div>
-            ))}
-          </div>
-        )}
       </section>}
       <UpdateFeed e={e} runs={state.runs.slice(0, 20)} studyRuns={library.data?.runs.slice(0, 20) ?? []} materials={library.data?.materials ?? []} onStudy={onStudy} />
     </>
@@ -961,7 +1025,7 @@ function UpdateFeed({ e, runs: qRuns, studyRuns, materials, onStudy }: { e: Engi
   const earlier = runs.length - 1;
   if (!runs.length) return null;
   return (
-    <section className={styles.sec}>
+    <section className={`${styles.sec} ${styles.fullRow}`}>
       <div className={styles.secH}>
         <h2>Updates</h2>
         {earlier > 0 && <button className={styles.feedToggle} onClick={() => { haptic(); setOpen((v) => !v); }}>{open ? "Show less" : `${earlier} earlier`}</button>}
@@ -1004,19 +1068,34 @@ function topicBubbles(e: Engine, run: Run, added: QuestionDTO[]): Bubble[] {
   return bubbles;
 }
 
-function TopicBubbles({ bubbles, onStudy }: { bubbles: Bubble[]; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+type Chip = { course: CourseCode; label: string; n: number; left: number; onClick: () => void };
+/** Most bubbles shown before the rest collapse into one "+N". */
+const BUBBLE_CAP = 6;
+
+/** Topic bubbles, topics with questions left first; past the cap a "+N" bubble reveals the rest in place. */
+function BubbleList({ chips }: { chips: Chip[] }) {
+  const [all, setAll] = useState(false);
+  const sorted = [...chips].sort((a, b) => Number(b.left > 0) - Number(a.left > 0));
+  const hidden = all ? 0 : Math.max(0, sorted.length - BUBBLE_CAP);
   return (
     <div className={styles.bubbles}>
-      {bubbles.map((b) => (
+      {(hidden ? sorted.slice(0, BUBBLE_CAP) : sorted).map((b) => (
         <button key={`${b.course}|${b.label}`} className={`${styles.bubble} ${b.left === 0 ? styles.bubbleDone : ""}`}
-          style={{ "--c": COURSES[b.course].color } as React.CSSProperties} onClick={() => onStudy(b.qs, b.course)}>
+          style={{ "--c": COURSES[b.course].color } as React.CSSProperties} onClick={b.onClick}>
           {b.left === 0 ? <Check size={12} strokeWidth={3} /> : <i />}
           <span>{b.label}</span>
           <small>{b.n}</small>
         </button>
       ))}
+      {hidden > 0 && (
+        <button className={`${styles.bubble} ${styles.bubbleMore}`} aria-label={`Show ${hidden} more topics`} onClick={() => { haptic(); setAll(true); }}>+{hidden}</button>
+      )}
     </div>
   );
+}
+
+function TopicBubbles({ bubbles, onStudy }: { bubbles: Bubble[]; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
+  return <BubbleList chips={bubbles.map((b) => ({ course: b.course, label: b.label, n: b.n, left: b.left, onClick: () => onStudy(b.qs, b.course) }))} />;
 }
 
 function UpdateNote({ e, run, onStudy }: { e: Engine; run: Run; onStudy: (items: QuestionDTO[], course: CourseCode | null) => void }) {
@@ -1066,13 +1145,7 @@ function StudyNote({ today, run, materials }: { today: string; run: StudyRun; ma
         <b>{run.added} new study material{run.added === 1 ? "" : "s"}</b>
         <span>{kinds}</span>
       </button>
-      <div className={styles.bubbles}>
-        {bubbles.map((b) => (
-          <button key={`${b.course}|${b.label}`} className={styles.bubble} style={{ "--c": COURSES[b.course].color } as React.CSSProperties} onClick={() => open(b.course)}>
-            <i /><span>{b.label}</span><small>{b.n}</small>
-          </button>
-        ))}
-      </div>
+      <BubbleList chips={bubbles.map((b) => ({ course: b.course, label: b.label, n: b.n, left: b.n, onClick: () => open(b.course) }))} />
     </div>
   );
 }

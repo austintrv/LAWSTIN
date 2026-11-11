@@ -271,7 +271,7 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   .shell { max-width: 960px; padding-inline: 32px; }
   .pane[data-pane="progress"] .shell, .pane[data-pane="activity"] .shell { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; column-gap: 20px; }
   .pane .shell > * { grid-column: 1/-1; }
-  .pane[data-pane="progress"] .shell > section:not(:first-of-type), .pane[data-pane="activity"] .shell > section:not(:first-of-type) { grid-column: auto; }
+  .pane[data-pane="progress"] .shell > section:not(.fullRow), .pane[data-pane="activity"] .shell > section:not(.fullRow) { grid-column: auto; }
   .studyCols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 20px; align-items: start; }
   .studyCol { display: flex; flex-direction: column; gap: 28px; min-width: 0; }
   .greet { font-size: 52px; }
@@ -310,8 +310,12 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   .pane[data-pane="study"] .tiles { height: 270px; grid-template-columns: 1fr; }
   .pane[data-pane="study"] .tile { flex-direction: row; align-items: center; justify-content: space-between; padding: 16px 24px; }
   .pane[data-pane="study"] .streakTop { min-width: 110px; gap: 14px; justify-content: flex-start; }
-  .pane[data-pane="progress"] .shell, .pane[data-pane="activity"] .shell { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; }
-  .pane[data-pane="progress"] .head, .pane[data-pane="progress"] .tiles, .pane[data-pane="activity"] .head, .pane[data-pane="activity"] section:first-of-type { grid-column: 1/-1; }
+  .pane[data-pane="progress"] .shell { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); align-items: start; }
+  .pane[data-pane="activity"] .shell { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: stretch; }
+  .pane[data-pane="progress"] .head, .pane[data-pane="progress"] .tiles, .pane[data-pane="progress"] .fullRow, .pane[data-pane="activity"] .head, .pane[data-pane="activity"] .fullRow { grid-column: 1/-1; }
+  .missGrid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); }
+  .missGrid .row { min-height: 0; padding: 18px 20px; }
+  .missGrid .row + .row::before { top: 16px; bottom: 16px; left: 0; right: auto; width: 0.5px; height: auto; }
   .split b { font-size: 40px; }
   .split span, .tile > span, .rowSub, .secH small, .updHead span, .ruleSub, .ruleItem small { font-size: 16px; }
   .seg button { font-size: 16px; min-height: 44px; }
@@ -341,3 +345,41 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 /* Coverage status on Progress rows */
 .status { flex-shrink: 0; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: var(--radius-full); white-space: nowrap; }
 .statusNone { background: none !important; box-shadow: inset 0 0 0 1px var(--border); }
+
+/* Topic bubbles: the "+N" that reveals the rest */
+.bubbleMore { --c: var(--muted-foreground); background: var(--fill); padding: 0 12px; }
+
+/* Progress: one card per course with a tappable header and a segmented unit bar */
+.course { overflow: hidden; }
+.courseHead { width: 100%; }
+.segBar { display: flex; gap: 2px; height: 6px; margin-top: 7px; }
+.segBar i { flex: 1; min-width: 0; border-radius: 2px; }
+.courseChev { transition: transform 0.25s var(--ease-ios); }
+.courseChevOn { transform: rotate(90deg); }
+.courseBody { border-top: 0.5px solid var(--border); }
+.missGrid .row { min-width: 0; }
+
+/* Activity: study calendar */
+.cal { padding: 14px 12px; display: flex; flex-direction: column; gap: 8px; }
+.calGrid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+.calHead { text-align: center; font-size: 12px; font-weight: 600; color: var(--muted-foreground); }
+.calDay { aspect-ratio: 1; min-height: 36px; min-width: 0; padding: 0; border: 0; border-radius: 10px; display: grid; place-items: center; background: var(--fill); color: var(--muted-foreground); font: inherit; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; cursor: pointer; transition: transform 0.2s var(--ease-ios); }
+button.calDay:active { transform: scale(0.92); }
+.calL1 { background: color-mix(in srgb, var(--success) 24%, transparent); color: var(--foreground); }
+.calL2 { background: color-mix(in srgb, var(--success) 45%, transparent); color: var(--foreground); }
+.calL3 { background: color-mix(in srgb, var(--success) 70%, transparent); color: var(--foreground); }
+.calL4 { background: var(--success); color: var(--success-foreground); }
+.calToday { box-shadow: inset 0 0 0 2px var(--foreground); }
+.calSel { outline: 2px solid var(--uh-red); outline-offset: 2px; }
+.calFuture { opacity: 0.4; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .courseChev, .calDay { transition: none; } button.calDay:active { transform: none; } }
+
+@media (min-width: 1000px) {
+  .courseHead { cursor: default; }
+  .cal { padding: 20px; gap: 12px; flex: 1; }
+  .calGrid { gap: 8px; }
+  .calDay { aspect-ratio: auto; height: 48px; font-size: 16px; }
+  .calHead { font-size: 14px; }
+  .bars { flex: 1; }
+  .barsRow { height: 226px; }
+}

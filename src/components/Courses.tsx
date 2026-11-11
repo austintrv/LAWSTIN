@@ -12,7 +12,8 @@ import { toast } from "../helpers/toast";
 import type { useStudyMaterials } from "../helpers/useStudyMaterials";
 import { useLogStudy } from "../helpers/useLogStudy";
 import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, weakMaterialTopics, type Flashcard, type Hypothetical, type MaterialKind, type SchoolCourse, type StudyMaterial, type StudyRecord } from "../helpers/studyMaterials";
-import type { CourseCode } from "../helpers/studyEngine";
+import { EXAMS, type CourseCode } from "../helpers/studyEngine";
+import { Rulebook } from "./Rulebook";
 import { TaskList, type WorkspaceLink } from "./TaskList";
 import { dueSoon, sortTasks, useCourseTasks } from "../helpers/useCourseTasks";
 import styles from "./Courses.module.css";
@@ -25,13 +26,14 @@ export type LessonReturn = { back: () => void; end: () => void };
 type Store = ReturnType<typeof useStudyMaterials>;
 /** `store` is the app's one study-progress store. `onWrite` opens Written practice, on a hypothetical when one is given. */
 type Props = { store: Store; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: (hypo?: Hypothetical) => void; lesson?: LessonReturn };
-type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string };
+type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string; rules?: boolean };
 const readRoute = (): Route => {
   const [, section, course, kind, item] = window.location.hash.split("/");
   if (section !== "courses" || !SCHOOL_ORDER.includes(course as SchoolCourse)) return {};
+  if (kind === "rules" && !item) return { course: course as SchoolCourse, rules: true };
   return { course: course as SchoolCourse, kind: KINDS.includes(kind as MaterialKind) ? kind as MaterialKind : undefined, item };
 };
-const go = (course?: SchoolCourse, kind?: MaterialKind, item?: string) => {
+const go = (course?: SchoolCourse, kind?: MaterialKind | "rules", item?: string) => {
   haptic(); window.location.hash = ["", "courses", course, kind, item].filter(x => x !== undefined).join("/");
 };
 const DRIVE = (id: string, kind: "file" | "sheet") => kind === "sheet" ? `https://docs.google.com/spreadsheets/d/${id}/edit` : `https://drive.google.com/file/d/${id}/view`;
@@ -59,6 +61,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
   const [deck, setDeck] = useState<Flashcard[] | null>(null);
   const [selected, setSelected] = useState<StudyMaterial | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const [planOpen, setPlanOpen] = useState(false);
   // Filters and search reset only when moving to another course or tool, not when opening or
   // closing a material or visiting another tab, so Back returns to the same results.
   const listRoute = useRef(route);
@@ -138,6 +141,13 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
     else go(m.course, m.kind);
   };
 
+  const rulesOpen = !!route.rules && !!route.course && isStudyCourse(route.course);
+  const closeRules = () => {
+    if (openedHere.current) { openedHere.current = false; history.back(); }
+    else go(route.course);
+  };
+  const openRules = (c: SchoolCourse) => { openedHere.current = true; go(c, "rules"); };
+
   return <div ref={root} className={styles.courses}>
     <div key={viewKey} className={styles.view} data-dir={dir}>
     {!course ? <>
@@ -147,9 +157,10 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
           const c = SCHOOL_COURSES[key], Icon = ICONS[key];
           const list = store.materials.filter(m => m.course === key);
           const due = cardQueue(list.filter((m): m is Flashcard => m.kind === "flashcard"), store.record, state).length;
-          return <button key={key} className={`${styles.courseCard} ${isStudyCourse(key) ? "" : styles.workspaceCard}`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
-            <div className={styles.courseCardTop}><span className={styles.courseIcon}><Icon size={26} strokeWidth={1.6} /></span><ArrowRight size={22} /></div>
-            <h3>{c.name}</h3>{isStudyCourse(key) ? (store.loading ? <span className={styles.skel} /> : store.unavailable ? <p>Unavailable offline</p> : <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>) : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}
+          return <button key={key} className={styles.courseCard} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
+            <span className={styles.courseIcon}><Icon size={24} strokeWidth={1.7} /></span>
+            <span className={styles.courseText}><h3>{c.name}</h3>{isStudyCourse(key) ? (store.loading ? <span className={styles.skel} /> : store.unavailable ? <p>Unavailable offline</p> : <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>) : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}</span>
+            <ChevronRight size={22} className={styles.courseArrow} />
           </button>;
         })}
       </div>
@@ -165,23 +176,22 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
           {homeKind && <MaterialGrid list={store.materials.filter(m => m.kind === homeKind)} record={store.record} onOpen={open} showCourse />}
         </>}
       </section>
-      {store.runs[0] && <section className={styles.runNote}><div><p className={styles.overline}>Latest study update</p><h2>{store.runs[0].added} materials added</h2></div><div className={styles.runChips}>{SCHOOL_ORDER.filter(k => store.runs[0].by_course[k]).map(k => <button key={k} style={{ "--course-color": SCHOOL_COURSES[k].color } as React.CSSProperties} onClick={() => go(k)}><i />{SCHOOL_COURSES[k].short}<small>{store.runs[0].by_course[k]}</small></button>)}</div></section>}
     </> : <>
       <section className={`${styles.courseHero} ${auraHost}`} style={{ "--course-color": SCHOOL_COURSES[course].color } as React.CSSProperties}>
         <Aura colors={[SCHOOL_COURSES[course].color, "var(--uh-red)", SCHOOL_COURSES[course].color]} />
         <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
         <h2>{SCHOOL_COURSES[course].name}</h2>
-        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions<ArrowRight size={18} /></button></div> : null}
+        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions</button><button className={styles.secondary} onClick={() => openRules(course)}>Rulebook</button>{EXAMS[course].format === "essay" && <button className={styles.secondary} onClick={() => onWrite()}>Written practice</button>}</div> : null}
       </section>
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!view.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={view.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
-        })}</nav><button className={styles.writingLink} onClick={() => onWrite()}><PenLine size={20} />Written practice<ArrowRight size={18} /></button></aside>
+        })}</nav></aside>
         <div className={styles.materialsPanel}>
           <div className={styles.sectionHead}><h3>{view.kind ? MATERIAL_LABELS[view.kind] : "Study materials"}</h3></div>
+          <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} expanded={planOpen} onToggle={() => setPlanOpen(v => !v)} />
+          {topics.length > 1 && <div className={styles.topicChips} role="group" aria-label="Topic">{["all", ...topics].map(t => <button key={t} aria-pressed={topic === t} onClick={() => { haptic(); setTopic(t); }}>{t === "all" ? "All" : t}</button>)}</div>}
           <SearchField value={search} onChange={setSearch} />
-          <label className={styles.topicSelect}><span>Topic</span><select value={topic} onChange={e => setTopic(e.target.value)}><option value="all">All topics</option>{topics.map(t => <option key={t}>{t}</option>)}</select></label>
-          <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} />
           {store.loading ? null : <MaterialGrid list={deckRow ? filtered.filter(m => m.kind !== "flashcard") : filtered} record={store.record} onOpen={open}
             deck={deckRow ? { total: deckCards.length, ready: cardQueue(deckCards, store.record, state).length, onOpen: () => { const ready = cardQueue(deckCards, store.record, state); startCards(ready.length ? ready : cardQueue(deckCards, store.record, state, dateKey.today(), true)); } } : undefined} />}
         </div>
@@ -191,6 +201,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
     {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store}
       onClose={() => { setDeck(null); lesson?.end(); }} onAgain={list => { setAgain(true); setDeck(list); }}
       onBack={lesson && (() => { setDeck(null); lesson.back(); })} />}
+    {rulesOpen && route.course && isStudyCourse(route.course) && <StudyDialog title="Rulebook" onClose={closeRules}><Rulebook course={route.course} state={state} /></StudyDialog>}
     {selected && <MaterialReader key={selected.id} material={selected} store={store} onWrite={onWrite}
       onQuiz={() => { openedHere.current = false; go(selected.course, listRoute.current.course === selected.course ? listRoute.current.kind : selected.kind); lesson?.end(); onQuiz(selected.course, selected.topic); }}
       onClose={() => { closeReader(selected); lesson?.end(); }} onBack={lesson && (() => { haptic(); lesson.back(); })} />}
@@ -220,11 +231,12 @@ function MaterialGrid({ list, record, onOpen, showCourse, deck }: { list: StudyM
   })}</div>;
 }
 
-function StudyPlan({ materials, record, weak, onOpen }: { materials: StudyMaterial[]; record: StudyRecord; weak: Set<string>; onOpen: (m: StudyMaterial) => void }) {
+function StudyPlan({ materials, record, weak, onOpen, expanded, onToggle }: { materials: StudyMaterial[]; record: StudyRecord; weak: Set<string>; onOpen: (m: StudyMaterial) => void; expanded: boolean; onToggle: () => void }) {
   const next = materials.filter(m => m.kind !== "flashcard" && !record.completed[m.id])
     .sort((a, b) => Number(weak.has(`${b.course}|${b.topic}`)) - Number(weak.has(`${a.course}|${a.topic}`)) || Number(record.confidence[b.id] === "shaky") - Number(record.confidence[a.id] === "shaky") || b.class_date.localeCompare(a.class_date)).slice(0, 3);
   if (!next.length) return null;
-  return <details className={styles.plan}><summary>Next to review<span>{next.length}</span></summary>{next.map(m => <button key={m.id} onClick={() => onOpen(m)}><span>{m.title}</span>{weak.has(`${m.course}|${m.topic}`) && <span>Weak topic</span>}<ArrowRight size={19} /></button>)}</details>;
+  return <div className={styles.plan}><button className={styles.planHead} aria-expanded={expanded} onClick={() => { haptic(); onToggle(); }}>Next to review<span>{next.length}</span><ChevronRight size={20} className={styles.planChevron} /></button>
+    {expanded && next.map(m => <button key={m.id} className={styles.planRow} onClick={() => onOpen(m)}><span>{m.title}</span>{weak.has(`${m.course}|${m.topic}`) && <span>Weak topic</span>}<ArrowRight size={19} /></button>)}</div>;
 }
 
 function StudyDialog({ title, children, onClose, onBack, actions }: { title: string; children: React.ReactNode; onClose: () => void; onBack?: () => void; actions?: React.ReactNode }) {
