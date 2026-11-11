@@ -6,8 +6,8 @@ import { examDate } from "../../helpers/useExams";
 import { COURSES } from "../../helpers/studyEngine";
 import type { QuestionDTO } from "../../endpoints/state_GET.schema";
 import { Button } from "../Button";
-import { PracticeSet, ToolFrame, type ToolProps } from "./ExamTools";
-import styles from "./ExamTools.module.css";
+import { PracticeSet, ToolFrame, type ToolProps } from "../ExamTools";
+import styles from "../ExamTools.module.css";
 import quiz from "../QuizSession.module.css";
 
 export default function MissedRules({ course, onClose }: ToolProps) {

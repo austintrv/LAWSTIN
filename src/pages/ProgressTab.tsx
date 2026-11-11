@@ -7,7 +7,7 @@ import { useExams } from "../helpers/useExams";
 import { BottomSheet } from "../components/BottomSheet";
 import { Button } from "../components/Button";
 import { afterOverlayClose } from "../helpers/useBackClose";
-import toolStyles from "../components/tools/ExamTools.module.css";
+import toolStyles from "../components/ExamTools.module.css";
 import { type StudyMaterial } from "../helpers/studyMaterials";
 import { useWide } from "../helpers/useWide";
 import styles from "./_index.module.css";

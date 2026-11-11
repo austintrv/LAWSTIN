@@ -80,7 +80,7 @@ function Exercise({ material: h, entry, onClose, onNext, hasNext, onWrite, onSav
           <h1 className={styles.title}>{result ? `${result.caught} of ${result.total} issues` : h.title}</h1>
           {!revealed ? <div className={styles.columns}>
             <div className={styles.facts}><p>{h.facts}</p><h2>{h.prompt}</h2></div>
-            <div className={styles.work}><textarea aria-label="Your issues" placeholder="Your issues, one per line" value={lines} onChange={e => { setLines(e.target.value); keep({ lines: e.target.value, seconds, revealed, marks }); }} /><Button size="lg" className={shared.cta} onClick={() => { haptic(); setRevealed(true); }}>Show the issues</Button></div>
+            <div className={styles.work}><textarea aria-label="Your issues" placeholder="Your issues" value={lines} onChange={e => { setLines(e.target.value); keep({ lines: e.target.value, seconds, revealed, marks }); }} /><Button size="lg" className={shared.cta} onClick={() => { haptic(); setRevealed(true); }}>Show the issues</Button></div>
           </div> : <div className={styles.columns}>
             <section className={styles.work}><h2>Your issues</h2><div className={styles.lines}>{lines || "Kept in mind"}</div><details className={shared.model}><summary>Fact pattern<ChevronRight size={18} /></summary><div className={shared.modelBody}><h2>{h.title}</h2><p>{h.facts}</p><b>{h.prompt}</b></div></details></section>
             <section className={styles.work} aria-label="Checked issues">{issues.map(a => <article key={a.i} className={shared.card}>

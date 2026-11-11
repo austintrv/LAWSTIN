@@ -121,7 +121,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const [courseSheet, setCourseSheet] = useState<CourseCode | null>(null);
   const [rulebook, setRulebook] = useState<{ course: CourseCode; warmup?: boolean; recall?: boolean } | null>(null);
   const [streakOpen, setStreakOpen] = useState(false);
-  const [examSize, setExamSize] = useState(20);
+  const [examSize, setExamSize] = useState(10);
   const moment = examMoment(day);
   const passKey = `last-pass:${userId}`;
   const [pass, setPass] = useState<{ day: string; items: RoundItem[]; done: string[] } | null>(() => readCache<{ day: string; items: RoundItem[]; done: string[] }>(passKey) ?? null);
@@ -264,8 +264,8 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   }, [dueCount]);
 
   const sessionNumbers = session?.resumeKey === `missed:${moment.course}` && moment.kind === "eve" ? passNumbers : daily.numbers(session?.filter ?? "all");
-  const todayAnswered = moment.kind === "eve" && (!session || session.resumeKey === `missed:${moment.course}`) ? passNumbers.answered : sessionNumbers.answered;
-  const celebrationGoal = moment.kind === "eve" && (!session || session.resumeKey === `missed:${moment.course}`) ? passNumbers.goal : sessionNumbers.goal;
+  const todayAnswered = moment.kind === "eve" && (!session || session.resumeKey === `missed:${moment.course}`) ? passNumbers.answered : daily.numbers("all").answered;
+  const celebrationGoal = moment.kind === "eve" && (!session || session.resumeKey === `missed:${moment.course}`) ? passNumbers.goal : daily.numbers("all").goal;
   const [quizNode, setQuizNode] = useState<Element | null>(null);
   useEffect(() => {
     if (!session) { setQuizNode(null); return; }
@@ -354,11 +354,13 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     const source: Source = (_eng, exclude) => pass.items.filter((it) => !exclude.has(itemId(it)) && !pass.done.includes(itemId(it)));
     start(source, "practice", `missed:${course}`, undefined, course);
   };
+  const finished = useRef(false);
   const closeSession = (snap?: QuizSnapshot) => {
     if (!session) return;
+    const ended = finished.current; finished.current = false;
     if (session.mode === "practice" && session.resumeKey) checkpoint(snap ? { key: session.resumeKey, snap, at: Date.now() } : null);
     const work = sessionWork.current;
-    if (session.mode === "practice" && work.answers.size >= 3 && Date.now() - work.opened >= 2000) {
+    if (session.mode === "practice" && !ended && work.answers.size >= 3 && Date.now() - work.opened >= 2000) {
       const dates = [...work.answers.keys()].flatMap((id) => {
         const p = e.prog(id); const c = store.record.cards[id];
         return p?.due ? [p.due] : c?.due ? [c.due] : [];
@@ -471,7 +473,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   onCourse={setCourseSheet}
                   onEssay={(c) => { haptic(); setWriting({ course: c, full: moment.kind === "eve" }); }}
                   onStarred={() => start((eng) => eng.listRound(eng.queues(filter).starred), "practice", `starred:${filter}`)}
-                  onExam={(size = 20) => { haptic(); setExamSize(size); setExamSheet(true); }}
+                  onExam={(size = 10) => { haptic(); setExamSize(size); setExamSheet(true); }}
                   onWrite={() => { haptic(); setWriting({}); }}
                   onMatch={canMatch ? () => { haptic(); setMatching(true); } : undefined}
                   onUpdate={(list, c) => start((eng) => {
@@ -599,7 +601,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           resume={session.resume}
           onCheckpoint={session.mode === "practice" ? (snap) => {
             if (session.resumeKey) checkpoint(snap ? { key: session.resumeKey, snap, at: Date.now() } : null);
-            if (!snap) closeSession();
+            finished.current = !snap;
           } : undefined}
           onClose={closeSession}
         /></Suspense>

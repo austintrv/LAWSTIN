@@ -6,9 +6,9 @@ import { useLogStudy } from "../../helpers/useLogStudy";
 import { haptic } from "../../helpers/haptics";
 import type { ChoiceDTO, QuestionDTO } from "../../endpoints/state_GET.schema";
 import { Button } from "../Button";
-import { ToolFrame, type ToolProps } from "./ExamTools";
+import { ToolFrame, type ToolProps } from "../ExamTools";
 import quiz from "../QuizSession.module.css";
-import styles from "./ExamTools.module.css";
+import styles from "../ExamTools.module.css";
 
 type Pair = { q: QuestionDTO; choices: ChoiceDTO[] };
 export default function CloseCalls({ course, onClose }: ToolProps) {

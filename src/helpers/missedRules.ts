@@ -22,8 +22,12 @@ export function ruleIsMissed(answers: RuleAnswer[], p?: ProgressDTO): boolean {
   if (p?.lastCorrect === false && (!latest || !p.lastAt || Date.parse(p.lastAt) >= Date.parse(latest.answered_at))) return true;
   if (missed) return true;
   if ((p?.wrong ?? 0) > ordered.filter(a => !a.is_correct).length) {
-    // A stale offline history must not hide a more recent miss in progress.
-    return new Set(ordered.filter(a => a.is_correct && p?.lastAt && Date.parse(a.answered_at) > Date.parse(p.lastAt)).map(a => a.local_date)).size < 2;
+    // Misses older than the answer history: two right answers in a row put the question in box 3.
+    if ((p?.box ?? 0) >= 3) return false;
+    const current = !!latest && (!p?.lastAt || Date.parse(p.lastAt) <= Date.parse(latest.answered_at));
+    const run = new Set<string>();
+    for (let i = ordered.length - 1; i >= 0 && ordered[i].is_correct; i--) run.add(ordered[i].local_date);
+    return !(current && run.size >= 2);
   }
   return false;
 }

@@ -643,7 +643,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
         <div><b>{shown}<small>/{n}</small></b><span>correct</span></div>
       </div>
       <h1 className={styles.resTitle}>{mode === "exam" ? "Exam complete" : "Session complete"}</h1>
-      {entry && previous && <span className={styles.compare}>{entry.score - previous.score >= 0 ? "+" : ""}{entry.score - previous.score} since {examDate(previous.at)}</span>}
+      {entry && previous && entry.total === previous.total && <span className={styles.compare}>{entry.score - previous.score >= 0 ? "+" : ""}{entry.score - previous.score} since {examDate(previous.at)}</span>}
       {used !== undefined && n > 0 && (
         <div className={styles.card}>
           <div className={styles.row}><span className={styles.rowTitle}>Time</span><span className={styles.rowEnd}>{clock(used)}</span></div>
@@ -748,7 +748,9 @@ function ExamSession({ items, seconds, onAnother, onRetry, onClose, className }:
   const checkpoint = (x: ActiveExam) => {
     writeCache("exam-active", x.finishing && x.questions.every(q => !x.picks[q.id] || x.submitted.includes(q.id)) ? null : { ...x, at: Date.now() });
   };
-  useEffect(() => { checkpoint(exam); }, [exam]);
+  // Saved on every answer, move or flag, and every 15 seconds of the clock, not every tick.
+  useEffect(() => { checkpoint(current.current); }, [exam.i, exam.picks, exam.flagged, exam.submitted, exam.finishing, Math.floor(exam.seconds / 15)]);
+  useEffect(() => { const save = () => checkpoint(current.current); window.addEventListener("pagehide", save); return () => window.removeEventListener("pagehide", save); }, []);
   useEffect(() => {
     const save = () => checkpoint(current.current);
     window.addEventListener("pagehide", save);
@@ -797,7 +799,7 @@ function ExamSession({ items, seconds, onAnother, onRetry, onClose, className }:
   const askFinish = () => { if (exam.questions.some(q => !exam.picks[q.id]) || exam.flagged.length) setConfirm("finish"); else finish(); };
   useEffect(() => {
     const key = (ev: KeyboardEvent) => {
-      if (entry || confirm || mapOpen || ev.repeat || (ev.target as HTMLElement)?.matches("input,textarea,[contenteditable=true]")) return;
+      if (entry || confirm || mapOpen || ev.repeat || ev.metaKey || ev.ctrlKey || ev.altKey || (ev.target as HTMLElement)?.matches("input,textarea,[contenteditable=true]")) return;
       const k = ev.key.toUpperCase();
       if (["A", "B", "C", "D", "1", "2", "3", "4"].includes(k)) { ev.preventDefault(); pick("1234".includes(k) ? "ABCD"[Number(k) - 1] : k); }
       else if (ev.key === "ArrowLeft") { ev.preventDefault(); move(exam.i - 1); }

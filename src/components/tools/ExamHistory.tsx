@@ -5,8 +5,8 @@ import { useLawstinData } from "../../helpers/useLawstinData";
 import { COURSES } from "../../helpers/studyEngine";
 import type { QuestionDTO } from "../../endpoints/state_GET.schema";
 import { Button } from "../Button";
-import { ToolFrame, ScoreRing, ScoreTrend, QuestionReview, PracticeSet, type ToolProps } from "./ExamTools";
-import styles from "./ExamTools.module.css";
+import { ToolFrame, ScoreRing, ScoreTrend, QuestionReview, PracticeSet, type ToolProps } from "../ExamTools";
+import styles from "../ExamTools.module.css";
 import quiz from "../QuizSession.module.css";
 
 export default function ExamHistory({ course, arg, onClose }: ToolProps) {

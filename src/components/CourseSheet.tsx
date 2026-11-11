@@ -32,7 +32,7 @@ export function CourseSheet({ course, e, syllabus, numbers, onClose, onTopic, on
         {row("Write an essay", days >= 0 && days <= 7 ? "45 min" : "15 min", () => onEssay(days >= 0 && days <= 7))}
       </> : <>
         {row("Timed set", "25 questions", onExam)}
-        {hasTool("MissedRules") && row("Rules you miss", String(e.missedTopics().filter((t) => t.course === course).reduce((n, t) => n + t.items.length, 0)), () => onTool("MissedRules"))}
+        {hasTool("MissedRules") && row("Rules you miss", "", () => onTool("MissedRules"))}
         {hasTool("CloseCalls") && row("Close calls", "", () => onTool("CloseCalls"))}
       </>}
       {row(`Review ${numbers.review}`, "", () => onStudy("due"), !numbers.review)}

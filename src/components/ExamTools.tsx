@@ -1,16 +1,16 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
-import { useModalFocus } from "../../helpers/useModalFocus";
-import { useBackClose } from "../../helpers/useBackClose";
-import { useLawstinData } from "../../helpers/useLawstinData";
-import { dateKey } from "../../helpers/dateKey";
-import { studyEngine, type CourseCode } from "../../helpers/studyEngine";
-import { ANSWER_LABEL } from "../../helpers/missedRules";
-import { QuizSession } from "../QuizSession";
-import type { QuestionDTO } from "../../endpoints/state_GET.schema";
-import type { ExamEntry } from "../../helpers/useExams";
-import quiz from "../QuizSession.module.css";
+import { useModalFocus } from "../helpers/useModalFocus";
+import { useBackClose } from "../helpers/useBackClose";
+import { useLawstinData } from "../helpers/useLawstinData";
+import { dateKey } from "../helpers/dateKey";
+import { studyEngine, type CourseCode } from "../helpers/studyEngine";
+import { ANSWER_LABEL } from "../helpers/missedRules";
+import { QuizSession } from "./QuizSession";
+import type { QuestionDTO } from "../endpoints/state_GET.schema";
+import type { ExamEntry } from "../helpers/useExams";
+import quiz from "./QuizSession.module.css";
 import styles from "./ExamTools.module.css";
 
 export type ToolProps = { course?: CourseCode; arg?: string; onClose: () => void };
@@ -56,7 +56,7 @@ export function PracticeSet({ questions, onClose }: { questions: QuestionDTO[]; 
       const input = { questionId: q.id, choice: choice as "A" | "B" | "C" | "D", localDate: dateKey.today() };
       if (!navigator.onLine) { queueAnswer(input, choice === q.answer); return choice === q.answer; }
       try { return (await answer.mutateAsync(input)).correct; }
-      catch (err) { const { isNetworkError } = await import("../../helpers/offlineCache"); if (!isNetworkError(err)) throw err; queueAnswer(input, choice === q.answer); return choice === q.answer; }
+      catch (err) { const { isNetworkError } = await import("../helpers/offlineCache"); if (!isNetworkError(err)) throw err; queueAnswer(input, choice === q.answer); return choice === q.answer; }
     }} onStar={(q, starred) => mark.mutate({ questionId: q.id, action: "star", starred })}
     onGuess={q => mark.mutate({ questionId: q.id, action: "guess", localDate: dateKey.today() })}
     onFlag={(q, note) => mark.mutate({ questionId: q.id, action: "flag", note })}
