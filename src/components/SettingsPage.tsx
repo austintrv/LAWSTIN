@@ -157,11 +157,6 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
           <section className={styles.group}>
             <h2>Study</h2>
             <div className={styles.card}>
-              <button className={styles.row} style={{ width: "100%", textAlign: "left" }} onClick={() => { window.location.hash = "/connect"; }}>
-                <Icon color="var(--course-il)"><Link2 size={16} /></Icon>
-                <span className={styles.label}>Connected apps</span>
-                <ChevronRight size={18} />
-              </button>
               {finalsAhead && (
                 <label className={styles.row}>
                   <Icon color="var(--uh-red)"><CalendarCheck size={16} /></Icon>
@@ -263,6 +258,17 @@ export function SettingsPage({ email: account, onClose }: { email: string | null
                 <Icon color="#007aff"><Send size={16} /></Icon>
                 <span className={`${styles.label} ${styles.link}`}>Send this week’s summary now</span>
                 {busy === "weekly" && <Spinner size="sm" />}
+              </button>
+            </div>
+          </section>
+
+          <section className={styles.group}>
+            <h2>Connections</h2>
+            <div className={styles.card}>
+              <button className={styles.row} style={{ width: "100%", textAlign: "left" }} onClick={() => { window.location.hash = "/connect"; }}>
+                <Icon color="var(--course-il)"><Link2 size={16} /></Icon>
+                <span className={styles.label}>Connected apps</span>
+                <ChevronRight size={18} />
               </button>
             </div>
           </section>
