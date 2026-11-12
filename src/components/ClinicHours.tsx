@@ -7,6 +7,7 @@ import { hoursTotal, weeklyHours, type HoursLog, type HoursEntry } from '../help
 import { toast } from '../helpers/toast';
 import { Button } from './Button';
 import styles from './TaskList.module.css';
+import shared from '../pages/_index.module.css';
 type Hours = { logged:number; required:number; as_of:string };
 export function ClinicHours() {
   const legacy=useSyncedSetting<Hours|null>('workspace:clinic:hours',null);
@@ -26,7 +27,7 @@ export function ClinicHours() {
     {(editing || draft.hours !== undefined) && <form className={styles.editor} onSubmit={e=>{e.preventDefault();if(!draft.date || !Number.isFinite(draft.hours) || Number(draft.hours)<=0)return;const entry={id:draft.id??crypto.randomUUID(),date:draft.date,hours:Number(draft.hours),note:draft.note??''};if(save({...current,entries:[...current.entries.filter(x=>x.id!==entry.id),entry]})){setEditing(false);setDraft({});writeCache('clinic-log-draft',{});toast('Hours saved',{action:{label:'Undo',onClick:()=>save(current)}});}}}>
       <label>Date<input type="date" aria-label="Hours date" required value={draft.date??dateKey.today()} onChange={e=>change({date:e.target.value})}/></label>
       <label>Hours<input autoFocus type="number" aria-label="Hours logged" required min="0.01" step="0.01" value={draft.hours??''} onChange={e=>change({hours:e.target.value===''?undefined:Number(e.target.value)})}/></label>
-      <label>Note<input aria-label="Hours note" value={draft.note??''} onChange={e=>change({note:e.target.value})}/></label><Button type="submit">Save hours</Button>
+      <label>Note<input aria-label="Hours note" value={draft.note??''} onChange={e=>change({note:e.target.value})}/></label><Button size="lg" className={shared.cta} type="submit">Save hours</Button>
     </form>}
     <div className={styles.weekBars} aria-label="Hours this week">{days.map(d=><div key={d.date}><span>{d.hours}</span><i style={{height:`${Math.max(2,d.hours/max*64)}px`}}/><span>{new Date(`${d.date}T12:00:00`).toLocaleDateString(undefined,{weekday:'short'})}</span></div>)}</div>
     {!!current.entries.length && <ul className={styles.list}>{[...current.entries].sort((a,b)=>b.date.localeCompare(a.date)).map(e=><li className={styles.taskRow} key={e.id}><button className={styles.taskMain} onClick={()=>edit(e)}>{e.date} · {e.hours} hours{e.note && <span className={styles.notePreview}>{e.note}</span>}</button><button className={styles.ghost} aria-label={`Remove hours ${e.date}`} onClick={()=>remove(e)}>Remove</button></li>)}</ul>}

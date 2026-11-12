@@ -154,10 +154,10 @@ export function flushSettings() {
   syncingSettings = (async () => {
     try {
       for (const row of Object.values(settingQueue())) {
-        const { error } = await supabase.from("app_settings").upsert(row, { onConflict: "key", ignoreDuplicates: row.key.startsWith("snapshot:v1:") }).abortSignal(AbortSignal.timeout(10000));
+        const { error } = await supabase.from("app_settings").upsert(row, { onConflict: "key", ignoreDuplicates: row.key.startsWith("snapshot:v1:") || row.key.startsWith("recap:v1:") }).abortSignal(AbortSignal.timeout(10000));
         if (error) throw error;
         acknowledgeSetting(row);
-        if (row.key.startsWith("snapshot:v1:")) window.dispatchEvent(new Event("lawstin-settings-synced"));
+        if (row.key.startsWith("snapshot:v1:") || row.key.startsWith("recap:v1:")) window.dispatchEvent(new Event("lawstin-settings-synced"));
       }
       await flushTasks();
       settingsDelay = 1000;
