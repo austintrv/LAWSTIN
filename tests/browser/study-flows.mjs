@@ -316,3 +316,6 @@ await examFlows();
 
 const { searchFlows } = await import('./search-flows.mjs');
 await searchFlows();
+
+const { topicsNotesFlows } = await import('./topics-notes-flows.mjs');
+await topicsNotesFlows();

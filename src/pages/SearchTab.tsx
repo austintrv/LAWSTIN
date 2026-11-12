@@ -212,6 +212,8 @@ export function SearchTab({
         break;
       }
       case "Notes": {
+        const note = item.raw as { course: CourseCode; topic?: string };
+        window.location.hash = `#/tool/Notes/${note.course}${note.topic ? `/${encodeURIComponent(note.topic)}` : ""}`;
         break;
       }
     }

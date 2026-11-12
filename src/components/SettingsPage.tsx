@@ -125,7 +125,7 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
       const waiting = readPendingWritten();
       const [state, settings, tasks] = await Promise.all([
         getState(),
-        supabase.from("app_settings").select("key,value,updated_at").or("key.like.study:%,key.like.workspace:%,key.like.written:v1:%,key.like.exam:v1:%,key.like.spot:v1:%"),
+        supabase.from("app_settings").select("key,value,updated_at").or("key.like.study:%,key.like.workspace:%,key.like.written:v1:%,key.like.exam:v1:%,key.like.spot:v1:%,key.like.notes:v1:%"),
         supabase.from("course_tasks").select("*"),
       ]);
       if (settings.error) throw settings.error;

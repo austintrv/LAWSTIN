@@ -24,6 +24,7 @@ import { useLawstinData } from "../helpers/useLawstinData";
 import { useLawstinSettings } from "../helpers/useLawstinSettings";
 import { useLogStudy } from "../helpers/useLogStudy";
 import { useStudyMaterials } from "../helpers/useStudyMaterials";
+import { useNotes } from "../helpers/useNotes";
 import { useSyllabus } from "../helpers/useSyllabus";
 import { type WrittenEntry, useWritten } from "../helpers/useWritten";
 import { useCourseTasks } from "../helpers/useCourseTasks";
@@ -86,6 +87,9 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const queryClient = useQueryClient();
   const written = useWritten();
   const syllabus = useSyllabus();
+  const ilNotes = useNotes("il").notes, asyNotes = useNotes("asy").notes, prNotes = useNotes("pr").notes;
+  const notes = useMemo(() => ([["il", ilNotes], ["asy", asyNotes], ["pr", prNotes]] as const).flatMap(([course, rows]) =>
+    Object.entries(rows).filter(([, r]) => r.text.trim()).map(([unit, r]) => ({ id: `${course}:${unit}`, course, title: unit, body: r.text, topic: unit }))), [ilNotes, asyNotes, prNotes]);
   const log = useLogStudy();
   // The day key follows the clock so a session left open past midnight counts toward the new day.
   const [day, setDay] = useState(() => dateKey.today());
@@ -537,7 +541,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   state={state}
                   syllabus={syllabus}
                   materials={store.materials}
-                  onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }}
+                  onTopic={(course, topic) => { haptic(); window.location.hash = `/tool/Topic/${course}/${encodeURIComponent(topic)}`; }}
                   onLesson={openLesson}
                   onStudy={(list, c) => start((eng) => {
                     const ids = new Set(eng.questions.map((q) => q.id));
@@ -553,6 +557,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   syllabus={syllabus}
                   tasks={tasks}
                   essays={written.list}
+                  notes={notes}
                   onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }}
                   onRule={(course, topic) => { haptic(); setRulebook({ course, topic, recall: false }); }}
                   onEssay={(essay) => { haptic(); setWriting({ view: essay, course: essay.course }); }}
