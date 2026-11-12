@@ -17,7 +17,7 @@ export function firstClause(rule: string): string {
   const clause = s.split(/[.;](?:\s|$)/)[0];
   if (clause.length <= 90) return clause;
   const cut = clause.slice(0, 91).lastIndexOf(" ");
-  return clause.slice(0, cut > 0 ? cut : 90);
+  return `${clause.slice(0, cut > 0 ? cut : 90)}…`;
 }
 const ABBREVIATION = /(?:^|[\s(])(?:vs|v|u\.s|u|s|art|arts|no|nos|inc|corp|co|ltd|cir|ct|cl|e\.g|i\.e|cf|ch|sec|secs|para|paras|subd|supp|mr|mrs|ms|dr|st|ex|re|id|app|div|dist|fed|reg|stat|rev|cong|op)\.$/i;
 export function firstSentence(rule: string): string {
