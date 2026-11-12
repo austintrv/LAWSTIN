@@ -1,4 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { buildSearchIndex, searchIndex } from "../helpers/searchIndex";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { readPrefs, writePrefs, type ReadingSize } from "../helpers/prefs";
@@ -113,9 +114,13 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
   const queue = cardQueue(cards, store.record, state);
   const weak = weakMaterialTopics(state);
   const topics = [...new Set(materials.map(m => m.topic))];
-  const terms = search.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  const filtered = materials.filter(m => (!view.kind || m.kind === view.kind) && (topic === "all" || m.topic === topic)
-    && terms.every(term => JSON.stringify(m).toLocaleLowerCase().includes(term)));
+  const searchedMaterials = useMemo(() => {
+    if (!search.trim()) return materials;
+    const idx = buildSearchIndex({ materials });
+    const res = searchIndex(idx, search, course ?? "all");
+    return res.map(r => r.item.raw as StudyMaterial);
+  }, [materials, search, course]);
+  const filtered = searchedMaterials.filter(m => (!view.kind || m.kind === view.kind) && (topic === "all" || m.topic === topic));
   const [again, setAgain] = useState(false);
   const startCards = (list = queue) => { if (list.length) { setAgain(false); setDeck(list.slice(0, 30)); } };
   // #/courses/review (from the Study tab) opens a flashcard session as soon as the library is ready;
@@ -131,7 +136,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
   }, [store.loading, route]);
   // Browsing a course shows its flashcards as one deck; the Flashcards filter and searches list each card.
   const deckCards = filtered.filter((m): m is Flashcard => m.kind === "flashcard");
-  const deckRow = deckCards.length > 1 && view.kind !== "flashcard" && !terms.length;
+  const deckRow = deckCards.length > 1 && view.kind !== "flashcard" && !search.trim();
   const open = (m: StudyMaterial) => {
     if (m.kind === "flashcard") startCards(cardQueue([m, ...cards.filter(c => c.id !== m.id)], store.record, state, dateKey.today(), true).sort((a, b) => Number(b.id === m.id) - Number(a.id === m.id)));
     else { openedHere.current = true; go(m.course, m.kind, m.id); }

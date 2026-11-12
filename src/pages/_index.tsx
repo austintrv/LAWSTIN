@@ -1,4 +1,4 @@
-import { BarChart3, BookCheck, CalendarDays, LibraryBig } from "lucide-react";
+import { BarChart3, BookCheck, LibraryBig, Search } from "lucide-react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
@@ -25,7 +25,8 @@ import { useLawstinSettings } from "../helpers/useLawstinSettings";
 import { useLogStudy } from "../helpers/useLogStudy";
 import { useStudyMaterials } from "../helpers/useStudyMaterials";
 import { useSyllabus } from "../helpers/useSyllabus";
-import { useWritten } from "../helpers/useWritten";
+import { type WrittenEntry, useWritten } from "../helpers/useWritten";
+import { useCourseTasks } from "../helpers/useCourseTasks";
 import styles from "./_index.module.css";
 const loadCourses = () => import("../components/Courses");
 const Courses = lazy(() => loadCourses().then(module => ({ default: module.Courses })));
@@ -40,24 +41,30 @@ const MatchGame = lazy(() => import("../components/MatchGame").then((m) => ({ de
 import { BottomSheet } from "../components/BottomSheet";
 import { ExamPicker } from "../components/ExamPicker";
 import { CourseSheet, CourseRulebook } from "../components/CourseSheet";
+import { KeyboardShortcuts } from "../components/KeyboardShortcuts";
 import { SessionRecap } from "../components/SessionRecap";
 import { ToolHost } from "../components/ToolHost";
 import { HowItWorks } from "../components/HowItWorks";
 import { TopicTools } from "../components/TopicTools";
-import { ActivityView } from "./ActivityTab";
+import { SearchTab } from "./SearchTab";
 import { ProgressView } from "./ProgressTab";
 import { LoadingCard, type MissedTopic } from "./StudyParts";
 import { StudyView } from "./StudyTab";
 import { useDayPlan } from "./useDayPlan";
 
-type Tab = "progress" | "study" | "activity" | "courses";
+type Tab = "study" | "courses" | "search" | "progress";
 /** Builds a session's items. `exclude` holds what the running session already has (questions are also removed from the engine). */
 type Source = (eng: ReturnType<typeof studyEngine>, exclude: Set<string>) => RoundItem[];
 const NONE = new Set<string>();
-const TABS = ["study", "courses", "progress", "activity"] as const;
+const TABS = ["study", "courses", "search", "progress"] as const;
 const tabFromHash = (): Tab => {
-  const t = window.location.hash.split("/")[1];
-  return TABS.includes(t as Tab) ? t as Tab : "study";
+  const hash = window.location.hash;
+  const t = hash.split("/")[1];
+  if (t === "activity") {
+    history.replaceState(null, "", "#/progress");
+    return "progress";
+  }
+  return TABS.includes(t as Tab) ? (t as Tab) : "study";
 };
 const NAME = "Austin";
 
@@ -119,7 +126,9 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   };
   const [recap, setRecap] = useState<{ answered: number; right: number; changes: ReturnType<typeof recapChanges>; nextReview: string | null; session: NonNullable<typeof session>; snap?: QuizSnapshot } | null>(null);
   const [courseSheet, setCourseSheet] = useState<CourseCode | null>(null);
-  const [rulebook, setRulebook] = useState<{ course: CourseCode; warmup?: boolean; recall?: boolean } | null>(null);
+  const [rulebook, setRulebook] = useState<{ course: CourseCode; topic?: string; warmup?: boolean; recall?: boolean } | null>(null);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const { tasks } = useCourseTasks();
   const [streakOpen, setStreakOpen] = useState(false);
   const [examSize, setExamSize] = useState(10);
   const moment = examMoment(day);
@@ -162,7 +171,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     if (settingsFromApp.current) { settingsFromApp.current = false; history.back(); }
     else window.location.hash = `/${tab}`;
   };
-  const [writing, setWriting] = useState<{ course?: CourseCode; full?: boolean; hypo?: Hypothetical } | null>(null);
+  const [writing, setWriting] = useState<{ course?: CourseCode; full?: boolean; hypo?: Hypothetical; view?: WrittenEntry } | null>(null);
   const [matching, setMatching] = useState(false);
   const canMatch = useMemo(() => matchPairs(state?.questions ?? []).length >= MIN_ROUND, [state?.questions]);
   const [lessonMore, setLessonMore] = useState<MissedTopic[]>([]);
@@ -202,10 +211,10 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   // Chosen once per open, after data loads, so the heading never swaps lines in front of you.
   const [greeting, setGreeting] = useState<string | null>(null);
   const greeted = useRef(false);
-  const paneRefs = useRef<Record<Tab, HTMLDivElement | null>>({ progress: null, study: null, activity: null, courses: null });
+  const paneRefs = useRef<Record<Tab, HTMLDivElement | null>>({ study: null, courses: null, search: null, progress: null });
   const hiddenAt = useRef(0);
   const prevToday = useRef<number | null>(null);
-  const [compact, setCompact] = useState<Record<Tab, boolean>>({ progress: false, study: false, activity: false, courses: false });
+  const [compact, setCompact] = useState<Record<Tab, boolean>>({ study: false, courses: false, search: false, progress: false });
   const onPaneScroll = (k: Tab, el: HTMLDivElement) => {
     const on = el.scrollTop > 52;
     setCompact((c) => (c[k] === on ? c : { ...c, [k]: on }));
@@ -216,7 +225,16 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   useEffect(() => { if (tab === "courses") setCoursesVisited(true); }, [tab]);
   useEffect(() => {
     // Only tab routes switch tabs; #/settings and #/q/<id> open on top of the current one.
-    const sync = () => { const t = window.location.hash.split("/")[1]; if (TABS.includes(t as Tab)) setTab(t as Tab); };
+    const sync = () => {
+      const hash = window.location.hash;
+      const t = hash.split("/")[1];
+      if (t === "activity") {
+        history.replaceState(null, "", "#/progress");
+        setTab("progress");
+        return;
+      }
+      if (TABS.includes(t as Tab)) setTab(t as Tab);
+    };
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
@@ -226,6 +244,36 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     if (tab === next) paneRefs.current[next]?.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
     else { window.location.hash = `/${next}`; setTab(next); }
   };
+
+  useEffect(() => {
+    const isInputField = (el: EventTarget | null) => {
+      if (!el || !(el instanceof HTMLElement)) return false;
+      return el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
+    };
+
+    const handleKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+        if (e.key === "1") { e.preventDefault(); navigate("study"); return; }
+        if (e.key === "2") { e.preventDefault(); navigate("courses"); return; }
+        if (e.key === "3") { e.preventDefault(); navigate("search"); return; }
+        if (e.key === "4") { e.preventDefault(); navigate("progress"); return; }
+        if (e.key.toLowerCase() === "k") { e.preventDefault(); navigate("search"); return; }
+      }
+      if (e.key === "/" && !isInputField(e.target)) {
+        e.preventDefault();
+        navigate("search");
+        return;
+      }
+      if (e.key === "?" && !isInputField(e.target)) {
+        e.preventDefault();
+        setShortcutsOpen(true);
+        return;
+      }
+    };
+
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [tab]);
 
   useEffect(() => {
     const pick = (s?: typeof state) => {
@@ -441,7 +489,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
           <div key={k} data-pane={k} ref={(el) => { paneRefs.current[k] = el; }} className={`${styles.pane} ${tab === k ? styles.paneOn : ""}`} aria-hidden={tab !== k}
             onScroll={(ev) => onPaneScroll(k, ev.currentTarget)}>
             <div className={`${styles.navbar} ${compact[k] ? styles.navbarOn : ""}`} aria-hidden="true">
-              <span>{k === "study" ? "Study" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</span>
+              <span>{k === "study" ? "Study" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Search"}</span>
             </div>
             <div className={`${styles.shell} ${k === "study" ? auraHost : ""}`}>
               {k === "study" && <Aura className={styles.studyAura} colors={["var(--uh-red)", "var(--course-il)", "var(--course-asy)"]} />}
@@ -450,7 +498,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   <span className={styles.eyebrow}>{new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}</span>
                   <button className={styles.avatar} onClick={openSettings} aria-label="Settings">{NAME[0]}</button>
                 </div>
-                <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? reviewGreeting(greeting, daily.numbers(filter).review) ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Activity"}</h1>
+                <h1 key={k === "study" ? greeting ?? "" : k} className={k === "study" ? styles.greet : styles.title} style={k === "study" && !greeting ? { visibility: "hidden" } : undefined}>{k === "study" ? reviewGreeting(greeting, daily.numbers(filter).review) ?? "\u00a0" : k === "progress" ? "Progress" : k === "courses" ? "Courses" : "Search"}</h1>
               </header>
 
               {loading && k !== "courses" && <LoadingCard />}
@@ -482,14 +530,33 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                     return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
                   })} />
               )}
-              {state && k === "progress" && <ProgressView onHow={() => { haptic(); setHowOpen(true); }} e={e} syllabus={syllabus} materials={store.materials} onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }} />}
-              {state && k === "activity" && (
-                <ActivityView e={e} state={state} onLesson={openLesson}
+              {state && k === "progress" && (
+                <ProgressView
+                  onHow={() => { haptic(); setHowOpen(true); }}
+                  e={e}
+                  state={state}
+                  syllabus={syllabus}
+                  materials={store.materials}
+                  onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }}
+                  onLesson={openLesson}
                   onStudy={(list, c) => start((eng) => {
                     const ids = new Set(eng.questions.map((q) => q.id));
                     const left = list.filter((q) => ids.has(q.id) && !eng.prog(q.id)?.seen);
                     return left.length ? eng.listRound(left) : eng.buildRound(c ?? "all");
-                  })} />
+                  })}
+                />
+              )}
+              {k === "search" && (
+                <SearchTab
+                  questions={state?.questions ?? []}
+                  materials={store.materials}
+                  syllabus={syllabus}
+                  tasks={tasks}
+                  essays={written.list}
+                  onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }}
+                  onRule={(course, topic) => { haptic(); setRulebook({ course, topic, recall: false }); }}
+                  onEssay={(essay) => { haptic(); setWriting({ view: essay, course: essay.course }); }}
+                />
               )}
               {k === "courses" && coursesVisited && <Suspense fallback={<LoadingCard />}><Courses store={store} state={state} lesson={lessonAway ? lessonReturn : undefined} onWrite={(hypo) => setWriting(hypo ? { hypo } : {})} onQuiz={(course, topic) => start((eng) => topic ? eng.topicRound(course, topic) : eng.buildRound(course))} /></Suspense>}
             </div>
@@ -500,7 +567,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       <nav className={styles.tabbar} aria-label="Sections">
         <button className={styles.wordmark} onClick={() => navigate("study")}>Lawstin</button>
         <div className={styles.tabs}>
-          {([["study", "Study", BookCheck], ["courses", "Courses", LibraryBig], ["progress", "Progress", BarChart3], ["activity", "Activity", CalendarDays]] as const).map(([k, label, Icon]) => (
+          {([["study", "Study", BookCheck], ["courses", "Courses", LibraryBig], ["search", "Search", Search], ["progress", "Progress", BarChart3]] as const).map(([k, label, Icon]) => (
             <button key={k} className={`${styles.tab} ${tab === k ? styles.tabOn : ""}`} aria-current={tab === k ? "page" : undefined}
               onClick={() => navigate(k)}>
               <span className={styles.tabIcon}><Icon size={23} strokeWidth={tab === k ? 2.3 : 1.8} /></span>
@@ -558,13 +625,14 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         </BottomSheet>
       )}
 
-      {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} /></Suspense>}
+      {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} onShortcuts={() => { closeSettings(); setShortcutsOpen(true); }} /></Suspense>}
+      {shortcutsOpen && <KeyboardShortcuts onClose={() => setShortcutsOpen(false)} />}
 
       {matching && state && <Suspense fallback={null}><MatchGame questions={state.questions} course={filter} onClose={() => setMatching(false)}
         // Each pair counts as one answer toward the day; a miss costs one of them.
         onRound={(r) => { daily.credit(undefined, r.pairs)(); log("drill", `match:${Date.now()}`, r.misses === 0, r.pairs, Math.max(0, r.pairs - r.misses)); }} /></Suspense>}
 
-      {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(null)} course={writing.course} full={writing.full} hypo={writing.hypo}
+      {writing && <Suspense fallback={null}><WrittenPractice onClose={() => setWriting(null)} course={writing.course} full={writing.full} hypo={writing.hypo} initialView={writing.view}
         hypos={hypos} weak={new Set(e.weakTopics().map((t) => `${t.course}|${t.topic}`))} written={written}
         // An essay counts as five answers (ten at exam length), scored in proportion to its grade.
         onGraded={(entry, len) => { const n = len === "full" ? 10 : 5; daily.credit(entry.course, n)(); log("written", entry.id, entry.grade.score >= 7, n, Math.round((entry.grade.score / 10) * n)); }}

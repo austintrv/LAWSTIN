@@ -19,7 +19,7 @@ quiz-recall quiz-question quiz-selected quiz-review-wrong quiz-review-facts ask-
 exam-question exam-results lesson-rule lesson-slipped lesson-check lesson-correct lesson-complete
 flashcard-front flashcard-back flashcards-done written-setup written-prompt written-typed written-graded written-history written-essay match-board match-picked match-result
 courses-home courses-tool course-il course-asy course-pr course-next course-kind reader-flowchart reader-outline reader-comparison reader-drill reader-drill-answered reader-hypothetical rulebook-read rulebook-recall workspace-clinic workspace-clinic-task workspace-tutoring
-progress-top progress-full progress-expanded topic-sheet progress-how activity-top activity-full activity-day activity-updates settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-activity night-before-study night-before-finals deep-link
+progress-top progress-full progress-expanded topic-sheet progress-how search-top search-results search-preview settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-search night-before-study night-before-finals deep-link
 exam-map exam-confirm exam-history exam-history-detail missed-rules close-calls close-calls-review close-calls-result progress-close-call progress-plausible progress-way-off progress-right-but-guessed`.split(/\s+/);
 
 const index = [], log = [];
@@ -318,13 +318,18 @@ const SCENES = {
     await s.close();
   },
 
-  async activity() {
-    const s = await O({ hash: '#/activity' });
+  async search() {
+    const s = await O({ hash: '#/search' });
     const P = s.page;
-    await step('activity-top', async () => { await snap(s, 'activity-top', 'Activity tab: missed topics, study calendar, last 14 days, Updates.', 'Activity tab'); }, s);
-    await step('activity-full', async () => { await snap(s, 'activity-full', 'Activity tab, full height.', 'Activity tab, full height', { full: true }); }, s);
-    await step('activity-day', async () => { await P.locator('[data-pane="activity"] button[aria-label*="answered"]').filter({ hasText: /\d/ }).nth(20).click(); await P.waitForTimeout(250); await snap(s, 'activity-day', 'Study calendar with another day selected.', 'Activity > a calendar day'); }, s);
-    await step('activity-updates', async () => { await P.getByRole('button', { name: /earlier/ }).first().click(); await P.waitForTimeout(700); await snap(s, 'activity-updates', 'Updates feed expanded: question updates and study-material updates.', 'Activity > N earlier', { full: true }); }, s);
+    await step('search-top', async () => {
+      await P.getByRole('searchbox', { name: 'Search rules, materials, and topics' }).waitFor();
+      await snap(s, 'search-top', 'Search tab: search field, course chips, recent searches, and browsable units.', 'Search tab');
+    }, s);
+    await step('search-results', async () => {
+      await P.getByRole('searchbox', { name: 'Search rules, materials, and topics' }).fill('force');
+      await P.waitForTimeout(400);
+      await snap(s, 'search-results', 'Search results grouped by kind with snippets and marked terms.', 'Search results');
+    }, s);
     await s.close();
   },
 
@@ -345,7 +350,7 @@ const SCENES = {
       await dialog(s.page).waitFor(); await s.setOffline(true); await answerCurrent(s, true); await s.page.waitForTimeout(500);
       await snap(s, 'offline-answer', 'Answering offline: “Offline. Answers will sync…” toast, answer queued.', 'Go offline > answer a question'); await s.close();
     });
-    await step('empty-study', async () => { const s = await O({ emptyState: true }); await snap(s, 'empty-study', 'Study tab of a brand-new account (no progress, no days), full height.', 'Open with emptyState', { full: true }); await s.goto('#/progress'); await snap(s, 'empty-progress', 'Progress tab of a new account.', 'New account > Progress', { full: true }); await s.goto('#/activity'); await snap(s, 'empty-activity', 'Activity tab of a new account.', 'New account > Activity', { full: true }); await s.close(); });
+    await step('empty-study', async () => { const s = await O({ emptyState: true }); await snap(s, 'empty-study', 'Study tab of a brand-new account (no progress, no days), full height.', 'Open with emptyState', { full: true }); await s.goto('#/progress'); await snap(s, 'empty-progress', 'Progress tab of a new account.', 'New account > Progress', { full: true }); await s.goto('#/search'); await snap(s, 'empty-search', 'Search tab of a new account.', 'New account > Search', { full: true }); await s.close(); });
     await step('night-before-study', async () => { const s = await O({ nightBefore: true }); await snap(s, 'night-before-study', 'Study tab the night before the first final (fake date 2026-12-01).', 'Open with nightBefore'); await snap(s, 'night-before-finals', 'Night-before Study tab, full height: Finals tiles with “1 day”.', 'Open with nightBefore, full height', { full: true }); await s.close(); });
   },
 };

@@ -377,6 +377,32 @@ button.calDay:active { transform: scale(0.92); }
   .barsRow { height: 226px; }
 }
 
+.progressDashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+@media (min-width: 1000px) {
+  .progressDashboard {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+  }
+  .progressMainCol {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+  }
+  .progressSideCol {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    min-width: 0;
+  }
+}
+
 /* Finals as stacked rows next to the hero from tablet width up, with the fuller stats line */
 @media (min-width: 700px) {
   .finalTiles { grid-template-columns: 1fr; }

@@ -43,12 +43,12 @@ export function CourseSheet({ course, e, syllabus, numbers, onClose, onTopic, on
   </BottomSheet>;
 }
 
-export function CourseRulebook({ course, state, e, warmup, recall, onClose }: { course: CourseCode; state?: QuestionState; e: Engine; warmup?: boolean; recall?: boolean; onClose: () => void }) {
+export function CourseRulebook({ course, topic, state, e, warmup, recall, onClose }: { course: CourseCode; topic?: string; state?: QuestionState; e: Engine; warmup?: boolean; recall?: boolean; onClose: () => void }) {
   const ref = useModalFocus<HTMLDivElement>();
   useBackClose(onClose);
   const filtered = warmup && state ? { ...state, questions: weakestRules(e, course) } : state;
   return <div ref={ref} tabIndex={-1} className={layout.modal} role="dialog" aria-modal="true" aria-label={warmup ? "Warm up" : "Rulebook"}>
     <div className={layout.top}><div className={layout.topIn}><span /><span className={layout.examTitle}>{warmup ? "Warm up · 10 min" : "Rulebook"}</span><button className={layout.x} onClick={onClose} aria-label="Close"><X size={16} strokeWidth={2.4} /></button></div></div>
-    <Rulebook key={`${course}:${recall}`} course={course} state={filtered} initialMode={recall ? "recall" : "read"} readOnly={warmup} />
+    <Rulebook key={`${course}:${recall}:${topic ?? ""}`} course={course} topic={topic} state={filtered} initialMode={recall ? "recall" : "read"} readOnly={warmup} />
   </div>;
 }
