@@ -3,18 +3,22 @@ export type NamedItem = { subtopic?: string | null; title?: string; heading?: st
 const clean = (s: string) => s.trim().replace(/\s+/g, " ");
 const normalize = (s: string) => clean(s).toLocaleLowerCase().replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
 
+// Words that belong to a citation, not to a description of what it is.
+const CITE_WORDS = new Set(["of", "and", "the", "to", "in", "art", "arts", "article", "articles", "sec", "secs", "section", "sections", "cmt", "comment", "para", "paras", "rule", "rules", "parte", "seq", "et", "supra", "subd", "cl", "ch"]);
+const MARKER = /§|\b(?:[Aa]rts?|[Aa]rticles?|[Ss]ec(?:tion)?s?|[Rr]ules?|[Cc]anon|[Cc]mt|[Pp]aras?)\.?\s*[\dIVX]|\bU\.?S\.?C\b|\bC\.?F\.?R\b|\d\([a-zA-Z0-9]+\)|\bv\.\s|\bR\.\s|^(?:Matter of|In re|Ex parte)\s+[A-Z]|\b\d+\s+(?:U\.S\.|S\.\s?Ct\.|F\.|I&N)/;
+/** True when the text only points at an authority (a rule number, section, article or case caption) and says nothing about what it is. */
 export function isBareCitation(text: string): boolean {
   const s = clean(text);
   if (!s) return true;
-  if (/^(?:[Ii]n [Rr]e|[Ee]x [Pp]arte)\s+[A-Z]/.test(s) || /\b(?:v\.?|versus)\s+/i.test(s)) return true;
-  if (/^(?:(?:model\s+)?rules?(?:\s+of\s+professional\s+conduct)?|(?:AP\s+I|UN\s+Charter|U\.?S\.?\s+Const\.?)?\s*(?:art(?:icle)?s?\.?|sec(?:tion)?s?\.?|§+))\s*[\dIVX]+(?:[\d().,;§–\s-]|\b(?:and|or|et|seq|arts?|secs?|paras?|cl|ch|[a-z]{1,2})\b)*$/i.test(s)) return true;
-  return /^(?:\d+\s+)?(?:U\.?S\.?|S\.\s*Ct\.|F\.(?:\s?Supp\.)?\s?\d*d|[A-Z][a-z]+\.)(?:\s+\d+|\s*\([\w\s.]+\))+$/i.test(s)
-    || /^[\dIVX]+(?:[.():\s§–-]+(?:\d+|[a-z]{1,2}|[ivx]+))*[.():\s]*$/i.test(s);
+  if (/^[\dIVX]+(?:[.():\s§–-]+(?:\d+|[a-z]{1,2}|[ivx]+))*[.():\s]*$/i.test(s) && /\d[.(]\S|^\d+$|§/.test(s)) return true;
+  if (!MARKER.test(s)) return false;
+  // A citation with descriptive words attached ("Rule 3.8(d) timely disclosure") is a name.
+  const descriptive = s.split(/[^\p{L}’'-]+/u).filter((w) => /^\p{Ll}/u.test(w) && w.length >= 4 && !CITE_WORDS.has(w.toLowerCase()));
+  return descriptive.length === 0;
 }
 
 export function firstClause(rule: string): string {
-  const s = clean(rule);
-  const clause = s.split(/[.;](?:\s|$)/)[0];
+  const clause = firstSentence(rule).split(/;\s/)[0].replace(/[.!?]$/, "");
   if (clause.length <= 90) return clause;
   const cut = clause.slice(0, 91).lastIndexOf(" ");
   return `${clause.slice(0, cut > 0 ? cut : 90)}…`;
@@ -33,7 +37,9 @@ export function firstSentence(rule: string): string {
 export function plainName(item: NamedItem, context: NamedItem = {}): { name: string; cite: string } {
   const candidates = [item.subtopic, item.title, item.heading, context.heading, context.title, item.topic, context.topic];
   const name = candidates.find((s): s is string => !!s?.trim() && !isBareCitation(s))?.trim()
-    ?? firstClause(item.rule || item.text || item.back || context.rule || context.text || "");
+    ?? (firstClause(item.rule || item.text || item.back || context.rule || context.text || "")
+      // Nothing descriptive exists anywhere: the citation itself is better than a blank heading.
+      || candidates.find((c): c is string => !!c?.trim())?.trim() || item.authority?.trim() || context.authority?.trim() || "");
   const authority = item.authority?.trim() ?? context.authority?.trim() ?? "";
   return { name, cite: authority && !normalize(name).includes(normalize(authority)) ? authority : "" };
 }

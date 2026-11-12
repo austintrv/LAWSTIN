@@ -20,6 +20,7 @@
 .rule{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;padding:16px 18px;color:var(--foreground)}
 .rule+.rule{border-top:1px solid var(--border)}
 .sub{font-size:var(--type-15);font-weight:600;color:var(--foreground);line-height:1.4}
+.rule small{font-size:var(--type-13);font-weight:400;color:var(--muted-foreground)}
 .head{display:flex;flex-direction:column;gap:2px}
 .rule p{font-family:var(--font-family-reading);font-size:var(--type-20);line-height:1.55}
 .rule small{font-size:var(--type-15);line-height:1.5;color:var(--muted-foreground)}

@@ -148,6 +148,7 @@
 }
 
 .ruleAuth {
+  font-weight:400;
   font-size:var(--type-13);
   color: var(--muted-foreground);
 }

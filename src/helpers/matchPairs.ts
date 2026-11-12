@@ -41,12 +41,14 @@ function shuffle<T>(items: T[], random: () => number): T[] {
 /** Takes up to `size` pairs in order, never two with the same name. */
 function take(list: MatchPair[], size: number, chosen: MatchPair[] = []): MatchPair[] {
   const seen = new Set(chosen.map((p) => norm(p.name)));
+  const sentences = new Set(chosen.map((p) => norm(firstSentence(p.rule))));
   const out = chosen.slice();
   for (const p of list) {
     if (out.length >= size) break;
     const k = norm(p.name);
-    if (seen.has(k) || out.some((o) => o.id === p.id)) continue;
-    seen.add(k);
+    const sentence = norm(firstSentence(p.rule));
+    if (seen.has(k) || sentences.has(sentence) || out.some((o) => o.id === p.id)) continue;
+    seen.add(k); sentences.add(sentence);
     out.push(p);
   }
   return out;

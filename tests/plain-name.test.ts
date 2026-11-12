@@ -40,3 +40,10 @@ test('the first sentence does not stop at an abbreviation', async () => {
   assert.equal(firstSentence('A “claim.” Next.'), 'A “claim.”');
   assert.equal(firstSentence('No terminator here'), 'No terminator here');
 });
+
+test("citations in the forms the courses use are recognised, and descriptive names are not", () => {
+  for (const c of ["Rule 1.18", "Model Rule 1.6(b)(1)", "28 U.S.C. § 1605(a)(2)", "INA § 208(b)(2)", "UN Charter art. 51", "Additional Protocol I, arts. 52(2) and 57", "VCLT art. 31", "Matter of A-B-", "INS v. Elias-Zacarias", "Brady v. Maryland, 373 U.S. 83 (1963)", "Restatement (Third) of Foreign Relations Law § 102", "Canon 3(B)(7)", "Fed. R. Evid. 801(d)(2)", "ICCPR art. 6", "Ex parte Young"]) assert.equal(isBareCitation(c), true, c);
+  for (const n of ["Prosecutor’s disclosure duty", "IAC vs. NIAC", "Rule 3.8(d) timely disclosure", "Ex parte communications", "Persecutor’s intent (Elias-Zacarias)", "Post-conviction duties, Rule 3.8(g)–(h)", "Conflict v. concurrence", "1. Introduction", "Treaties"]) assert.equal(isBareCitation(n), false, n);
+  assert.equal(plainName({ subtopic: "Rule 1.18" }).name, "Rule 1.18");
+  assert.equal(plainName({ subtopic: "Rule 1.18", topic: "Confidentiality & Prospective Clients", authority: "Rule 1.18" }).name, "Confidentiality & Prospective Clients");
+});

@@ -202,7 +202,7 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 .ruleItem { background: var(--muted); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
 .ruleSub { font-size:var(--type-15); font-weight: 600; line-height: 1.35; color: var(--foreground); }
 .ruleItem p { margin: 0; font-family: var(--font-family-reading); font-size:var(--type-17); line-height: 1.5; }
-.ruleItem small { font-size:var(--type-13); color: var(--muted-foreground); }
+.ruleItem small { font-size:var(--type-13); font-weight:400; color: var(--muted-foreground); }
 .examPick { display: flex; flex-direction: column; gap: 14px; }
 
 @media (prefers-reduced-motion: reduce) {
