@@ -202,6 +202,13 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
                 <div className={styles.rowHead}><Icon color="#3a3a3c"><Moon size={16} /></Icon><span className={styles.label}>Theme</span></div>
                 <Segments<Appearance> label="Theme" value={prefs.appearance} onChange={(v) => pref({ appearance: v })} options={[["auto", "Automatic"], ["light", "Light"], ["dark", "Dark"]]} />
               </div>
+              {wide && onShortcuts && (
+                <button type="button" className={styles.row} onClick={onShortcuts}>
+                  <Icon color="var(--course-il)"><Command size={16} /></Icon>
+                  <span className={styles.label}>Keyboard shortcuts</span>
+                  <ChevronRight size={18} className={styles.chev} />
+                </button>
+              )}
             </div>
           </section>
 
