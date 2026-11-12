@@ -12,7 +12,7 @@ export function HowItWorks({ plan, goal, moment, e, numbers, statuses, onOpen }:
       <div className={`${styles.card} ${styles.howCard}`}><b className="finish-number">{moment.kind === "normal" ? goal : moment.kind === "eve" ? "≤25" : moment.kind === "morning" ? "10 min" : "✓"}</b>
         <div className="finish-chips">{moment.kind === "normal" && COURSE_KEYS.map(k => <span key={k} className={styles.status} style={{color:COURSES[k].color,background:"var(--fill)"}}>{COURSES[k].short} · {plan.find(p => p.course === k)?.target ?? 0}</span>)}</div>
       </div>
-      <div className={`${styles.card} ${styles.list}`}>{([
+      <div className={styles.topicChips}><span>5 to 40 a day</span><span>10 overdue reviews per course</span></div><div className={`${styles.card} ${styles.list}`}>{([
         ["due", "Ready to review", numbers.review], ["new", "Not seen yet", numbers.fresh], ["missed", "Missed topics", e.missedTopics().length], ["streak", "Streak", e.streak()],
       ] as const).map(([kind,label,n]) => (n > 0 || kind === "streak") && <button key={kind} className={styles.row} onClick={() => onOpen(kind)}><span className={styles.rowMain}>{label}</span><span>{n}</span><ChevronRight size={18}/></button>)}</div>
     </section>

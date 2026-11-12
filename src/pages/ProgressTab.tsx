@@ -1,3 +1,4 @@
+import { WeeklyProgress } from "../components/WeeklyProgress";
 import { ChevronRight, GraduationCap } from "lucide-react";
 import { useState } from "react";
 import { Aura, auraHost } from "../components/Aura";
@@ -548,6 +549,7 @@ export function ProgressView({
           <div className={styles.progressMainCol}>{coverageSection}</div>
           <div className={styles.progressSideCol}>
             {tilesSection}
+            <WeeklyProgress e={e} syllabus={syllabus} state={state} missed={rules.map(r=>r.q.id)} ready={!!state && !!history.data && !history.isFetching} />
             {calendarSection}
             {missedSection}
             {howMissSection}
@@ -558,6 +560,7 @@ export function ProgressView({
       ) : (
         <>
           {tilesSection}
+          <WeeklyProgress e={e} syllabus={syllabus} state={state} missed={rules.map(r=>r.q.id)} ready={!!state && !!history.data && !history.isFetching} />
           {calendarSection}
           {missedSection}
           {howMissSection}

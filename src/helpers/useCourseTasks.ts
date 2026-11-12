@@ -111,9 +111,10 @@ export function flushSettings() {
   syncingSettings = (async () => {
     try {
       for (const row of Object.values(settingQueue())) {
-        const { error } = await supabase.from("app_settings").upsert(row, { onConflict: "key" }).abortSignal(AbortSignal.timeout(10000));
+        const { error } = await supabase.from("app_settings").upsert(row, { onConflict: "key", ignoreDuplicates: row.key.startsWith("snapshot:v1:") }).abortSignal(AbortSignal.timeout(10000));
         if (error) throw error;
         acknowledgeSetting(row);
+        if (row.key.startsWith("snapshot:v1:")) window.dispatchEvent(new Event("lawstin-settings-synced"));
       }
       settingsDelay = 1000;
     } catch { if (settingsDelay === 1000) toast.error("Couldn’t sync. Your changes are saved on this device."); settingsDelay = Math.min(settingsDelay * 2, 30000); }

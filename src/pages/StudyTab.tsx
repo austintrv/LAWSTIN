@@ -18,7 +18,7 @@ import { Num, pct, type Engine, type MissedTopic } from "./StudyParts";
 import { UpdateCard } from "./UpdateCards";
 
 /** Days to each final, soonest first, with the day's target and how well that course's questions are going. */
-function FinalsCard({ e, courseNumbers, onCourse }: { e: Engine; courseNumbers: (c: CourseCode) => ReturnType<typeof studyNumbers>; onCourse: (c: CourseCode) => void }) {
+function FinalsCard({ e, syllabus, courseNumbers, onCourse }: { e: Engine; syllabus: Syllabus; courseNumbers: (c: CourseCode) => ReturnType<typeof studyNumbers>; onCourse: (c: CourseCode) => void }) {
   const list = COURSE_KEYS.map((k) => ({ k, date: FINALS[k], days: dateKey.diff(e.today, FINALS[k]) })).filter((f) => f.days >= 0).sort((a, b) => a.days - b.days);
   if (!list.length) return null;
   return (
@@ -26,13 +26,13 @@ function FinalsCard({ e, courseNumbers, onCourse }: { e: Engine; courseNumbers: 
       <div className={styles.secH}><h2>Finals</h2></div>
       <div className={styles.finalTiles}>
         {list.map(({ k, date, days }) => {
-          const c = COURSES[k], s = e.courseStats(k), numbers = courseNumbers(k), today = numbers.left;
+          const c = COURSES[k], s = e.courseStats(k), numbers = courseNumbers(k), today = numbers.left, units = e.coverage(k, syllabus[k]);
           return (
             <button key={k} className={`${styles.card} ${styles.finalTile}`} style={{ "--course-color": c.color } as React.CSSProperties} onClick={() => onCourse(k)}>
               <span className={styles.finalCourse}><i />{c.short}</span>
               <b data-today={days === 0}>{days === 0 ? "Today" : days}</b>
               <span className={styles.finalWhen}>{days === 0 ? new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { weekday: "long" }) : `${days === 1 ? "day" : "days"} · ${new Date(`${date}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`}</span>
-              <span className={styles.meter}><i style={{ width: `${pct(s.seen, s.n)}%`, background: c.color }} /></span>
+              <span className={styles.segBar}>{units.map(u=><i key={u.topic} style={{flex:1,background:u.status === "solid" ? c.color : "var(--fill)"}} />)}</span><span className={styles.finalStats}>{units.filter(u=>u.status === "solid").length} of {units.length} units Solid</span>
               <span className={styles.finalStats}>{examMoment(e.today).kind !== "normal" ? `${pct(s.seen, s.n)}% seen` : today ? `${today} to go` : "Done today"}{s.seen > 0 && <span className={styles.finalFull}> · {s.acc}% correct</span>}</span>
             </button>
           );
@@ -198,7 +198,7 @@ export function StudyView({ e, state, syllabus, moment, passNumbers, essaysWritt
           {special !== "done" && <div className={styles.o3}><DueSoonCard /></div>}
         </div>
         <div className={styles.studyCol}>
-          <div className={styles.o2}><FinalsCard e={e} courseNumbers={courseNumbers} onCourse={onCourse} /></div>
+          <div className={styles.o2}><FinalsCard e={e} syllabus={syllabus} courseNumbers={courseNumbers} onCourse={onCourse} /></div>
           {special === "done" && <div className={styles.o3}><DueSoonCard /></div>}
           <div className={styles.o5}>
               <section className={styles.sec}>

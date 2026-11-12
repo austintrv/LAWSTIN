@@ -39,7 +39,7 @@ export function CourseSheet({ course, e, syllabus, numbers, onClose, onTopic, on
       {row(`${numbers.fresh} new`, "", () => onStudy("new"), !numbers.fresh)}
     </div></section>
     <WeakSpots e={e} course={course} syllabus={syllabus} onTopic={onTopic} />
-    <section className={styles.sec}><div className={styles.secH}><h2>Coverage</h2></div><div className={styles.segBar} aria-label="Unit coverage">{units.map((u) => <i key={u.topic} title={`${u.topic} · ${u.status}`} style={{ background: STATUS_COLOR[u.status], flex: 1 }} />)}</div></section>
+    <section className={styles.sec}><div className={styles.secH}><h2>{units.filter(u=>u.status === "solid").length} of {units.length} units Solid</h2></div><div className={styles.segBar} aria-label="Unit coverage">{units.map((u) => <i key={u.topic} title={`${u.topic} · ${u.status}`} style={{ background: STATUS_COLOR[u.status], flex: 1 }} />)}</div></section>
   </BottomSheet>;
 }
 
