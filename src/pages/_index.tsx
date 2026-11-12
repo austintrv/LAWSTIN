@@ -1,3 +1,7 @@
+import { useSemester } from "../helpers/useSemester";
+import { useSyncedSetting } from "../helpers/useSyncedSetting";
+import { makeSemesterRecap, type SemesterRecap as Recap } from "../helpers/semesterRecap";
+import { SemesterRecap } from "../components/SemesterRecap";
 import { useLearningMilestones } from "../helpers/useLearningMilestones";
 import { BarChart3, BookCheck, LibraryBig, Search } from "lucide-react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
@@ -78,6 +82,7 @@ const saveRecent = (g: string) => {
 };
 
 export default function LawstinApp({ userId, email }: { userId: string; email: string | null }) {
+  const semester = useSemester();
   const { query, answer, queueAnswer, mark } = useLawstinData();
   const { harder, explain } = useLawstinAi();
   const settings = useLawstinSettings();
@@ -100,7 +105,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     document.addEventListener("visibilitychange", tick);
     return () => { clearInterval(timer); document.removeEventListener("visibilitychange", tick); };
   }, []);
-  const e = useMemo(() => studyEngine(state, day, { weakExtra: written.weak, reviews: store.record.reviews }), [state, day, written.weak, store.record.reviews]);
+  const e = useMemo(() => studyEngine(state, day, { weakExtra: written.weak, reviews: store.record.reviews }), [state, day, written.weak, store.record.reviews, semester.value]);
   const flashcards = useMemo(() => store.materials.filter((m): m is Flashcard => m.kind === "flashcard"), [store.materials]);
   const hypos = useMemo(() => store.materials.filter((m): m is Hypothetical => m.kind === "hypothetical"), [store.materials]);
   const [prefs, setPrefs] = useState(readPrefs);
@@ -138,6 +143,10 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const [streakOpen, setStreakOpen] = useState(false);
   const [examSize, setExamSize] = useState(10);
   const moment = examMoment(day);
+  const recapStore = useSyncedSetting<Recap|null>(`recap:v1:${semester.value.name}`,null);
+  const [recapOpen,setRecapOpen]=useState(false);
+  const currentRecap=useMemo(()=>state?makeSemesterRecap(semester.value.name,state,unitStatuses(e,syllabus),written.list,day):null,[state,e,syllabus,written.list,day,semester.value.name]);
+  useEffect(()=>{if(moment.kind==="done" && planReady && relatedReady && semester.loaded && recapStore.loaded && !recapStore.error && !recapStore.value && currentRecap)recapStore.save(currentRecap);},[moment.kind,planReady,relatedFetching,semester.loaded,recapStore.loaded,recapStore.value,currentRecap]);
   const passKey = `last-pass:${userId}`;
   const [pass, setPass] = useState<{ day: string; items: RoundItem[]; done: string[] } | null>(() => readCache<{ day: string; items: RoundItem[]; done: string[] }>(passKey) ?? null);
   useEffect(() => {
@@ -522,7 +531,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
               {state && k === "study" && !viewReady && <LoadingCard />}
               {state && viewReady && k === "study" && (
-                <StudyView e={e} syllabus={syllabus} moment={moment} passNumbers={passNumbers} essaysWritten={written.list.filter((w) => w.day >= "2026-08-01" && w.day <= day).length} onStreak={() => setStreakOpen(true)} onLastPass={startLastPass} onRulebook={(course, warmup, recall) => setRulebook({ course, warmup, recall })} onTopic={(course, topic) => setTopicSheet({ course, topic })} onTool={openTool} state={state} numbers={daily.numbers(filter)} cards={cardsFor(filter)} plan={plan.courses} courseNumbers={(c) => daily.numbers(c)} filter={filter} setFilter={setFilter} celebrate={celebrate}
+                <StudyView semesterName={semester.value.name} onRecap={()=>setRecapOpen(true)} e={e} syllabus={syllabus} moment={moment} passNumbers={passNumbers} essaysWritten={written.list.filter((w) => w.day >= "2026-08-01" && w.day <= day).length} onStreak={() => setStreakOpen(true)} onLastPass={startLastPass} onRulebook={(course, warmup, recall) => setRulebook({ course, warmup, recall })} onTopic={(course, topic) => setTopicSheet({ course, topic })} onTool={openTool} state={state} numbers={daily.numbers(filter)} cards={cardsFor(filter)} plan={plan.courses} courseNumbers={(c) => daily.numbers(c)} filter={filter} setFilter={setFilter} celebrate={celebrate}
                   resuming={!!lastPractice?.key.endsWith(`:${filter}`)}
                   onHow={() => { haptic(); setHowOpen(true); }}
                   nextReview={nextReviewDay(e, [...flashcards, ...e.ruleCards(filter)], store.record, filter)}
@@ -543,6 +552,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
               )}
               {state && k === "progress" && (
                 <ProgressView
+                  onRecap={()=>setRecapOpen(true)}
                   onHow={() => { haptic(); setHowOpen(true); }}
                   e={e}
                   state={state}
@@ -631,6 +641,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         </BottomSheet>
       )}
 
+      {recapOpen && (recapStore.value ?? currentRecap) && <SemesterRecap value={(recapStore.value ?? currentRecap)!} onClose={()=>setRecapOpen(false)}/>}
       {howOpen && (
         <BottomSheet onClose={() => setHowOpen(false)} title="How Lawstin works" className={styles.howSheet}>
           <HowItWorks numbers={daily.numbers("all")} e={e} statuses={unitStatuses(e, syllabus).map(u => u.status)} onOpen={kind => { setHowOpen(false); if (kind === "streak") setStreakOpen(true); else if (kind === "missed") openLesson(e.missedTopics()); else if (kind === "progress") { window.location.hash = "#/progress"; } else start(mixed("all", kind === "due" ? "due" : "new")); }} moment={moment} plan={plan.courses} planOn={planOn} goal={goal} />

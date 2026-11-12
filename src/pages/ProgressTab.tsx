@@ -176,6 +176,7 @@ function StudyCalendar({
 }
 
 export function ProgressView({
+  onRecap,
   onHow,
   e,
   state,
@@ -185,7 +186,7 @@ export function ProgressView({
   onLesson,
   onStudy,
 }: {
-  onHow?: () => void;
+  onHow?: () => void; onRecap: () => void;
   e: Engine;
   state?: QuestionState;
   syllabus: Syllabus;
@@ -485,6 +486,7 @@ export function ProgressView({
   const examsSection = (
     <section className={styles.sec}>
       <div className={styles.card}>
+        <button className={styles.row} onClick={onRecap}><span className={styles.rowMain}>Semester recap</span><ChevronRight size={18}/></button>
         {exams.list.length > 0 && (
           <button
             className={styles.row}

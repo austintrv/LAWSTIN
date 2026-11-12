@@ -69,7 +69,8 @@ function DueSoonCard() {
   );
 }
 
-export function StudyView({ e, state, syllabus, moment, passNumbers, essaysWritten, onStreak, onLastPass, onRulebook, onTopic, onTool, numbers, courseNumbers, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onMatch, onUpdate }: {
+export function StudyView({ semesterName, onRecap, e, state, syllabus, moment, passNumbers, essaysWritten, onStreak, onLastPass, onRulebook, onTopic, onTool, numbers, courseNumbers, cards, plan, filter, setFilter, celebrate, resuming, nextReview, onHow, onMode, onLesson, onStart, onCourse, onEssay, onStarred, onExam, onWrite, onMatch, onUpdate }: {
+  semesterName: string; onRecap: () => void;
   syllabus: Syllabus; moment: ExamMoment; passNumbers: { goal: number; answered: number; resuming: boolean }; essaysWritten: number;
   onStreak: () => void; onLastPass: () => void; onRulebook: (course: CourseCode, warmup?: boolean, recall?: boolean) => void;
   onTopic: (course: CourseCode, topic: string) => void; onTool: (name: string, course: CourseCode) => void;
@@ -169,12 +170,13 @@ export function StudyView({ e, state, syllabus, moment, passNumbers, essaysWritt
           </div>
         )}
         </> : special === "done" ? <>
-          <h2 className={styles.examHeroTitle}>Fall finals done</h2>
+          <h2 className={styles.examHeroTitle}>{semesterName.replace(/ 20\d\d$/, "")} finals done</h2>
           <div className={styles.semesterStats}>
             <div><b>{state.days.filter((d) => d.date >= "2026-08-01" && d.date <= e.today).reduce((n, d) => n + d.answered, 0)}</b><span>Answers given</span></div>
             <div><b>{essaysWritten}</b><span>Essays written</span></div>
             <div><b>{unitStatuses(e, syllabus).filter((u) => u.status === "solid").length}</b><span>Units Solid</span></div>
           </div>
+          <Button variant="secondary" className={styles.big} onClick={onRecap}>Semester recap</Button>
           <Button variant="secondary" className={styles.big} onClick={onStart}>Keep practicing</Button>
           {specialRow("How Lawstin works", onHow)}
         </> : course && <>

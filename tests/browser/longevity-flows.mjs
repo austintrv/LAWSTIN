@@ -14,6 +14,18 @@ export async function longevityFlows(){
  await p.getByRole('button',{name:/^89.5 of 200/}).waitFor();await p.getByRole('button',{name:'Undo',exact:true}).click();await p.getByRole('button',{name:/^87.5 of 200/}).waitFor();count++;
  await p.screenshot({path:`artifacts/longevity/workspace-${width}-${dark?'dark':'light'}.png`});
  const handle=p.getByRole('button',{name:/^Reorder /}).first();await handle.focus();await p.keyboard.press('ArrowDown');await p.waitForTimeout(200);assert.ok(s.rows.some(r=>r.key==='workspace:task-order:clinic'));count++;
+ await s.goto('#/tool/Semester');
+ await p.getByRole('textbox',{name:'Semester name',exact:true}).waitFor();
+ await p.getByLabel('Pro Res exam date',{exact:true}).fill('2027-03-20');
+ await p.screenshot({path:`artifacts/longevity/semester-${width}-${dark?'dark':'light'}.png`});
+ await p.keyboard.press('Escape');await p.getByRole('dialog').waitFor({state:'hidden'});await p.waitForTimeout(600);
+ await p.getByRole('navigation',{name:'Sections'}).getByRole('button',{name:'Study',exact:true}).click();
+ assert.ok(s.rows.some(r=>r.key==='semester:v1' && JSON.parse(r.value).courses.find(c=>c.code==='pr').final==='2027-03-20'));count++;
+ await p.locator('[data-pane="study"]').getByText('days · Mar 20',{exact:true}).waitFor();
+ await p.getByRole('navigation',{name:'Sections'}).getByRole('button',{name:'Progress',exact:true}).click();await p.getByRole('button',{name:'Semester recap',exact:true}).click();
+ await p.getByRole('dialog',{name:'Fall 2026 recap',exact:true}).waitFor();
+ await p.screenshot({path:`artifacts/longevity/recap-${width}-${dark?'dark':'light'}.png`});
+ await p.keyboard.press('Escape');count++;
  assert.deepEqual(s.errors,[]);await s.close();
  }console.log(`PASS: longevity workspaces, ${count} assertions, five size/theme combinations`);
  }finally{await closeAll();}

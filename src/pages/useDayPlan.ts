@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { COURSE_KEYS, DAILY_GOAL, courseCounts, type CourseCode } from "../helpers/studyEngine";
+import { COURSE_KEYS, DAILY_GOAL, FINALS, EXAMS, courseCounts, type CourseCode } from "../helpers/studyEngine";
 import type { Flashcard, StudyRecord } from "../helpers/studyMaterials";
 import { finalsPlan, holdDayGoal, inferredDone, readyCards, reconcileDayWork, restoreDayGoal, studyNumbers, type DayGoal, type DayWork } from "../helpers/studySession";
 import type { WrittenEntry } from "../helpers/useWritten";
@@ -15,6 +15,10 @@ export function useDayPlan({ e, record, flashcards, entries, lastEssay, enabled,
   const workKey = `lawstin-day-work:${userId}`;
   const [savedWork, setWork] = useState<DayWork | null>(() => read(workKey));
   const savedGoal = useRef<DayGoal | null>(restoreDayGoal(read("lawstin-day-goal"), e.today));
+  const config=JSON.stringify([FINALS,EXAMS]);
+  const previousConfig=useRef(read("lawstin-day-plan-config"));
+  if(previousConfig.current && previousConfig.current!==config) savedGoal.current=null;
+  previousConfig.current=config;
   const work = reconcileDayWork(e.today, e.todayCount?.answered ?? 0, inferredDone(e, record, entries, flashcards), savedWork);
   const workRef = useRef(work);
   workRef.current = work;
@@ -27,6 +31,7 @@ export function useDayPlan({ e, record, flashcards, entries, lastEssay, enabled,
   useEffect(() => {
     if (!ready) return;
     savedGoal.current = plan.saved;
+    write("lawstin-day-plan-config",config);
     write("lawstin-day-goal", plan.saved);
     write(workKey, work);
   });
