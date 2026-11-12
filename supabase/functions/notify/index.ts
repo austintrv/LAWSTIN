@@ -5,13 +5,15 @@
 import { createClient, type SupabaseClient } from "jsr:@supabase/supabase-js@2";
 import { sendPush, type PushSubscription, type VapidKeys } from "../_shared/webpush.ts";
 import { studyEngine, COURSES, COURSE_KEYS, type CourseCode } from "../_shared/studyEngine.ts";
-import { dateKey } from "../_shared/dateKey.ts";
+import { configureSemester,parseSemester } from "../_shared/semester.ts";
+import { reminderPlan,reminderText,eveningHour } from "../_shared/reminderPlan.ts";
+import { dateKey,setStudyTimeZone } from "../_shared/dateKey.ts";
 import type { State } from "../_shared/types.ts";
 
 const OWNER = "trevinoaustin10@gmail.com";
 const APP_URL = "https://austintrv.github.io/LAWSTIN/";
 const TZ = "America/Chicago";
-const EVENING_HOUR = 18;
+setStudyTimeZone(TZ);
 const WEEKLY_DAY = "Sun";
 const WEEKLY_HOUR = 11;
 // Question nudges land at random hours inside this window (Chicago time), up to the daily limit in Settings.
@@ -76,14 +78,16 @@ async function evening(ctx: Ctx, today: string, force: boolean) {
   if (!force && s.notify_evening === "0") return "Evening reminder is off";
   if (!force && s.last_evening_push === today) return "Already sent today";
   const state = await loadState(db, today);
-  const e = studyEngine(state, today);
-  if (!force && (e.todayCount?.answered ?? 0) > 0) return "Already studied today";
-  const { due, fresh } = e.queues("all");
-  if (!force && !due.length && !fresh.length) return "Nothing to study";
-  const streak = e.streak();
-  const parts = [due.length ? `${plural(due.length, "review")} due` : "", fresh.length ? `${fresh.length} new` : ""].filter(Boolean);
-  const title = streak >= 2 ? `Keep your ${streak}-day streak` : due.length ? `${plural(due.length, "review")} due` : "Time for a round";
-  const body = parts.length ? `${parts.join(" · ")}. Pick up where you left off.` : "Pick up where you left off.";
+  const [{data:materials,error:materialError},{data:tasks,error:taskError}]=await Promise.all([
+    db.from("study_materials").select("data"),db.from("course_tasks").select("title").eq("due",today).is("done_at",null)
+  ]);
+  if(materialError || taskError)throw new Error((materialError??taskError)!.message);
+  const cards=(materials??[]).map(r=>r.data).filter(m=>m.kind==="flashcard");
+  const plan=reminderPlan(state,s,cards,today);
+  if(!force && !plan.next)return "No upcoming exams";
+  if(!force && (plan.numbers.answered>=plan.numbers.goal || plan.numbers.left===0))return "Today’s goal is complete";
+  const title=plan.next?`${plan.next.name} next`:"Time for a round";
+  const body=reminderText(plan,tasks??[]);
   const r = await pushToAll(db, { title, body, tag: `evening-${today}` });
   if (!force) await setSetting(db, "last_evening_push", today);
   return `Evening reminder sent to ${r.sent} of ${r.devices} devices`;
@@ -115,9 +119,9 @@ async function nudge(ctx: Ctx, today: string, hour: number, force: boolean) {
   const sent = day === today ? Number(sentRaw) || 0 : 0;
   if (!force) {
     if (sent >= perDay) return "Nudge limit reached today";
-    if (hour < NUDGE_FIRST_HOUR || hour > NUDGE_LAST_HOUR || hour === EVENING_HOUR) return "Outside nudge hours";
+    if (hour < NUDGE_FIRST_HOUR || hour > NUDGE_LAST_HOUR || hour === eveningHour(s.notify_evening_hour)) return "Outside nudge hours";
     // Spread the remaining nudges across the remaining eligible hours at random.
-    const hoursLeft = Array.from({ length: NUDGE_LAST_HOUR - hour + 1 }, (_, i) => hour + i).filter((h) => h !== EVENING_HOUR).length;
+    const hoursLeft = Array.from({ length: NUDGE_LAST_HOUR - hour + 1 }, (_, i) => hour + i).filter((h) => h !== eveningHour(s.notify_evening_hour)).length;
     if (Math.random() >= (perDay - sent) / hoursLeft) return "No nudge this hour";
   }
   const state = await loadState(db, today);
@@ -260,12 +264,13 @@ Deno.serve(async (req) => {
     }
 
     const ctx: Ctx = { db, settings: await loadSettings(db) };
+    configureSemester(parseSemester(ctx.settings["semester:v1"]));
     const { today, hour, weekday } = chicagoNow();
     let result: string;
 
     if (scheduler && job === "tick") {
       const out: string[] = [];
-      if (hour === EVENING_HOUR) out.push(await evening(ctx, today, false));
+      if (hour === eveningHour(ctx.settings.notify_evening_hour)) out.push(await evening(ctx, today, false));
       if (weekday === WEEKLY_DAY && hour === WEEKLY_HOUR) out.push(await weekly(ctx, today, false));
       out.push(await nudge(ctx, today, hour, false));
       result = out.join("; ") || `Nothing scheduled at ${hour}:00`;

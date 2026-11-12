@@ -269,3 +269,6 @@ details[open] > .factHead .factToggle svg { transform: rotate(90deg); }
 .practiceTop{display:grid;grid-template-columns:96px minmax(0,1fr) 96px;gap:8px}.practiceTop>.x{justify-self:end}.practiceTitle{font-size:var(--type-17);font-weight:600;text-align:center}.top>.tally{justify-content:center;min-height:28px;margin-top:8px}
 
 .resTitle{font-family:var(--font-family-display);font-style:normal;font-size:var(--type-28);font-weight:700;color:var(--foreground)}
+
+.choice[data-feedback=right]{background:var(--success-soft);outline:2px solid var(--success)}.choice[data-feedback=right]::after{content:"✓";color:var(--success)}.choice[data-feedback=wrong]{background:var(--error-soft)}.tally .streak{animation:none}.tally .milestone{animation:streakPop .32s var(--ease-ios)}
+@media(prefers-reduced-motion:reduce){.tally .milestone{animation:none}}

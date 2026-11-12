@@ -91,3 +91,9 @@
 .dateChip{min-width:44px;min-height:44px}.notePreview{white-space:normal}.editBar{flex-wrap:wrap}
 
 .taskTitle{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.weekBars{display:flex;align-items:end;gap:8px;padding:16px}.weekBars>div{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:var(--type-13)}.weekBars i{display:block;width:100%;background:var(--c);border-radius:var(--radius-sm)}.editor label{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.editor input,.editor select{min-height:44px;max-width:100%;color:inherit;background:var(--fill);border:0;border-radius:var(--radius-sm);padding:8px;font:inherit}
+
+.orderedTask{display:flex;align-items:start}.orderedTask>div{flex:1;min-width:0}.dragHandle{min-width:44px;min-height:52px;touch-action:none;color:var(--muted-foreground)}
+
+:global(.dark) .editor input,:global(.dark) .editor select{color-scheme:dark}

@@ -313,7 +313,7 @@ export async function open(opts = {}) {
     if (p.endsWith('/course_tasks')) {
       const id = u.searchParams.get('id')?.replace('eq.', '');
       if (m === 'GET') return json(tasks);
-      if (m === 'POST') { const t = { id: `00000000-0000-4000-8000-${String(Date.now()).padStart(12, '0')}`, notes: '', flagged: false, done_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...body }; tasks = [...tasks, t]; return one ? json(t, 201) : json([t], 201); }
+      if (m === 'POST') { const t = { id: `00000000-0000-4000-8000-${String(Date.now()).padStart(12, '0')}`, notes: '', flagged: false, done_at: null, created_at: new Date().toISOString(), updated_at: new Date().toISOString(), ...body }; tasks = [...tasks.filter(x=>x.id!==t.id), t]; return one ? json(t, 201) : json([t], 201); }
       if (m === 'PATCH') { tasks = tasks.map(t => t.id === id ? { ...t, ...body } : t); return route.fulfill({ status: 204, body: '' }); }
       if (m === 'DELETE') { tasks = tasks.filter(t => t.id !== id); return route.fulfill({ status: 204, body: '' }); }
     }

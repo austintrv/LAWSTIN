@@ -64,7 +64,7 @@ export default function CloseCalls({ course, onClose }: ToolProps) {
   }, [pair, revealed, picks, done]);
   const score = round.filter((p, n) => p.choices[picks[n]]?.id === p.q.answer).length;
   return <ToolFrame title="Close calls" onClose={onClose}>
-    {!pair ? <div className={`${styles.card} ${styles.empty}`}><Button className={quiz.cta} onClick={() => { onClose(); window.location.hash = "#/study"; }}>Start studying</Button></div> : done ? <div className={styles.columns}>
+    {!pair ? query.isPending ? null : <div className={`${styles.card} ${styles.empty}`}><Button className={quiz.cta} onClick={() => { onClose(); window.location.hash = "#/study"; }}>Start studying</Button></div> : done ? <div className={styles.columns}>
       <div className={styles.card}><div className={styles.score}>{score} of {round.length}</div></div>
       <div className={styles.buttons}><Button className={quiz.cta} ref={nextRef} onClick={draw}>Next round</Button><Button variant="secondary" onClick={onClose}>Done</Button></div>
     </div> : <>

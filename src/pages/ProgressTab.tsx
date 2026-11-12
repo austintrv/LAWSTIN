@@ -1,3 +1,4 @@
+import { WeeklyProgress } from "../components/WeeklyProgress";
 import { ChevronRight, GraduationCap } from "lucide-react";
 import { useState } from "react";
 import { Aura, auraHost } from "../components/Aura";
@@ -175,6 +176,7 @@ function StudyCalendar({
 }
 
 export function ProgressView({
+  onRecap,
   onHow,
   e,
   state,
@@ -184,7 +186,7 @@ export function ProgressView({
   onLesson,
   onStudy,
 }: {
-  onHow?: () => void;
+  onHow?: () => void; onRecap: () => void;
   e: Engine;
   state?: QuestionState;
   syllabus: Syllabus;
@@ -484,6 +486,7 @@ export function ProgressView({
   const examsSection = (
     <section className={styles.sec}>
       <div className={styles.card}>
+        <button className={styles.row} onClick={onRecap}><span className={styles.rowMain}>Semester recap</span><ChevronRight size={18}/></button>
         {exams.list.length > 0 && (
           <button
             className={styles.row}
@@ -548,6 +551,7 @@ export function ProgressView({
           <div className={styles.progressMainCol}>{coverageSection}</div>
           <div className={styles.progressSideCol}>
             {tilesSection}
+            <WeeklyProgress e={e} syllabus={syllabus} state={state} missed={rules.map(r=>r.q.id)} ready={!!state && !!history.data && !history.isFetching} />
             {calendarSection}
             {missedSection}
             {howMissSection}
@@ -558,6 +562,7 @@ export function ProgressView({
       ) : (
         <>
           {tilesSection}
+          <WeeklyProgress e={e} syllabus={syllabus} state={state} missed={rules.map(r=>r.q.id)} ready={!!state && !!history.data && !history.isFetching} />
           {calendarSection}
           {missedSection}
           {howMissSection}

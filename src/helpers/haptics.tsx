@@ -6,7 +6,7 @@ let label: HTMLLabelElement | null = null;
 export function haptic() {
   try {
     if (typeof document === "undefined") return;
-    if (!readPrefs().haptics) return;
+    if (!readPrefs().haptics || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const ua = navigator.userAgent;
     const apple = /iPhone|iPad|iPod|Macintosh/.test(ua);
     if (!apple && "vibrate" in navigator) {
