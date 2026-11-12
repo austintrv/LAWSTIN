@@ -148,16 +148,24 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const currentRecap=useMemo(()=>state?makeSemesterRecap(semester.value.name,state,unitStatuses(e,syllabus),written.list,day):null,[state,e,syllabus,written.list,day,semester.value.name]);
   useEffect(()=>{if(moment.kind==="done" && planReady && relatedReady && semester.loaded && recapStore.loaded && !recapStore.error && !recapStore.value && currentRecap)recapStore.save(currentRecap);},[moment.kind,planReady,relatedFetching,semester.loaded,recapStore.loaded,recapStore.value,currentRecap]);
   const passKey = `last-pass:${userId}`;
-  const [pass, setPass] = useState<{ day: string; items: RoundItem[]; done: string[] } | null>(() => readCache<{ day: string; items: RoundItem[]; done: string[] }>(passKey) ?? null);
+  const [pass, setPass] = useState<{ day: string; items: RoundItem[]; done: string[]; config?: string } | null>(() => readCache<{ day: string; items: RoundItem[]; done: string[]; config?: string }>(passKey) ?? null);
+  const passConfig=JSON.stringify(semester.value);
+  const passReady=pass?.day===day && pass.config===passConfig;
   useEffect(() => {
-    if (!planReady || moment.kind !== "eve" || !moment.course || pass?.day === day) return;
+    if (!planReady || moment.kind !== "eve" || !moment.course || passReady) return;
     if (navigator.onLine && ["lawstin-written", "lawstin-syllabus"].some((key) => queryClient.getQueryState([key])?.fetchStatus === "fetching")) return;
-    const value = { day, items: lastPass(e, moment.course, [...flashcards, ...e.ruleCards(moment.course)], store.record, syllabus), done: [] };
+    const items=lastPass(e,moment.course,[...flashcards,...e.ruleCards(moment.course)],store.record,syllabus);
+    const value = { day, config:passConfig, items, done:pass?.day===day?pass.done.filter(id=>items.some(it=>itemId(it)===id)):[] };
     setPass(value); writeCache(passKey, value);
-  }, [planReady, day, pass, state, store.record, syllabus, relatedFetching]);
+  }, [planReady, day, pass, state, store.record, syllabus, relatedFetching,passConfig,passReady]);
   const relatedReady = !navigator.onLine || ["lawstin-written", "lawstin-syllabus"].every((key) => { const q = queryClient.getQueryState([key]); return !!q?.dataUpdatedAt || q?.status === "error"; });
-  const viewReady = planReady && relatedReady && (moment.kind !== "eve" || pass?.day === day);
-  const passNumbers = { goal: pass?.day === day ? pass.items.length : 0, answered: pass?.day === day ? pass.done.length : 0, resuming: lastPractice?.key === `missed:${moment.course}` };
+  const viewReady = planReady && relatedReady && (moment.kind !== "eve" || passReady);
+  const passNumbers = { goal: passReady ? pass!.items.length : 0, answered: passReady ? pass!.done.length : 0, resuming: lastPractice?.key === `missed:${moment.course}` };
+  const passMirror=useSyncedSetting<{course:CourseCode;ids:string[];done:string[]}|null>(`lastpass:v1:${day}`,null);
+  const passSnapshot=moment.kind==="eve" && moment.course && passReady ? {course:moment.course,ids:pass!.items.map(itemId),done:pass!.done} : null;
+  const passSerialized=JSON.stringify(passSnapshot);
+  useEffect(()=>{if(passSnapshot && passMirror.loaded && !passMirror.error && JSON.stringify(passMirror.value)!==passSerialized)passMirror.save(passSnapshot);},[passSerialized,passMirror.loaded,passMirror.error,passMirror.value]);
+
   const creditPass = (id: string) => {
     if (moment.kind !== "eve" || session?.resumeKey !== `missed:${moment.course}`) return;
     setPass((prev) => {

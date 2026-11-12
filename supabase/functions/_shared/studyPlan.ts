@@ -1,5 +1,5 @@
 import {dateKey} from './dateKey.ts';
-import {COURSE_KEYS,EXAMS,FINALS,activeCourses,apportion,courseCounts,examDue,studyEngine,type CourseCode,type CourseCounts,type Filter} from './studyEngine.ts';
+import {COURSE_KEYS,EXAMS,FINALS,activeCourses,apportion,courseCounts,examDue,studyEngine,type CourseCode,type CourseCounts,type Filter,type SessionCard,type Syllabus,type RoundItem,itemId} from './studyEngine.ts';
 type Engine=ReturnType<typeof studyEngine>;
 export type PlanCourse = {
   course: CourseCode; days: number; format: "mc" | "essay";
@@ -105,4 +105,35 @@ export function readyCardCounts(e:Engine,cards:{id:string;course:CourseCode}[],p
  let due=0,fresh=0;
  for(const c of pool){const p=progress[c.id];if(!p)fresh++;else if((examDue(p.due,dateKey.today(new Date(p.last_at)),FINALS[course],e.today)??e.today)<=e.today)due++;}
  return {due,fresh};
+}
+
+export type ExamMoment = { kind: "normal" | "eve" | "morning" | "done"; course?: CourseCode };
+export function examMoment(today: string, hour = dateKey.hour()): ExamMoment {
+  const course = COURSE_KEYS.find((c) => FINALS[c] === today);
+  if (course && hour < 18) return { kind: "morning", course };
+  const tomorrow = COURSE_KEYS.find((c) => FINALS[c] === dateKey.addDays(today, 1));
+  if (tomorrow) return { kind: "eve", course: tomorrow };
+  return { kind: COURSE_KEYS.every((c) => (FINALS[c] < today || FINALS[c] === today && hour >= 18)) ? "done" : "normal" };
+}
+
+export function weakUnits(e: Engine, course: CourseCode, syllabus: Syllabus) {
+  const missed = new Set(e.missedTopics().filter((t) => t.course === course).map((t) => t.topic));
+  return e.coverage(course, syllabus[course]).filter((u) => u.status === "shaky" || [u.topic, ...u.topics].some((t) => missed.has(t))).slice(0, 5);
+}
+
+/** A finite pass, ordered by need rather than by the ordinary mixed queue. */
+export function lastPass(e: Engine, course: CourseCode, cards: SessionCard[], record: {cards:Record<string,{due:string;last_at:string}>}, syllabus: Syllabus): RoundItem[] {
+  const shaky = new Set(e.coverage(course, syllabus[course]).filter((u) => u.status === "shaky").flatMap((u) => [u.topic, ...u.topics]));
+  const qs = e.questions.filter((q) => q.course === course);
+  const questionItems = (list: typeof qs): RoundItem[] => list.map((q) => ({ q, review: !!e.prog(q.id)?.seen }));
+  const cardItems = (list: SessionCard[]): RoundItem[] => list.filter((c) => c.course === course).map((card) => ({ card, review: !!record.cards[card.id] }));
+  const dueCards = cards.filter(c=>{const p=record.cards[c.id];return c.course===course && p && (examDue(p.due,dateKey.today(new Date(p.last_at)),FINALS[course],e.today)??e.today)<=e.today;});
+  const ordered = [
+    ...questionItems(e.missedTopics().filter((t) => t.course === course).flatMap((t) => t.items.filter((it) => it.p.lastCorrect === false).map((it) => it.q))),
+    ...questionItems(qs.filter((q) => shaky.has(q.topic))),
+    ...cardItems(cards.filter((c) => shaky.has(c.topic))),
+    ...questionItems(e.queues(course).due), ...cardItems(dueCards),
+  ];
+  const used = new Set<string>();
+  return ordered.filter((it) => { const id = itemId(it); if (used.has(id)) return false; used.add(id); return true; }).slice(0, 25);
 }

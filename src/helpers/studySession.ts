@@ -1,3 +1,5 @@
+import { examMoment, lastPass, weakUnits, type ExamMoment } from "../../supabase/functions/_shared/studyPlan";
+export { examMoment, lastPass, weakUnits, type ExamMoment } from "../../supabase/functions/_shared/studyPlan";
 import { finalsPlan, clampGoal, restoreDayGoal, holdDayGoal, studyNumbers, inferredDone, reconcileDayWork, type PlanCourse, type DayGoal, type DayWork } from "../../supabase/functions/_shared/studyPlan";
 export { finalsPlan, clampGoal, restoreDayGoal, holdDayGoal, studyNumbers, inferredDone, reconcileDayWork, type PlanCourse, type DayGoal, type DayWork } from "../../supabase/functions/_shared/studyPlan";
 import type { OutputType as QuestionState } from "../endpoints/state_GET.schema";
@@ -68,37 +70,6 @@ export function questionUpdate(e: Engine, run: QuestionState["runs"][number]) {
 export function reviewGreeting(greeting: string | null, count: number) {
   if (!greeting || !/^(One review|\d+ reviews) (is waiting|are waiting|on the docket)$/.test(greeting)) return greeting;
   return count === 1 ? "One review is waiting" : count ? `${count} reviews are waiting` : "Ready when you are, Austin";
-}
-
-export type ExamMoment = { kind: "normal" | "eve" | "morning" | "done"; course?: CourseCode };
-export function examMoment(today: string, hour = dateKey.hour()): ExamMoment {
-  const course = COURSE_KEYS.find((c) => FINALS[c] === today);
-  if (course && hour < 18) return { kind: "morning", course };
-  const tomorrow = COURSE_KEYS.find((c) => FINALS[c] === dateKey.addDays(today, 1));
-  if (tomorrow) return { kind: "eve", course: tomorrow };
-  return { kind: COURSE_KEYS.every((c) => (FINALS[c] < today || FINALS[c] === today && hour >= 18)) ? "done" : "normal" };
-}
-
-export function weakUnits(e: Engine, course: CourseCode, syllabus: Syllabus) {
-  const missed = new Set(e.missedTopics().filter((t) => t.course === course).map((t) => t.topic));
-  return e.coverage(course, syllabus[course]).filter((u) => u.status === "shaky" || [u.topic, ...u.topics].some((t) => missed.has(t))).slice(0, 5);
-}
-
-/** A finite pass, ordered by need rather than by the ordinary mixed queue. */
-export function lastPass(e: Engine, course: CourseCode, cards: SessionCard[], record: StudyRecord, syllabus: Syllabus): RoundItem[] {
-  const shaky = new Set(e.coverage(course, syllabus[course]).filter((u) => u.status === "shaky").flatMap((u) => [u.topic, ...u.topics]));
-  const qs = e.questions.filter((q) => q.course === course);
-  const questionItems = (list: typeof qs): RoundItem[] => list.map((q) => ({ q, review: !!e.prog(q.id)?.seen }));
-  const cardItems = (list: SessionCard[]): RoundItem[] => list.filter((c) => c.course === course).map((card) => ({ card, review: !!record.cards[card.id] }));
-  const dueCards = readyCards([], cards, record, undefined, course, e.today, "due").due;
-  const ordered = [
-    ...questionItems(e.missedTopics().filter((t) => t.course === course).flatMap((t) => t.items.filter((it) => it.p.lastCorrect === false).map((it) => it.q))),
-    ...questionItems(qs.filter((q) => shaky.has(q.topic))),
-    ...cardItems(cards.filter((c) => shaky.has(c.topic))),
-    ...questionItems(e.queues(course).due), ...cardItems(dueCards),
-  ];
-  const used = new Set<string>();
-  return ordered.filter((it) => { const id = itemId(it); if (used.has(id)) return false; used.add(id); return true; }).slice(0, 25);
 }
 
 export function weakestRules(e: Engine, course: CourseCode) {
