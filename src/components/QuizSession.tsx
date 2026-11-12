@@ -308,16 +308,19 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
   return (
     <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""} ${className ?? ""}`} role="dialog" aria-modal="true" aria-label="Practice">
       <div className={styles.top} onTouchStart={onTouchStart} onTouchEnd={onTopTouchEnd}>
-        <div className={styles.topIn}>
-              <button className={styles.x} onClick={goBack} disabled={i === 0 && !done} aria-label="Previous"><ChevronLeft size={18} strokeWidth={2.4} /></button>
-              <div className={styles.tally} aria-live="polite">
+        <div className={`${styles.topIn} ${styles.practiceTop}`}>
+              <div style={{display:"flex",gap:8}}><button className={styles.x} onClick={goBack} disabled={i === 0 && !done} aria-label="Previous"><ChevronLeft size={18} strokeWidth={2.4} /></button>{reviewing && q && !ai && <button className={`${styles.iconBtn} ${p?.starred ? styles.starOn : ""}`} aria-label={p?.starred ? "Unstar" : "Star"} onClick={() => { haptic(); onStar(q, !p?.starred); }}>
+                  <Star size={20} fill={p?.starred ? "currentColor" : "none"} />
+                </button>}</div>
+              <span className={styles.practiceTitle}>{done ? "Results" : reviewing ? "Review" : "Practice"}</span>
+              <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
+
+        </div>
+        <div className={styles.tally} aria-live="polite">
                 {answered > 0 && <><span className={styles.tallyOk}><Check size={13} strokeWidth={3} />{right}</span><span className={styles.tallyBad}><X size={13} strokeWidth={3} />{answered - right}</span></>}
                 {run >= 3 && <span key={run} className={styles.streak} role="img" aria-label={`${run} correct in a row`}><Flame size={14} strokeWidth={2.4} />{run}</span>}
                 {goalOn && <span className={`${styles.dayCount} ${goalMet ? styles.dayMet : ""}`} aria-hidden="true">{goalMet && <Check size={13} strokeWidth={3} />}{goalMet ? day!.answered : `${day!.answered}/${day!.goal}`}</span>}
               </div>
-              <button className={styles.x} onClick={close} aria-label="Close"><X size={16} strokeWidth={2.4} /></button>
-
-        </div>
         {goalOn && (
           <div className={styles.goalBar} role="progressbar" aria-label="Today’s goal" aria-valuemin={0} aria-valuemax={day!.goal} aria-valuenow={Math.min(day!.answered, day!.goal)}>
             <i className={goalMet ? styles.goalMet : ""} style={{ width: `${Math.min(1, day!.answered / day!.goal) * 100}%` }} />
@@ -393,7 +396,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
               {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : (() => {
                 const bp = before.current[q.id];
                 const w = whyPill(bp, !!bp && bp.guessed > 0 && bp.box === 1 && bp.lastCorrect === true);
-                return <span className={`${styles.pill} ${w.tone === "bad" ? styles.pillBad : w.tone === "ok" ? styles.pillOk : ""}`}>{w.text}</span>;
+                return <details><summary className={`${styles.pill} ${w.tone === "bad" ? styles.pillBad : w.tone === "ok" ? styles.pillOk : ""}`}>{w.text}</summary>{bp && <span className={styles.authority}>Seen {bp.seen} times · {bp.correct} right · {bp.wrong} missed</span>}</details>;
               })()}
               <span className={styles.topic}>{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ""}</span>
             </div>
@@ -434,6 +437,26 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
               </summary>
               <div className={styles.factStem}>{paras(q.stem)}</div>
             </details>
+            {q.rule && (
+              <section className={`${styles.rc} ${styles.answerCard}`}>
+                <span className={styles.label}>Rule</span>
+                <p className={styles.bodyText}>{q.rule}</p>
+                {q.authority && <span className={styles.authority}>{q.authority}</span>}
+              </section>
+            )}
+<button className={styles.listRow} onClick={() => { history.replaceState(history.state, "", `#/tool/Topic/${q.course}/${encodeURIComponent(q.topic)}`); window.dispatchEvent(new HashChangeEvent("hashchange")); }}>{q.topic}<ChevronRight size={16}/></button>
+<section className={styles.rc}>              {!ai && nextDue && <div className={`${styles.listRow} ${styles.scheduleRow}`} role="status">
+                <span className={styles.rowIcon}><CalendarDays size={17} /></span>
+                <span className={styles.strong}>Next review</span>
+                {p && p.box >= 1 && p.box <= 5 && (
+                  <span className={styles.ladder} role="img" aria-label={`Step ${p.box} of 5`}>
+                    {reviewSchedule.intervals.slice(1).map((d, k) => (
+                      <span key={d} className={`${styles.step} ${k + 1 <= p.box ? (p.lastCorrect === false ? styles.stepBad : styles.stepOn) : ""} ${k + 1 === p.box ? styles.stepCur : ""}`}><i />{d}d</span>
+                    ))}
+                  </span>
+                )}
+                <span className={styles.scheduleDate}>{dateKey.diff(dateKey.today(), nextDue) === 1 ? "Tomorrow" : new Date(`${nextDue}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
+              </div>}</section>
             </div>
             <div className={styles.paneR}>
 
@@ -458,13 +481,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
               <p className={styles.bodyText}>{answer.why}</p>
             </section>
 
-            {q.rule && (
-              <section className={`${styles.rc} ${styles.answerCard}`}>
-                <span className={styles.label}>Rule</span>
-                <p className={styles.bodyText}>{q.rule}</p>
-                {q.authority && <span className={styles.authority}>{q.authority}</span>}
-              </section>
-            )}
+
 
             {others.length > 0 && (
               <section className={`${styles.rc} ${styles.listCard}`}>
@@ -482,18 +499,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
             )}
 
             <section className={`${styles.rc} ${styles.listCard}`}>
-              {!ai && nextDue && <div className={`${styles.listRow} ${styles.scheduleRow}`} role="status">
-                <span className={styles.rowIcon}><CalendarDays size={17} /></span>
-                <span className={styles.strong}>Next review</span>
-                {p && p.box >= 1 && p.box <= 5 && (
-                  <span className={styles.ladder} role="img" aria-label={`Step ${p.box} of 5`}>
-                    {reviewSchedule.intervals.slice(1).map((d, k) => (
-                      <span key={d} className={`${styles.step} ${k + 1 <= p.box ? (p.lastCorrect === false ? styles.stepBad : styles.stepOn) : ""} ${k + 1 === p.box ? styles.stepCur : ""}`}><i />{d}d</span>
-                    ))}
-                  </span>
-                )}
-                <span className={styles.scheduleDate}>{dateKey.diff(dateKey.today(), nextDue) === 1 ? "Tomorrow" : new Date(`${nextDue}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
-              </div>}
+
               {ok && !ai && (
                 <button className={styles.listRow} disabled={isGuess} onClick={() => { haptic(); onGuess(q); setGuessed((g) => new Set(g).add(q.id)); }}>
                   <span className={styles.rowIcon}>{isGuess ? <Check size={17} /> : <CircleHelp size={17} />}</span>
@@ -512,9 +518,6 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
               )}
             </section>
 
-            {p && p.seen > 1 && (
-              <p className={styles.history}>Seen {p.seen} times · {p.correct} right · {p.wrong} missed</p>
-            )}
             {flagOpen && !isFlagged && (
               <div className={styles.flagBox}>
                 <Textarea value={flagNote} onChange={(e) => setFlagNote(e.target.value)} placeholder="What’s wrong with this question?" autoFocus />
@@ -564,9 +567,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
           <div className={styles.footIn}><div className={styles.actions}>
             {!ai && (
               <>
-                <button className={`${styles.iconBtn} ${p?.starred ? styles.starOn : ""}`} aria-label={p?.starred ? "Unstar" : "Star"} onClick={() => { haptic(); onStar(q, !p?.starred); }}>
-                  <Star size={20} fill={p?.starred ? "currentColor" : "none"} />
-                </button>
+
                 <button className={`${styles.iconBtn} ${isFlagged ? styles.flagOn : ""}`} aria-label="Flag a problem" onClick={() => { if (isFlagged) return; setFlagOpen((v) => !v); setTimeout(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" }), 60); }}>
                   <Flag size={20} fill={isFlagged ? "currentColor" : "none"} />
                 </button>
@@ -725,7 +726,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
           <Button variant="secondary" className={styles.big} onClick={() => onRetry(missed.map((it) => ({ ...it, review: true })))}>Retry the {missed.length} missed</Button>
         )}
         {after?.map((a) => <Button key={a.label} variant="secondary" className={styles.big} onClick={a.onGo}>{a.label}</Button>)}
-        <Button variant="ghost" onClick={onClose}>Done</Button>
+        <Button variant="secondary" onClick={onClose}>Done</Button>
       </div>
     </div>
   );

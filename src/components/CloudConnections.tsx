@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ArrowLeft, Check, Copy, ExternalLink, Link2, RefreshCw, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Check, Copy, ExternalLink, RefreshCw } from "lucide-react";
 import type { OAuthAuthorizationDetails } from "@supabase/supabase-js";
 import { supabase, SUPABASE_URL } from "../helpers/supabase";
 import { applyPrefs } from "../helpers/prefs";
@@ -88,10 +88,10 @@ export function CloudConnections() {
   return <main className={styles.page}>
     <header className={styles.bar}>
       {!authorizationId && <button aria-label="Back to LAWSTIN" onClick={() => { window.location.hash = "/settings"; }}><ArrowLeft size={20} /></button>}
-      <span>LAWSTIN</span>
+      <h1>Connected apps</h1>
     </header>
     <div className={styles.content}>
-      <div className={styles.heading}><span className={styles.symbol}>{authorizationId ? <ShieldCheck size={26} /> : <Link2 size={26} />}</span><h1>{authorizationId ? "Connect to LAWSTIN" : "Connected apps"}</h1></div>
+
       {error && <p className={styles.error} role="alert">{error}</p>}
       {notice && <p className={styles.notice} role="status"><Check size={18} />{notice}</p>}
       {authorizationId ? <section className={`${styles.card} ${styles.consent}`}>
@@ -106,8 +106,7 @@ export function CloudConnections() {
       </section> : <div className={styles.grid}>
         <section className={styles.card}>
           <div className={styles.cardHeading}><h2>Chat quizzes</h2><span className={styles.pending}>{status ? (status.oauth_discovery_ready ? "Connect an app" : "Finish sign-in setup") : "Checking"}</span></div>
-          <p>Ask ChatGPT or Claude to quiz you from LAWSTIN. Saved answers count toward your usual progress and review schedule.</p>
-          <blockquote>“Quiz me on International Law from LAWSTIN and save my answers.”</blockquote>
+          <button className={styles.secondary} onClick={() => void copy("Quiz me on International Law from LAWSTIN and save my answers.", "Prompt copied.")}>Quiz me on Intl Law<Copy size={16}/></button>
           <label className={styles.field}><span>Connection URL</span><input readOnly value={MCP} aria-label="LAWSTIN connection URL" /></label>
           <button className={styles.secondary} onClick={() => void copy(MCP, "Connection URL copied.").catch(() => setError("Select the connection URL above and copy it."))}><Copy size={16} />Copy connection URL</button>
           {status?.chatgpt_plugin_url?.startsWith("https://chatgpt.com/plugins/") && <a className={styles.secondary} style={{ marginTop: 12 }} href={status.chatgpt_plugin_url} target="_blank" rel="noopener noreferrer">Open LAWSTIN in ChatGPT<ExternalLink size={15} /></a>}
@@ -117,12 +116,12 @@ export function CloudConnections() {
         </section>
         <section className={styles.card}>
           <div className={styles.cardHeading}><h2>Course handoffs in Drive</h2><span className={status?.drive_configured ? styles.ready : styles.pending}>{status?.drive_configured ? "Connected" : "Setup needed"}</span></div>
-          <p>Your five existing course memories stay in Drive. A small Google-hosted script lets the cloud connector reach them while your Mac is off.</p>
+
           <ol className={styles.steps}>
-            <li><a className={styles.secondary} href="https://script.google.com/home/start" target="_blank" rel="noopener noreferrer">Open Google Apps Script<ExternalLink size={15} /></a><p>Create a project named LAWSTIN Course Handoffs, using the Google account that holds UHLC 2L FALL.</p></li>
-            <li><button className={styles.secondary} disabled={!!busy} onClick={() => void copySetup()}><Copy size={16} />{busy === "script" ? "Preparing…" : "Copy setup code"}</button><p>Replace the editor’s starter code with this code, then save. Paste it only into your own Google Apps Script project.</p>{source && <details><summary>View setup code</summary><textarea readOnly value={source} aria-label="Private Google setup code" /></details>}</li>
-            <li><p>Choose <b>Deploy → New deployment → Web app</b>. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>. Google will ask you to authorize your own script. Only signed LAWSTIN requests can use the connection.</p></li>
-            <li><form onSubmit={connectDrive}><label className={styles.field}><span>Google deployment URL ending in /exec</span><input type="url" value={bridgeUrl} onChange={event => setBridgeUrl(event.target.value)} required autoComplete="off" /></label><button className={styles.primary} disabled={!!busy || !bridgeUrl.trim()}>{busy === "drive" ? "Connecting…" : "Connect Drive"}</button></form></li>
+            <li><span className={styles.pending}>1 · Create project</span><a className={styles.secondary} href="https://script.google.com/home/start" target="_blank" rel="noopener noreferrer">Open Google Apps Script<ExternalLink size={15} /></a><p>LAWSTIN Course Handoffs</p></li>
+            <li><span className={styles.pending}>2 · Paste and save</span><button className={styles.secondary} disabled={!!busy} onClick={() => void copySetup()}><Copy size={16} />{busy === "script" ? "Preparing…" : "Copy setup code"}</button>{source && <details><summary>View setup code</summary><textarea readOnly value={source} aria-label="Private Google setup code" /></details>}</li>
+            <li><span className={styles.pending}>3 · Deploy web app</span><div className={styles.field}><span>Execute as: Me</span><span>Access: Anyone</span></div><a className={styles.secondary} href="https://script.google.com/home" target="_blank" rel="noopener noreferrer">Open deployments<ExternalLink size={15}/></a></li>
+            <li><span className={styles.pending}>{status?.drive_configured ? "4 · Connected" : "4 · Connect"}</span><form onSubmit={connectDrive}><label className={styles.field}><span>Google deployment URL ending in /exec</span><input type="url" value={bridgeUrl} onChange={event => setBridgeUrl(event.target.value)} required autoComplete="off" /></label><button className={styles.primary} disabled={!!busy || !bridgeUrl.trim()}>{busy === "drive" ? "Connecting…" : "Connect Drive"}</button></form></li>
           </ol>
         </section>
       </div>}

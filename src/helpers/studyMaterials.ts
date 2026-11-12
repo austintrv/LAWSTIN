@@ -12,7 +12,7 @@ export const SCHOOL_COURSES = {
 export const SCHOOL_ORDER: SchoolCourse[] = ["il", "asy", "pr", "clinic", "tutoring"];
 export type MaterialKind = "flashcard" | "flowchart" | "outline" | "comparison" | "drill" | "hypothetical";
 export const MATERIAL_LABELS: Record<MaterialKind, string> = {
-  flashcard: "Flashcards", flowchart: "Flowcharts", outline: "Rule review",
+  flashcard: "Flashcards", flowchart: "Flowcharts", outline: "Outlines",
   comparison: "Comparisons", drill: "Sorting drills", hypothetical: "Hypotheticals",
 };
 export type SourceReference = { file_id: string; title: string; section: string; url: string };

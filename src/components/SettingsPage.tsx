@@ -45,7 +45,7 @@ function Segments<T extends string>({ value, options, onChange, label }: { value
 }
 
 /** Full-page settings, opened from the avatar at #/settings. */
-export function SettingsPage({ email: account, onClose, onShortcuts }: { email: string | null; onClose: () => void; onShortcuts?: () => void }) {
+export function SettingsPage({ email: account, onClose, onShortcuts, onHow }: { email: string | null; onClose: () => void; onShortcuts?: () => void; onHow?: () => void }) {
   const wide = useWide();
   const { query, action } = useLawstinSettings();
   const s = query.data?.settings;
@@ -184,11 +184,11 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
                 <Switch checked={prefs.recall} onCheckedChange={(v) => pref({ recall: v })} aria-label="Answer before choices" />
               </label>
               <div className={`${styles.row} ${styles.stack}`}>
-                <div className={styles.rowHead}><Icon color="#5e5ce6"><Type size={16} /></Icon><span className={styles.label}>Question text size</span></div>
+                <div className={styles.rowHead}><Icon color="var(--course-clinic)"><Type size={16} /></Icon><span className={styles.label}>Question text size</span></div>
                 <Segments<ReadingSize> label="Question text size" value={prefs.reading} onChange={(v) => pref({ reading: v })} options={[["s", "Small"], ["m", "Default"], ["l", "Large"], ["xl", "Larger"]]} />
               </div>
               <label className={styles.row}>
-                <Icon color="#30b0c7"><Vibrate size={16} /></Icon>
+                <Icon color="var(--badge-teal)"><Vibrate size={16} /></Icon>
                 <span className={styles.label}>Haptics</span>
                 <Switch checked={prefs.haptics} onCheckedChange={(v) => pref({ haptics: v })} aria-label="Haptics" />
               </label>
@@ -199,7 +199,7 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
             <h2>Appearance</h2>
             <div className={styles.card}>
               <div className={`${styles.row} ${styles.stack}`}>
-                <div className={styles.rowHead}><Icon color="#3a3a3c"><Moon size={16} /></Icon><span className={styles.label}>Theme</span></div>
+                <div className={styles.rowHead}><Icon color="var(--badge-neutral)"><Moon size={16} /></Icon><span className={styles.label}>Theme</span></div>
                 <Segments<Appearance> label="Theme" value={prefs.appearance} onChange={(v) => pref({ appearance: v })} options={[["auto", "Automatic"], ["light", "Light"], ["dark", "Dark"]]} />
               </div>
               {wide && onShortcuts && (
@@ -216,12 +216,12 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
             <h2>Notifications</h2>
             <div className={styles.card}>
               <label className={styles.row}>
-                <Icon color="#ff3b30"><Bell size={16} /></Icon>
+                <Icon color="var(--badge-error)"><Bell size={16} /></Icon>
                 <span className={styles.label}>Allow notifications</span>
                 {pushBusy ? <Spinner size="sm" /> : <Switch checked={pushOn} disabled={!pushSupported()} onCheckedChange={togglePush} aria-label="Allow notifications" />}
               </label>
               <label className={`${styles.row} ${notifyOff ? styles.off : ""}`}>
-                <Icon color="#ff9500"><Zap size={16} /></Icon>
+                <Icon color="var(--badge-orange)"><Zap size={16} /></Icon>
                 <span className={styles.label}>Question nudges</span>
                 <Switch checked={s?.notifyNudges ?? true} disabled={!s} onCheckedChange={(v) => set("notify_nudges", v)} aria-label="Question nudges" />
               </label>
@@ -233,22 +233,22 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
                 </div>
               )}
               <label className={`${styles.row} ${notifyOff ? styles.off : ""}`}>
-                <Icon color="#5856d6"><Moon size={16} /></Icon>
+                <Icon color="var(--badge-purple)"><Moon size={16} /></Icon>
                 <span className={styles.label}>Evening reminder</span>
                 <Switch checked={s?.notifyEvening ?? true} disabled={!s} onCheckedChange={(v) => set("notify_evening", v)} aria-label="Evening reminder" />
               </label>
               <label className={`${styles.row} ${notifyOff ? styles.off : ""}`}>
-                <Icon color="#34c759"><Sparkles size={16} /></Icon>
+                <Icon color="var(--badge-success)"><Sparkles size={16} /></Icon>
                 <span className={styles.label}>New questions</span>
                 <Switch checked={s?.notifyNew ?? true} disabled={!s} onCheckedChange={(v) => set("notify_new", v)} aria-label="New questions" />
               </label>
               <button className={styles.row} disabled={notifyOff || busy === "nudge"} onClick={() => run("nudge", { action: "testNudge" })}>
-                <Icon color="#ff9500"><Send size={16} /></Icon>
+                <Icon color="var(--badge-orange)"><Send size={16} /></Icon>
                 <span className={`${styles.label} ${styles.link}`}>Send me a question now</span>
                 {busy === "nudge" && <Spinner size="sm" />}
               </button>
               <button className={styles.row} disabled={notifyOff || busy === "test"} onClick={() => run("test", { action: "testPush" })}>
-                <Icon color="#8e8e93"><Smartphone size={16} /></Icon>
+                <Icon color="var(--badge-muted)"><Smartphone size={16} /></Icon>
                 <span className={`${styles.label} ${styles.link}`}>Send a test notification</span>
                 {busy === "test" && <Spinner size="sm" />}
               </button>
@@ -259,7 +259,7 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
             <h2>Weekly email</h2>
             <div className={styles.card}>
               <label className={styles.row}>
-                <Icon color="#007aff"><Mail size={16} /></Icon>
+                <Icon color="var(--badge-blue)"><Mail size={16} /></Icon>
                 <span className={styles.label}>Sunday summary</span>
                 <Switch checked={s?.weeklyEmail ?? true} disabled={!s} onCheckedChange={(v) => set("weekly_email", v)} aria-label="Sunday summary" />
               </label>
@@ -269,7 +269,7 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
                   onChange={(e) => setEmail(e.target.value)} onBlur={saveEmail} onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} aria-label="Summary email address" />
               </div>
               <button className={styles.row} disabled={busy === "weekly"} onClick={() => run("weekly", { action: "sendWeekly" })}>
-                <Icon color="#007aff"><Send size={16} /></Icon>
+                <Icon color="var(--badge-blue)"><Send size={16} /></Icon>
                 <span className={`${styles.label} ${styles.link}`}>Send this week’s summary now</span>
                 {busy === "weekly" && <Spinner size="sm" />}
               </button>
@@ -291,14 +291,15 @@ export function SettingsPage({ email: account, onClose, onShortcuts }: { email: 
             <h2>Data</h2>
             <div className={styles.card}>
               <button className={styles.row} disabled={busy === "export"} onClick={exportData}>
-                <Icon color="#8e8e93"><Download size={16} /></Icon>
+                <Icon color="var(--badge-muted)"><Download size={16} /></Icon>
                 <span className={`${styles.label} ${styles.link}`}>Export my data</span>
                 {busy === "export" && <Spinner size="sm" />}
               </button>
               <button className={styles.row} onClick={() => { haptic(); clearCaches(); supabase.auth.signOut(); }}>
-                <Icon color="#ff3b30"><LogOut size={16} /></Icon>
+                <Icon color="var(--badge-error)"><LogOut size={16} /></Icon>
                 <span className={`${styles.label} ${styles.danger}`}>Sign out</span>
               </button>
+              <button className={styles.row} onClick={onHow}><span className={styles.label}>How Lawstin works</span><ChevronRight size={18}/></button>
             </div>
           </section>
         </div>

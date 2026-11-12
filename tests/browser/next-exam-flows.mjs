@@ -58,7 +58,7 @@ export async function nextExamFlows() {
       assert.equal(await done.page.getByText(/to go/).count(), 0);
       await done.page.screenshot({ path: `${out}/done-${tag}.png` });
       await done.page.getByRole('button', { name: 'How Lawstin works', exact: true }).click();
-      await dialog(done.page).getByText('No daily goal now', {exact:true}).waitFor(); await close(done.page);
+      await dialog(done.page).getByRole('heading', {name:'Fall finals done',exact:true}).waitFor(); await close(done.page);
       await noOverflow(done); await done.close();
     }
     console.log('PASS: exam eve, course sheet, morning warm-up, finals done at 390/820/1440 light and dark; keyboard and offline reading');

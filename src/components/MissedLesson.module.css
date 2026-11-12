@@ -1,23 +1,23 @@
 .head { display: flex; flex-direction: column; gap: 6px; padding: 4px 2px 2px; }
-.head h2 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
-.note { font-size: 14px; color: var(--muted-foreground); }
+.head h2 { margin: 0; font-size:var(--type-28); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+.note { font-size:var(--type-13); color: var(--muted-foreground); }
 
 .rules { display: flex; flex-direction: column; gap: 12px; }
-.rule { margin: 0; font-family: var(--font-family-reading); font-size: calc(17.5px * var(--reading-scale, 1)); line-height: 1.55; }
+.rule { margin: 0; font-family: var(--font-family-reading); font-size:calc(var(--type-17) * var(--reading-scale, 1)); line-height: 1.55; }
 
 /* Try-it-again choices after checking: right in green, a wrong pick in red, the rest faded. */
 .pick[data-state="right"] { border-color: var(--success); background: var(--success-soft); }
-.pick[data-state="right"] > span:first-child { background: var(--success); color: #fff; }
+.pick[data-state="right"] > span:first-child { background: var(--success); color: var(--on-brand); }
 .pick[data-state="wrong"] { border-color: var(--error); background: var(--error-soft); }
-.pick[data-state="wrong"] > span:first-child { background: var(--error); color: #fff; }
+.pick[data-state="wrong"] > span:first-child { background: var(--error); color: var(--on-brand); }
 .pick[data-state="other"] { opacity: 0.5; }
 
 .end { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; padding-top: 40px; }
 .endMark { width: 84px; height: 84px; border-radius: 50%; display: grid; place-items: center; background: var(--success-soft); color: var(--success); animation: pop 0.5s var(--ease-ios); }
-.end h2 { margin: 6px 0 0; font-family: var(--font-family-script); font-style: italic; font-weight: 400; font-size: 40px; color: var(--uh-red); }
-.end p { margin: 0; font-size: 17px; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+.end h2 { margin: 6px 0 0; font-family: var(--font-family-script); font-style: italic; font-weight: 400; font-size:var(--type-34); color: var(--uh-red); }
+.end p { margin: 0; font-size:var(--type-17); color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
 .endTopics { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
-.endTopics span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-full); font-size: 14px; font-weight: 600; color: var(--course-color); background: color-mix(in srgb, var(--course-color) 12%, transparent); }
+.endTopics span { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: var(--radius-full); font-size:var(--type-13); font-weight: 600; color: var(--course-color); background: color-mix(in srgb, var(--course-color) 12%, transparent); }
 .endTopics i { width: 7px; height: 7px; border-radius: 50%; background: var(--course-color); }
 .endTopics span[data-reviewed="true"] { background: var(--success-soft); color: var(--success); }
 .endPending { background: var(--uh-red-soft); color: var(--uh-red); }
@@ -26,10 +26,12 @@
 @media (prefers-reduced-motion: reduce) { .endMark { animation: none; } }
 
 @media (min-width: 1000px) {
-  .head h2 { font-size: 30px; }
+  .head h2 { font-size:var(--type-28); }
   .rules { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 16px; align-items: start; }
-  .rule { font-size: calc(19px * var(--reading-scale, 1)); }
+  .rule { font-size:calc(var(--type-20) * var(--reading-scale, 1)); }
   .end { padding-top: 72px; }
-  .end h2 { font-size: 48px; }
+  .end h2 { font-size:var(--type-48); }
   div.endActions { grid-column: 1 / -1; justify-self: center; width: 100%; max-width: 420px; }
 }
+
+.end h2{font-family:var(--font-family-display);font-style:normal;font-size:var(--type-28);font-weight:700;color:var(--foreground)}

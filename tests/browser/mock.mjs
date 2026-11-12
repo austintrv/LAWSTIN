@@ -342,7 +342,7 @@ export async function open(opts = {}) {
   const url = opts.tool && hash.startsWith('#/tool') ? new URL('/tests/browser/tools.html?harness=1', srv.url).href + hash : opts.tool ? `${new URL('/tests/browser/tool-host.html', srv.url)}?${new URLSearchParams({ course: opts.course ?? 'il', ...(opts.arg ? { arg: opts.arg } : {}) })}` : srv.url + (hash.startsWith('#') ? hash : `#${hash}`);
   await page.goto(url);
   const settle = async () => {
-    await page.locator('nav[aria-label="Sections"], form, h1').first().waitFor({ timeout: 20000 }).catch(() => {});
+    await page.locator('nav[aria-label="Sections"]:visible, form:visible, h1:visible').first().waitFor({ timeout: 20000 }).catch(() => {});
     await page.waitForFunction(() => !document.querySelector('[aria-busy="true"]'), null, { timeout: 15000 }).catch(() => {});
     await page.waitForTimeout(500);
   };

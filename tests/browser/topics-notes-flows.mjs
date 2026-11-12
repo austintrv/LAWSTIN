@@ -24,6 +24,8 @@ export async function topicsNotesFlows() {
       // Topic modal opens
       const dialog = p.getByRole('dialog', { name: 'Laws of War' });
       await dialog.waitFor();
+      const titleBox = await dialog.locator("h1").boundingBox();
+      assert(Math.abs(titleBox.x + titleBox.width / 2 - width / 2) < 2, "Topic title stays centered");
       await p.screenshot({ path: `${out}/topic-open-${width}.png` });
 
       // Check header chips: course, status, class dates

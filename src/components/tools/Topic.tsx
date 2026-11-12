@@ -1,24 +1,23 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import { NoteEditor } from "../NoteEditor";
+import React, { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, X, Layers, PenLine, ArrowDown, RotateCcw, ArrowRight } from "lucide-react";
 import { useModalFocus } from "../../helpers/useModalFocus";
 import { useBackClose } from "../../helpers/useBackClose";
-import { COURSES, EXAMS, STATUS_LABEL, type CourseCode, type SyllabusUnit, type CoverageStatus } from "../../helpers/studyEngine";
+import { COURSES, EXAMS, STATUS_LABEL, type SyllabusUnit } from "../../helpers/studyEngine";
 import { STATUS_COLOR } from "../../pages/StudyParts";
 import { useSyllabus } from "../../helpers/useSyllabus";
-import { useStudyMaterials } from "../../helpers/useStudyMaterials";
 import { useLawstinData } from "../../helpers/useLawstinData";
-import { useNotes, assembleTopicData, type NoteRow, type TopicRule } from "../../helpers/useNotes";
+import { noteUnits, useNotes, assembleTopicData } from "../../helpers/useNotes";
 import { useWritten } from "../../helpers/useWritten";
 import { useStudyLibrary } from "../../helpers/useStudyLibrary";
 import { useLogStudy } from "../../helpers/useLogStudy";
-import { useWide } from "../../helpers/useWide";
 import { dateKey } from "../../helpers/dateKey";
 import { PracticeSet, QuestionReview, type ToolProps } from "../ExamTools";
 import IssueSpot from "./IssueSpot";
 import CloseCalls from "./CloseCalls";
 import { WrittenPractice } from "../WrittenPractice";
-import type { QuestionDTO, ProgressDTO } from "../../endpoints/state_GET.schema";
-import type { StudyMaterial, Flowchart, Outline, Comparison, Hypothetical, Flashcard } from "../../helpers/studyMaterials";
+import type { QuestionDTO } from "../../endpoints/state_GET.schema";
+import type { Flowchart, Hypothetical, Flashcard } from "../../helpers/studyMaterials";
 import quiz from "../QuizSession.module.css";
 import styles from "./Topic.module.css";
 
@@ -31,38 +30,15 @@ const formatDate = (d: string) => {
 };
 
 export default function Topic({ course = "il", arg, onClose }: ToolProps) {
-  const userId = useMemo(() => {
-    try {
-      const auth = JSON.parse(localStorage.getItem("lawstin-auth") ?? "{}");
-      return (auth.user?.id as string) ?? "local";
-    } catch {
-      return "local";
-    }
-  }, []);
   const syllabus = useSyllabus();
-  const materialsStore = useStudyMaterials(userId);
   const { query } = useLawstinData();
   const written = useWritten();
   const library = useStudyLibrary();
   const log = useLogStudy();
-  const isWide = useWide();
-  const { notes, getNote, saveNote, flush } = useNotes(course);
+  const { getNote, saveNote, flush } = useNotes(course);
 
   // Units in class order
-  const units: SyllabusUnit[] = useMemo(() => {
-    const list = syllabus[course];
-    if (list && list.length) return list;
-    const qs = (query.data?.questions ?? []).filter((q) => q.course === course);
-    const seen = new Set<string>();
-    const out: SyllabusUnit[] = [];
-    for (const q of qs) {
-      if (!seen.has(q.topic)) {
-        seen.add(q.topic);
-        out.push({ topic: q.topic, dates: q.classDate ? [q.classDate] : [] });
-      }
-    }
-    return out;
-  }, [syllabus, course, query.data?.questions]);
+  const units = useMemo(() => noteUnits(syllabus[course], query.data?.questions ?? [], course), [syllabus, course, query.data?.questions]);
 
   // Current unit matching arg or first unit
   const currentUnitIndex = useMemo(() => {
@@ -97,10 +73,10 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
       unit: currentUnit,
       questions: query.data?.questions ?? [],
       progress: query.data?.progress ?? [],
-      materials: materialsStore.materials,
+      materials: (library.data?.materials ?? []),
       today: dateKey.today(),
     });
-  }, [course, currentUnit, query.data?.questions, query.data?.progress, materialsStore.materials]);
+  }, [course, currentUnit, query.data?.questions, query.data?.progress, (library.data?.materials ?? [])]);
 
   // Filter by selected authority
   const [selectedAuth, setSelectedAuth] = useState<string | null>(null);
@@ -195,10 +171,6 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
 
   // Cards due count
   const cards = data.materials.filter((m): m is Flashcard => m.kind === "flashcard");
-  const dueCards = cards.filter((c) => {
-    const prog = materialsStore.record.cards[c.id];
-    return !prog || prog.due <= dateKey.today();
-  });
 
   const hasFramework =
     displayedFlowcharts.length > 0 ||
@@ -282,7 +254,7 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
                 }}
               >
                 <Layers size={16} />
-                Cards ({dueCards.length ? `${dueCards.length} due` : cards.length})
+                Review {cards.length} cards
               </button>
             )}
             {examFormat.format === "essay" && data.hypo && (
@@ -447,7 +419,7 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>My notes</h2>
                 <div className={styles.notesBox}>
-                  <InlineNotesEditor
+                  <NoteEditor
                     topic={currentUnit.topic}
                     note={getNote(currentUnit.topic)}
                     onChange={(text) => saveNote(currentUnit.topic, text)}
@@ -524,15 +496,15 @@ function InlineFlowchart({ flowchart }: { flowchart: Flowchart }) {
             </div>
           )}
           <div className={styles.outlineSection}>
-            <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--uh-red)" }}>
+            <span style={{ fontSize: "var(--type-12)", fontWeight: 600, color: "var(--uh-red)" }}>
               Step {flowchart.nodes.indexOf(n) + 1}
             </span>
-            <h4 style={{ fontSize: "16px", fontWeight: 600, margin: "2px 0" }}>{n.question}</h4>
+            <h4 style={{ fontSize: "var(--type-15)", fontWeight: 600, margin: "2px 0" }}>{n.question}</h4>
             <small className={styles.ruleAuth}>{n.authority}</small>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
               {n.branches.map((b, j) =>
                 overview ? (
-                  <div key={j} style={{ fontSize: "13px" }}>
+                  <div key={j} style={{ fontSize: "var(--type-13)" }}>
                     <b>{b.label}: </b>
                     <span>{b.outcome ?? `Continue to step ${flowchart.nodes.findIndex((node) => node.id === b.next) + 1}`}</span>
                   </div>
@@ -563,100 +535,6 @@ function InlineFlowchart({ flowchart }: { flowchart: Flowchart }) {
           </div>
         </React.Fragment>
       ))}
-    </div>
-  );
-}
-
-function InlineNotesEditor({
-  topic,
-  note,
-  onChange,
-  onBlur,
-}: {
-  topic: string;
-  note: NoteRow;
-  onChange: (text: string) => void;
-  onBlur: () => void;
-}) {
-  const [val, setVal] = useState(note.text);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setVal(note.text);
-  }, [note.text]);
-
-  const resize = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.max(100, textareaRef.current.scrollHeight)}px`;
-    }
-  };
-
-  useEffect(() => {
-    resize();
-  }, [val]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const next = e.target.value;
-    setVal(next);
-    onChange(next);
-  };
-
-  const insertPrefix = (prefix: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-    const nextVal = val.slice(0, lineStart) + prefix + val.slice(lineStart);
-    setVal(nextVal);
-    onChange(nextVal);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "8px", width: "100%" }}>
-      <div style={{ display: "flex", gap: "8px" }}>
-        <button
-          type="button"
-          className={styles.practiceBtn}
-          style={{ minHeight: "36px", padding: "0 10px", fontSize: "13px" }}
-          onClick={() => insertPrefix("- ")}
-        >
-          • Bullet
-        </button>
-        <button
-          type="button"
-          className={styles.practiceBtn}
-          style={{ minHeight: "36px", padding: "0 10px", fontSize: "13px" }}
-          onClick={() => insertPrefix("# ")}
-        >
-          # Heading
-        </button>
-      </div>
-      <textarea
-        ref={textareaRef}
-        style={{
-          width: "100%",
-          fontFamily: "var(--font-family-reading)",
-          fontSize: "17px",
-          lineHeight: "1.6",
-          color: "var(--foreground)",
-          background: "transparent",
-          border: "none",
-          outline: "none",
-          resize: "none",
-          minHeight: "100px",
-        }}
-        value={val}
-        onChange={handleChange}
-        onBlur={onBlur}
-        placeholder="Write your notes for this topic…"
-        aria-label={`Notes for ${topic}`}
-      />
     </div>
   );
 }

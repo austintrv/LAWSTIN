@@ -2,6 +2,8 @@
 //   node --import tsx tests/browser/capture.mjs --out <dir> [--widths 390,1440] [--themes light,dark] [--only study,quiz] [--now 2026-11-11]
 // Writes <nn>-<screen>-<width>-<theme>.png, index.json (file, description, click path) and capture-log.json (every step, failures with errors).
 import fs from 'node:fs';
+import { auditStyles } from './style-audit.mjs';
+const audits = [];
 import path from 'node:path';
 import { open, closeAll } from './mock.mjs';
 
@@ -44,6 +46,7 @@ async function snap(s, name, desc, how, { full = false } = {}) {
     });
     if (grown > 8) { await page.setViewportSize({ width: vp.width, height: Math.min(vp.height + grown, 9000) }); await page.waitForTimeout(350); }
   }
+  if (process.env.LAWSTIN_STYLE_AUDIT) { const a = await auditStyles(page, name); a.theme = T; audits.push(a); fs.writeFileSync(path.join(OUT, 'style-audit.json'), JSON.stringify(audits,null,2)); }
   await page.screenshot({ path: path.join(OUT, file) });
   if (grown > 8) { await page.setViewportSize(vp); await page.waitForTimeout(250); }
   index.push({ file, screen: name, width: W, theme: T, description: desc + (full && grown > 8 ? ' (full height of the scrolling view)' : ''), how });
@@ -68,6 +71,7 @@ const tap = async (page, name, o) => { await btn(page, name, o).click(); await p
 const dialog = page => page.getByRole('dialog').last();
 /** Back to a clean tab: drops the saved practice session (otherwise the app reopens on “Resume studying” with that course filter). */
 const reload = async (s, hash = '#/study') => { await s.page.evaluate(h => { for (const k of Object.keys(localStorage)) if (/practice/.test(k)) localStorage.removeItem(k); window.location.hash = h; }, hash); await s.page.reload(); await s.settle(); };
+const fresh = async (s, hash) => { const base = s.page.url().split('#')[0]; await s.page.goto('about:blank'); await s.page.goto(base + hash); await s.settle(); };
 const qs = s => s.data.state.questions;
 /** The question on screen, found by its stem text. */
 async function which(s) {
@@ -108,7 +112,7 @@ const mat = (s, kind, course = 'il') => s.data.materials.find(m => m.kind === ki
 
 const live = [];
 /** open() with the current width/theme/clock; sessions are tracked so their console errors are logged. */
-const O = async o => { const s = await open({ width: W, height: W >= 1000 ? 900 : W >= 768 ? 1180 : 844, dark: T === 'dark', now: NOW, ...o }); s.page.setDefaultTimeout(8000); live.push(s); return s; };
+const O = async o => { const s = await open({ width: W, height: W >= 1000 ? 900 : W >= 768 ? 1180 : 844, dark: T === 'dark', now: NOW, ...o }); s.page.setDefaultTimeout(8000); s.expectedOffline = !!o?.backendDown; live.push(s); return s; };
 
 // ---------- scenes ----------
 const SCENES = {
@@ -140,7 +144,7 @@ const SCENES = {
     await step('study-top', async () => { await snap(s, 'study-top', 'Study tab: greeting, goal ring, streak, Start studying, queues, essays.', 'Open the app on #/study'); }, s);
     await step('study-full', async () => { await snap(s, 'study-full', 'Study tab, everything: Finals tiles, practice tools list, Latest update card, To do.', 'Study tab, full height', { full: true }); }, s);
     await step('study-scrolled', async () => { await scrollPane(P, 'study', -1); await P.waitForTimeout(300); await snap(s, 'study-scrolled', 'Study tab scrolled to the bottom (compact nav bar title).', 'Study tab > scroll down'); await scrollPane(P, 'study', 0); }, s);
-    await step('how-it-works', async () => { await tap(P, 'How today’s plan is built'); await snap(s, 'how-it-works', 'How Lawstin works bottom sheet.', 'Study > goal ring row (How today’s plan is built)', { full: true }); await tap(P, 'Close'); await reload(s); }, s);
+    await step('how-it-works', async () => { await tap(P, 'How today’s plan is built'); await snap(s, 'how-it-works', 'How Lawstin works bottom sheet.', 'Study > goal ring row (How today’s plan is built)', { full: true }); await tap(P, 'Close'); await P.getByRole('dialog').waitFor({state:'hidden'}); await P.waitForTimeout(100); await reload(s); }, s);
     const targets = [
       ['row-due', 'First screen of a review-due session (Ready to review).', 'Study > Ready to review', /Review \d+ due items/],
       ['row-new', 'First screen of a new-items session (Not seen yet).', 'Study > Not seen yet', /Study \d+ new items/],
@@ -172,7 +176,7 @@ const SCENES = {
     await step('quiz-review-facts', async () => { await dialog(Q).locator('summary').first().click(); await Q.waitForTimeout(300); await snap(t, 'quiz-review-facts', 'Review with the Fact pattern expanded.', 'Quiz review > Fact pattern', { full: true }); await dialog(Q).locator('summary').first().click(); }, t);
     await step('ask-panel', async () => { await tap(Q, 'Ask about this'); await snap(t, 'ask-panel', 'Ask panel with starter questions.', 'Quiz review > Ask about this'); }, t);
     await step('ask-reply', async () => { await tap(Q, /^Explain the rule in plain terms/); await Q.getByText(/Mock tutor reply/).waitFor(); await snap(t, 'ask-reply', 'Ask panel after a tutor reply.', 'Ask panel > Explain the rule in plain terms'); await Q.keyboard.press('Escape'); await Q.waitForTimeout(500); }, t);
-    await step('flag-sheet', async () => { await dialog(Q).getByRole('button', { name: /^Flag/ }).first().click(); await Q.waitForTimeout(400); await snap(t, 'flag-sheet', 'Flag-for-next-update note field.', 'Quiz review > Flag'); await Q.keyboard.press('Escape'); await Q.waitForTimeout(300); }, t);
+    await step('flag-sheet', async () => { await dialog(Q).getByRole('button', { name: /^Flag/ }).first().click(); await Q.waitForTimeout(400); await snap(t, 'flag-sheet', 'Flag-for-next-update note field.', 'Quiz review > Flag'); await dialog(Q).getByRole('button', { name: /^Flag/ }).first().click(); await Q.waitForTimeout(300); }, t);
     await step('quiz-review-right', async () => { const b = dialog(Q).getByRole('button', { name: 'Next question' }); await b.click(); await Q.waitForTimeout(400); while (await isCard(Q)) { await tap(Q, 'Reveal answer'); await tap(Q, 'Got it'); } await answerCurrent(t, true); await snap(t, 'quiz-review-right', 'Review after a correct answer.', 'Quiz > Next question > correct choice > Check answer', { full: true }); }, t);
     await step('quiz-harder', async () => { await tap(Q, /Harder|Make it harder/); await Q.waitForTimeout(600); await snap(t, 'quiz-harder', 'AI-written harder version of the question.', 'Quiz review > Harder'); }, t);
     await t.close();
@@ -217,11 +221,11 @@ const SCENES = {
     await step('lesson-check', async () => { for (let i = 0; i < 6 && !(await P.getByRole('heading', { name: 'Check yourself' }).isVisible()); i++) await tap(P, 'Next', { exact: true }); await snap(s, 'lesson-check', 'Missed lesson, check-yourself question.', 'Lesson > Next', { full: true }); }, s);
     await step('lesson-correct', async () => { const q = await which(s).catch(() => null); const L = q?.answer ?? 'A'; await P.getByRole('button', { name: new RegExp(`^${L} `) }).first().click(); await tap(P, 'Check answer'); await P.waitForTimeout(400); await snap(s, 'lesson-correct', 'Missed lesson after a correct check.', 'Lesson > right choice > Check answer', { full: true }); }, s);
     await step('lesson-complete', async () => {
-      for (let i = 0; i < 40 && !(await P.getByRole('heading', { name: /Topics reviewed|Lesson complete/ }).isVisible()); i++) { // several topics: walk them all
+      for (let i = 0; i < 40 && !(await P.getByRole('heading', { name: /Topics reviewed|Session complete/ }).isVisible()); i++) { // several topics: walk them all
         if (await P.getByRole('button', { name: 'Check answer' }).isVisible()) { const q = await which(s).catch(() => null); await P.getByRole('button', { name: new RegExp(`^${q?.answer ?? 'A'} `) }).first().click(); await tap(P, 'Check answer'); }
         await tap(P, 'Next', { exact: true });
       }
-      await P.getByRole('heading', { name: /Topics reviewed|Lesson complete/ }).waitFor(); await snap(s, 'lesson-complete', 'Lesson complete.', 'Lesson > Next', { full: true }); }, s);
+      await P.getByRole('heading', { name: /Topics reviewed|Session complete/ }).waitFor(); await snap(s, 'lesson-complete', 'Session complete.', 'Lesson > Next', { full: true }); }, s);
     await s.close();
   },
 
@@ -243,9 +247,9 @@ const SCENES = {
     await step('written-rules', async () => { await tap(P, 'Rules'); await P.getByRole('searchbox', { name: 'Search rules' }).waitFor(); await snap(s, 'written-rules', 'Rules beside the essay, filtered to its topic.', 'Essay > Rules', { full: true }); await tap(P, 'Close rules'); }, s);
     await step('written-graded', async () => { await tap(P, 'Grade my answer'); await P.getByText(/Mock grader output/).first().waitFor({ state: 'attached' }).catch(() => {}); await P.waitForTimeout(500); await snap(s, 'written-graded', 'Graded essay: score, rubric, spotted and missed issues.', 'Written practice > Grade my answer', { full: true }); }, s);
     await step('written-rewrite', async () => { await tap(P, 'Write it again'); await dialog(P).getByPlaceholder('Your answer').fill('A fresh attempt applying the rules to these facts.'); await tap(P, 'Grade my answer'); await P.getByRole('heading', { name: 'Your attempts' }).waitFor(); await snap(s, 'written-rewrite', 'Two essay attempts, scores and rubric changes.', 'Graded essay > Write it again > Grade', { full: true }); }, s);
-    await step('written-history', async () => { await tap(P, 'Essays'); await P.getByRole('heading', { name: 'Your essays' }).waitFor(); await snap(s, 'written-history', 'Essay history list.', 'Graded result > Essays', { full: true }); }, s);
+    await step('written-history', async () => { await tap(P, 'Essays', {exact:true}); await P.getByRole('heading', { name: 'Your essays' }).waitFor(); await snap(s, 'written-history', 'Essay history list.', 'Graded result > Essays', { full: true }); }, s);
     await step('written-trend', async () => { await snap(s, 'written-trend', 'Course scores over time and average rubric bars.', 'Written practice > essay history', { full: true }); }, s);
-    await step('written-essay', async () => { await dialog(P).getByRole('button', { name: /^Essay / }).first().click(); await P.waitForTimeout(400); await snap(s, 'written-essay', 'A saved graded essay reopened.', 'Essay history > an essay', { full: true }); }, s);
+    await step('written-essay', async () => { await dialog(P).locator('button[class*="_hist_"]').first().click(); await P.waitForTimeout(400); await snap(s, 'written-essay', 'A saved graded essay reopened.', 'Essay history > an essay', { full: true }); }, s);
     await s.close();
   },
 
@@ -294,15 +298,15 @@ const SCENES = {
     await step('course-next', async () => { await s.goto('#/courses/il'); await tap(P, /^Next to review/); await snap(s, 'course-next', 'Course page with the Next to review plan expanded.', 'Course page > Next to review', { full: true }); }, s);
     await step('course-kind', async () => { await tap(P, /^Comparisons/, { exact: false }); await P.waitForTimeout(300); await snap(s, 'course-kind', 'Course page filtered to one material kind (Comparisons).', 'Course page > Comparisons filter chip / sidebar', { full: true }); }, s);
     for (const kind of ['flowchart', 'outline', 'comparison', 'drill', 'hypothetical']) await step('reader-' + kind, async () => {
-      const m = mat(s, kind); await s.goto(`#/courses/il/${kind}/${m.id}`); await P.getByRole('dialog').first().waitFor(); await P.waitForTimeout(500);
+      const m = mat(s, kind); await fresh(s, `#/courses/il/${kind}/${m.id}`); await P.getByRole('dialog').first().waitFor(); await P.waitForTimeout(500);
       await snap(s, 'reader-' + kind, `${kind} material open in the reader.`, `Course page > ${kind} card (route #/courses/il/${kind}/<id>)`, { full: true });
       if (kind === 'drill') { await dialog(P).locator('section button').first().click().catch(() => {}); await P.waitForTimeout(300); await snap(s, 'reader-drill-answered', 'Sorting drill after answering an item.', 'Drill reader > pick a category', { full: true }); }
     }, s);
-    await step('rulebook-read', async () => { await s.goto('#/courses/il/rules'); await P.getByRole('dialog').first().waitFor(); await P.waitForTimeout(400); await snap(s, 'rulebook-read', 'Rulebook, Read mode.', 'Course page > Rulebook', { full: true }); }, s);
+    await step('rulebook-read', async () => { await fresh(s, '#/courses/il/rules'); await P.getByRole('dialog').first().waitFor(); await P.waitForTimeout(400); await snap(s, 'rulebook-read', 'Rulebook, Read mode.', 'Course page > Rulebook', { full: true }); }, s);
     await step('rulebook-recall', async () => { await tap(P, 'Recall'); await dialog(P).locator('button[aria-expanded]').first().click(); await P.waitForTimeout(300); await snap(s, 'rulebook-recall', 'Rulebook, Recall mode with one rule revealed.', 'Rulebook > Recall > tap a rule', { full: true }); }, s);
-    await step('workspace-clinic', async () => { await s.goto('#/courses/clinic'); await P.waitForTimeout(700); await snap(s, 'workspace-clinic', 'Clinic workspace: hours card, tasks, notes, links.', 'Courses > Civil Clinic', { full: true }); }, s);
+    await step('workspace-clinic', async () => { await fresh(s, '#/courses/clinic'); await P.waitForTimeout(700); await snap(s, 'workspace-clinic', 'Clinic workspace: hours card, tasks, notes, links.', 'Courses > Civil Clinic', { full: true }); }, s);
     await step('workspace-clinic-task', async () => { await P.locator('[data-pane="courses"]').getByText('Draft client intake memo').first().click(); await P.waitForTimeout(400); await snap(s, 'workspace-clinic-task', 'Clinic workspace with a task expanded for editing.', 'Clinic > tap a task', { full: true }); }, s);
-    await step('workspace-tutoring', async () => { await s.goto('#/courses/tutoring'); await P.waitForTimeout(700); await snap(s, 'workspace-tutoring', 'Civil Procedure Tutoring workspace.', 'Courses > Civil Procedure Tutoring', { full: true }); }, s);
+    await step('workspace-tutoring', async () => { await fresh(s, '#/courses/tutoring'); await P.waitForTimeout(700); await snap(s, 'workspace-tutoring', 'Civil Procedure Tutoring workspace.', 'Courses > Civil Procedure Tutoring', { full: true }); }, s);
     await s.close();
   },
 
@@ -349,7 +353,7 @@ const SCENES = {
     await step('offline-fresh', async () => { const s = await O({ backendDown: true, wait: false }); await s.page.getByText('You’re offline').first().waitFor({ timeout: 25000 }); await snap(s, 'offline-fresh', 'Offline on a device with no cached data: “You’re offline” card.', 'Open the app with the backend unreachable and no cache'); await s.close(); });
     await step('offline-answer', async () => {
       const s = await O({ hash: '#/q/il-03' });
-      await dialog(s.page).waitFor(); await s.setOffline(true); await answerCurrent(s, true); await s.page.waitForTimeout(500);
+      await dialog(s.page).waitFor(); s.expectedOffline = true; await s.setOffline(true); await answerCurrent(s, true); await s.page.waitForTimeout(500);
       await snap(s, 'offline-answer', 'Answering offline: “Offline. Answers will sync…” toast, answer queued.', 'Go offline > answer a question'); await s.close();
     });
     await step('empty-study', async () => { const s = await O({ emptyState: true }); await snap(s, 'empty-study', 'Study tab of a brand-new account (no progress, no days), full height.', 'Open with emptyState', { full: true }); await s.goto('#/progress'); await snap(s, 'empty-progress', 'Progress tab of a new account.', 'New account > Progress', { full: true }); await s.goto('#/search'); await snap(s, 'empty-search', 'Search tab of a new account.', 'New account > Search', { full: true }); await s.close(); });
@@ -366,7 +370,7 @@ for (const w of WIDTHS) for (const t of THEMES) {
     const before = log.length;
     try { const r = await scene(); void r; } catch (e) { log.push({ step: `scene:${name}`, width: W, theme: T, status: 'failed', error: String(e.message).split('\n')[0] }); console.log(`  SCENE FAILED ${name}: ${e.message.split('\n')[0]}`); }
     for (const s of live.splice(0)) {
-      for (const e of new Set(s.errors)) log.push({ step: `console:${name}`, width: W, theme: T, status: 'console-error', error: e.slice(0, 300) });
+      for (const e of new Set(s.errors)) log.push({ step: `console:${name}`, width: W, theme: T, status: s.expectedOffline && /^console: Failed to load resource: net::ERR_INTERNET_DISCONNECTED/.test(e) ? 'expected-offline-error' : 'console-error', error: e.slice(0, 300) });
       await s.close().catch(() => {});
     }
     void before;
@@ -379,4 +383,10 @@ fs.writeFileSync(path.join(OUT, 'capture-log.json'), JSON.stringify(log, null, 1
 const failed = log.filter(l => l.status === 'failed');
 console.log(`Done: ${seen.size} screenshots, ${log.length - failed.length} steps ok, ${failed.length} failed`);
 for (const f of failed) console.log(`  FAILED ${f.step} @${f.width}/${f.theme}: ${f.error}`);
+if (process.env.LAWSTIN_STYLE_AUDIT) {
+  fs.writeFileSync(path.join(OUT, 'style-audit.json'), JSON.stringify(audits,null,2));
+  const violations = audits.reduce((n,a) => n+a.violations.length,0);
+  console.log(`STYLE AUDIT: ${audits.length} screens, ${audits.reduce((n,a)=>n+a.targets,0)} targets, ${violations} violations`);
+  if (violations || failed.length || log.some(l => l.status === 'console-error')) process.exitCode = 1;
+}
 await closeAll();

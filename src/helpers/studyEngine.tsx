@@ -31,9 +31,9 @@ export const EXAM_PACE = 120;
 
 export type CourseCounts = Record<CourseCode, number>;
 export const courseCounts = (value = 0): CourseCounts => ({ il: value, asy: value, pr: value });
-export function activeCourses(today: string, filter: Filter = "all"): CourseCode[] {
+export function activeCourses(today: string, filter: Filter = "all", hour = new Date().getHours()): CourseCode[] {
   if (filter !== "all") return [filter];
-  const ahead = COURSE_KEYS.filter((c) => FINALS[c] >= today);
+  const ahead = COURSE_KEYS.filter((c) => FINALS[c] > today || FINALS[c] === today && hour < 18);
   return ahead.length ? ahead : COURSE_KEYS;
 }
 

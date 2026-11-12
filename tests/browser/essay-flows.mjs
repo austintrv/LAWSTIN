@@ -46,7 +46,7 @@ export async function essayFlows() {
     await tap(p, 'Show the issues');
     for (let i = 0; i < h.answer.length; i++) await spot(p).getByRole('button', { name: i === 0 ? 'Got it' : 'Missed it', exact: true }).nth(i).click();
     await tap(p, 'See result');
-    await spot(p).getByRole('heading', { name: `1 of ${h.answer.length} issues`, exact: true }).waitFor();
+    await spot(p).getByText(`1/${h.answer.length}`, {exact:true}).waitFor();
     await p.screenshot({ path: `${out}/spot-offline-result.png` });
     assert.equal(s.events.length, 0);
     const queued = await p.evaluate(() => JSON.parse(localStorage.getItem('lawstin-study-queue') ?? '[]'));
@@ -65,7 +65,7 @@ export async function essayFlows() {
     assert.deepEqual(s.events.map(e => e.id), queued.map(e => e.id));
     await p.keyboard.press('Escape'); await s.goto('#/study'); await tap(p, 'Written practice');
     await written(p).getByRole('button', { name: new RegExp(`^1 of ${h.answer.length} issues`) }).click();
-    await spot(p).getByRole('heading', { name: `1 of ${h.answer.length} issues`, exact: true }).waitFor();
+    await spot(p).getByText(`1/${h.answer.length}`, {exact:true}).waitFor();
     await tap(p, 'Done'); await p.keyboard.press('Escape');
     await s.goto(`#/courses/il/hypothetical/${h.id}`); await tap(p, 'Spot the issues');
     await spot(p).getByRole('heading', { name: h.title }).waitFor();

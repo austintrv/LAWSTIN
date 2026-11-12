@@ -1,11 +1,12 @@
-import { useEffect, useRef, useState, useMemo } from "react";
-import { Check, ChevronRight, Copy, Share2, Sparkles, BookOpen, Layers } from "lucide-react";
+import { NoteEditor } from "../NoteEditor";
+import { useEffect, useState, useMemo } from "react";
+import { Check, ChevronRight, Copy, Share2, BookOpen } from "lucide-react";
 import { ToolFrame, type ToolProps } from "../ExamTools";
-import { COURSES, type CourseCode, type SyllabusUnit } from "../../helpers/studyEngine";
+import { COURSES } from "../../helpers/studyEngine";
 import { useSyllabus } from "../../helpers/useSyllabus";
 import { useStudyLibrary } from "../../helpers/useStudyLibrary";
 import { useLawstinData } from "../../helpers/useLawstinData";
-import { useNotes, formatAllNotes, noteKey, type NoteRow } from "../../helpers/useNotes";
+import { noteUnits, useNotes, formatAllNotes } from "../../helpers/useNotes";
 import { toast } from "../../helpers/toast";
 import { dateKey } from "../../helpers/dateKey";
 import { useWide } from "../../helpers/useWide";
@@ -19,21 +20,7 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
   const { notes, getNote, saveNote, toggleInNotes, flush } = useNotes(course);
 
   // Units in class order
-  const units: SyllabusUnit[] = useMemo(() => {
-    const list = syllabus[course];
-    if (list && list.length) return list;
-    // Fallback: distinct question topics
-    const qs = (query.data?.questions ?? []).filter((q) => q.course === course);
-    const seen = new Set<string>();
-    const out: SyllabusUnit[] = [];
-    for (const q of qs) {
-      if (!seen.has(q.topic)) {
-        seen.add(q.topic);
-        out.push({ topic: q.topic, dates: q.classDate ? [q.classDate] : [] });
-      }
-    }
-    return out;
-  }, [syllabus, course, query.data?.questions]);
+  const units = useMemo(() => noteUnits(syllabus[course], query.data?.questions ?? [], course), [syllabus, course, query.data?.questions]);
 
   const today = dateKey.today();
   const taughtUnits = useMemo(() => {
@@ -196,7 +183,7 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
                   </div>
                 </div>
 
-                <UnitEditor
+                <NoteEditor
                   key={currentUnit.topic}
                   topic={currentUnit.topic}
                   note={getNote(currentUnit.topic)}
@@ -209,7 +196,7 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
             {/* Column 3: Collapsible reference column */}
             {showReference && currentUnit && (
               <div className={styles.referenceCol}>
-                <h3 className={styles.refHeading}>Verified rules & framework</h3>
+                <h3 className={styles.refHeading}>Rules and framework</h3>
                 {unitQuestions.map((q) => (
                   <div key={q.id} className={styles.refItem}>
                     <span className={styles.refSub}>{q.subtopic ?? q.topic}</span>
@@ -224,9 +211,7 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
                     {m.authority && <span className={styles.refAuth}>{m.authority}</span>}
                   </div>
                 ))}
-                {!unitQuestions.length && !unitMaterials.length && (
-                  <p className={styles.refAuth}>No reference material for this unit.</p>
-                )}
+
               </div>
             )}
           </div>
@@ -235,7 +220,6 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
           <div className={styles.unitListMobile}>
             {units.map((u) => {
               const note = getNote(u.topic);
-              const hasText = note.text.trim().length > 0;
               const isExpanded = !!mobileExpanded[u.topic];
               return (
                 <div
@@ -262,9 +246,7 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
                     >
                       <div className={styles.unitTitleWrap}>
                         <span className={styles.unitTitle}>{u.topic}</span>
-                        {!hasText && !isExpanded && (
-                          <span className={styles.unitEmptyTag}>Tap to write notes</span>
-                        )}
+
                       </div>
                       <ChevronRight
                         size={20}
@@ -278,7 +260,7 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
 
                   {isExpanded && (
                     <div className={styles.editorArea}>
-                      <UnitEditor
+                      <NoteEditor
                         topic={u.topic}
                         note={note}
                         onChange={(text) => saveNote(u.topic, text)}
@@ -293,89 +275,5 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
         )}
       </div>
     </ToolFrame>
-  );
-}
-
-function UnitEditor({
-  topic,
-  note,
-  onChange,
-  onBlur,
-}: {
-  topic: string;
-  note: NoteRow;
-  onChange: (text: string) => void;
-  onBlur: () => void;
-}) {
-  const [val, setVal] = useState(note.text);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  useEffect(() => {
-    setVal(note.text);
-  }, [note.text]);
-
-  const resize = () => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.max(140, textareaRef.current.scrollHeight)}px`;
-    }
-  };
-
-  useEffect(() => {
-    resize();
-  }, [val]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const next = e.target.value;
-    setVal(next);
-    onChange(next);
-  };
-
-  const insertPrefix = (prefix: string) => {
-    const el = textareaRef.current;
-    if (!el) return;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
-    const lineStart = val.lastIndexOf("\n", start - 1) + 1;
-    const nextVal = val.slice(0, lineStart) + prefix + val.slice(lineStart);
-    setVal(nextVal);
-    onChange(nextVal);
-    setTimeout(() => {
-      el.focus();
-      el.setSelectionRange(start + prefix.length, end + prefix.length);
-    }, 0);
-  };
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "10px", width: "100%" }}>
-      <div className={styles.toolbar}>
-        <button
-          className={styles.toolBtn}
-          type="button"
-          onClick={() => insertPrefix("- ")}
-          aria-label="Add bullet"
-        >
-          • Bullet
-        </button>
-        <button
-          className={styles.toolBtn}
-          type="button"
-          onClick={() => insertPrefix("# ")}
-          aria-label="Add heading"
-        >
-          # Heading
-        </button>
-      </div>
-
-      <textarea
-        ref={textareaRef}
-        className={styles.notesTextarea}
-        value={val}
-        onChange={handleChange}
-        onBlur={onBlur}
-        placeholder="Write your notes here…"
-        aria-label={`Notes for ${topic}`}
-      />
-    </div>
   );
 }

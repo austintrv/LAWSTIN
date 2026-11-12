@@ -167,12 +167,12 @@ export function reviewGreeting(greeting: string | null, count: number) {
 }
 
 export type ExamMoment = { kind: "normal" | "eve" | "morning" | "done"; course?: CourseCode };
-export function examMoment(today: string): ExamMoment {
+export function examMoment(today: string, hour = new Date().getHours()): ExamMoment {
   const course = COURSE_KEYS.find((c) => FINALS[c] === today);
-  if (course) return { kind: "morning", course };
+  if (course && hour < 18) return { kind: "morning", course };
   const tomorrow = COURSE_KEYS.find((c) => FINALS[c] === dateKey.addDays(today, 1));
   if (tomorrow) return { kind: "eve", course: tomorrow };
-  return { kind: COURSE_KEYS.every((c) => FINALS[c] < today) ? "done" : "normal" };
+  return { kind: COURSE_KEYS.every((c) => (FINALS[c] < today || FINALS[c] === today && hour >= 18)) ? "done" : "normal" };
 }
 
 export function weakUnits(e: Engine, course: CourseCode, syllabus: Syllabus) {

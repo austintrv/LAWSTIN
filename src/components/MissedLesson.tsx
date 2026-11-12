@@ -130,11 +130,12 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
   return (
     <div ref={modalRef} tabIndex={-1} className={`${q.modal} ${closing ? q.closing : ""}`} style={away ? { display: "none" } : undefined} role="dialog" aria-modal="true" aria-label="Missed topics lesson">
       <div className={q.top}>
-        <div className={q.topIn}>
+        <div className={`${q.topIn} ${q.examTop}`}>
           <button className={q.x} onClick={() => go(at - 1)} disabled={at === 0} aria-label="Previous step"><ChevronLeft size={18} strokeWidth={2.4} /></button>
-          <div className={q.prog} aria-hidden="true">{steps.map((_, k) => <i key={k} className={k < at ? q.done : k === at ? q.cur : ""} />)}</div>
+          <span className={q.examTitle}>Missed topics</span>
           <button className={q.x} onClick={close} aria-label="Close"><X size={17} strokeWidth={2.4} /></button>
         </div>
+        <div className={q.prog} aria-hidden="true">{steps.map((_, k) => <i key={k} className={k < at ? q.done : k === at ? q.cur : ""} />)}</div>
       </div>
 
       <div className={q.scroll} ref={scroll}>
@@ -150,7 +151,7 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
                 </section>
               ))}
             </div>
-            {tools?.(step.t.course, step.t.topic)}
+            <button className={q.listRow} onClick={() => { history.replaceState(history.state, "", `#/tool/Topic/${step.t.course}/${encodeURIComponent(step.t.topic)}`); window.dispatchEvent(new HashChangeEvent("hashchange")); }}>{step.t.topic}<ChevronRight size={16}/></button>{tools?.(step.t.course, step.t.topic)}
           </>}
 
           {step.kind === "slip" && (() => {
@@ -159,7 +160,7 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
             const chosen = p.lastCorrect === false ? qq.choices.find((c) => c.id === p.lastChoice && c.id !== qq.answer) : undefined;
             return <>
               <div className={styles.head}>{label(step.t)}<h2>Where you slipped{step.of > 1 ? ` · ${step.n} of ${step.of}` : ""}</h2>
-                {!chosen && <span className={styles.note}>{p.lastCorrect ? "Missed before, right last time" : "Marked as a guess"}</span>}</div>
+                </div>
               <div className={q.paneL}>
               <details className={q.rc}>
                 <summary className={q.factHead}>
@@ -219,8 +220,8 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
           {step.kind === "end" && (
             <div className={styles.end}>
               <span className={`${styles.endMark} ${remaining.length ? styles.endPending : ""}`}>{remaining.length ? <RotateCcw size={32} /> : <Check size={34} strokeWidth={2.6} />}</span>
-              <h2>{remaining.length ? "Lesson complete" : "Topics reviewed"}</h2>
-              {checks.length > 0 && <p>{fixed} reviewed · {remaining.length} to revisit</p>}
+              <h2>Session complete</h2><b className="finish-number">{fixed}/{topics.length}</b>
+
               <div className={styles.endTopics}>
                 {topics.map((t) => <span key={`${t.course}|${t.topic}`} data-reviewed={!remaining.includes(t)} style={{ "--course-color": COURSES[t.course].color } as React.CSSProperties}>{remaining.includes(t) ? <RotateCcw size={14} /> : <Check size={14} />}{t.topic}</span>)}
               </div>
@@ -236,8 +237,9 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
             : step.kind === "end"
               ? <div className={styles.endActions}>
                   {more > 0 && <Button className={`${q.big} ${q.cta}`} onClick={onMore}>Review {more} more</Button>}
-                  {remaining.length > 0 && <Button variant={more ? "secondary" : "primary"} className={`${q.big} ${q.cta}`} onClick={() => { onDrill(allMissed); }}>Practice remaining topics</Button>}
-                  <Button variant={remaining.length || more ? "ghost" : "primary"} className={!remaining.length && !more ? `${q.big} ${q.cta}` : undefined} onClick={close}>Done</Button>
+                  {remaining.length > 0 && <Button variant={more ? "secondary" : "primary"} className={more ? q.big : `${q.big} ${q.cta}`} onClick={() => { onDrill(allMissed); }}>Practice remaining topics</Button>}
+                  {!remaining.length && !more && <Button className={`${q.big} ${q.cta}`} onClick={() => onDrill(topics.flatMap(t => t.items.map(it => it.q)))}>Practice these topics</Button>}
+                  <Button variant="secondary" className={q.big} onClick={close}>Done</Button>
                 </div>
               : <Button className={`${q.big} ${q.cta}`} onClick={() => go(at + 1)}>Next</Button>}
         </div>

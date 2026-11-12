@@ -32,8 +32,8 @@ class Boundary extends React.Component<{ children: React.ReactNode }, { failed: 
     return (
       <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", padding: 24, background: "var(--background)", color: "var(--foreground)", fontFamily: "var(--font-family-base)" }}>
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 16, textAlign: "center" }}>
-          <h1 style={{ fontFamily: "var(--font-family-script)", fontStyle: "italic", fontWeight: 400, fontSize: 36, color: "var(--uh-red)" }}>Something went wrong</h1>
-          <button onClick={() => window.location.reload()} style={{ height: 48, padding: "0 28px", borderRadius: 14, background: "var(--uh-red)", color: "#fff", fontSize: 17, fontWeight: 600 }}>Reload</button>
+          <h1 style={{ fontFamily: "var(--font-family-script)", fontStyle: "italic", fontWeight: 400, fontSize: "var(--type-34)", color: "var(--uh-red)" }}>Something went wrong</h1>
+          <button onClick={() => window.location.reload()} style={{ height: 48, padding: "0 28px", borderRadius: 14, background: "var(--uh-red)", color: "var(--on-brand)", fontSize: 17, fontWeight: 600 }}>Reload</button>
         </div>
       </div>
     );

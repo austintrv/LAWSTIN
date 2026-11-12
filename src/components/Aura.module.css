@@ -1,6 +1,6 @@
 .host { position: relative; isolation: isolate; }
 
-.aura { position: absolute; inset: -40px -24px; z-index: -1; overflow: hidden; pointer-events: none; --fade-y: linear-gradient(transparent, #000 30%, #000 65%, transparent); --fade-x: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+.aura { position: absolute; inset: -40px -24px; z-index: -1; overflow: hidden; pointer-events: none; --fade-y: linear-gradient(transparent, var(--shadow-ink) 30%, var(--shadow-ink) 65%, transparent); --fade-x: linear-gradient(90deg, transparent, var(--shadow-ink) 14%, var(--shadow-ink) 86%, transparent);
   -webkit-mask-image: var(--fade-y), var(--fade-x); mask-image: var(--fade-y), var(--fade-x); -webkit-mask-composite: source-in; mask-composite: intersect; }
 .aura i { position: absolute; width: 300px; height: 300px; border-radius: 50%; background: color-mix(in srgb, var(--glow) 20%, transparent); filter: blur(60px); animation: drift 22s ease-in-out infinite alternate; }
 .aura i:nth-child(1) { top: -90px; left: -80px; }

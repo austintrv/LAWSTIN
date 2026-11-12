@@ -210,7 +210,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
                   <div className={styles.seg} role="group" aria-label="Course">
                     {(["il", "asy"] as const).map(k => <button key={k} aria-pressed={course === k} className={course === k ? styles.segOn : ""} onClick={() => { haptic(); setCourse(k); setLength(defaultEssayLength(k, lastLength(k))); }}>{COURSES[k].short}</button>)}
                   </div>
-                  <Button className={`${styles.big} ${styles.cta}`} disabled={!hypos.some(h => h.course === course)} onClick={() => setSpotting({ course })}>Spot the issues · 3 min</Button>
+                  <Button variant="secondary" className={styles.big} disabled={!hypos.some(h => h.course === course)} onClick={() => setSpotting({ course })}>Spot the issues · 3 min</Button>
                   <div className={styles.essayChoice}>
                     <div className={styles.seg} role="group" aria-label="Length">{(["short", "full"] as const).map(k => <button key={k} aria-pressed={length === k} className={length === k ? styles.segOn : ""} onClick={() => { haptic(); setLength(k); writeCache("written-length", { ...(readCache("written-length") ?? {}), [course]: k }); }}>{MINUTES[k]} minutes</button>)}</div>
                     <Button variant="secondary" className={styles.big} onClick={newSpot}>Write an essay</Button>
@@ -348,7 +348,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               <><Button variant="secondary" className={styles.side} onClick={home}>Back</Button><Button className={`${styles.big} ${styles.cta}`} onClick={again}>Write it again</Button></>
             ) : !result ? (
               <>
-                <Button variant="secondary" className={styles.side} disabled={grading} onClick={() => { setSpot(null); setErr(null); }}>New</Button>
+                <Button variant="secondary" className={styles.side} disabled={grading} onClick={() => { setSpot(null); setErr(null); }}>New prompt</Button>
                 <Button variant="secondary" className={styles.side} disabled={grading} onClick={discard}>Discard</Button>
                 <Button className={`${styles.big} ${styles.cta}`} disabled={!answer.trim() || grading} onClick={submit}>{grading ? "Grading…" : ready && online ? "Grade now" : "Grade my answer"}</Button>
               </>
@@ -356,7 +356,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
               <>
                 <Button variant="secondary" className={styles.side} onClick={home}>Essays</Button>
                 <Button className={`${styles.big} ${styles.cta}`} onClick={again}>Write it again</Button>
-                <Button variant="secondary" className={styles.big} onClick={newSpot}>New fact pattern</Button>
+                <Button variant="secondary" className={styles.big} onClick={newSpot}>New prompt</Button>
               </>
             )}
           </div></div>

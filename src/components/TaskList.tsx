@@ -54,7 +54,7 @@ export function TaskList({ course, color, links = [] }: { course: TaskCourse; co
       <section className={styles.card}>
         <form className={styles.add} onSubmit={submit}>
           <span className={styles.addDot} aria-hidden="true" />
-          <input className={styles.addInput} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New task" aria-label="New task" enterKeyHint="done" maxLength={300} />
+          <input autoFocus={!mine.length} className={styles.addInput} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="New task" aria-label="New task" enterKeyHint="done" maxLength={300} />
           <DateChip value={due} onChange={setDue} />
           <button className={styles.addGo} type="submit" disabled={!title.trim()} aria-label="Add task"><ArrowUp size={18} strokeWidth={2.6} /></button>
         </form>
