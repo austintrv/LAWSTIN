@@ -27,7 +27,11 @@ export function haptic() {
       wrap.append(input, label);
       document.body.appendChild(wrap);
     }
+    const prior = document.activeElement;
     label.click();
+    if (prior instanceof HTMLElement && document.activeElement !== prior) {
+      prior.focus({ preventScroll: true });
+    }
   } catch {
     /* haptics are best-effort */
   }

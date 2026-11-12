@@ -20,8 +20,8 @@ export async function searchFlows() {
     const p1 = s1.page;
     await p1.getByRole('searchbox', { name: 'Search rules, materials, and topics' }).waitFor();
 
-    // Type a word from an authority (e.g. "Charter" or "VCLT" or "Rule")
-    await p1.getByRole('searchbox', { name: 'Search rules, materials, and topics' }).fill('Charter');
+    // Type a word from an authority (e.g. "authority" in mock data)
+    await p1.getByRole('searchbox', { name: 'Search rules, materials, and topics' }).fill('authority');
     await p1.waitForTimeout(300);
 
     // Rule results should appear
@@ -121,5 +121,6 @@ export async function searchFlows() {
     console.log('PASS: calendar and progress sections present at 390, 820, 1440');
   } finally {
     for (const s of sessions) await s.close().catch(() => {});
+    await closeAll();
   }
 }

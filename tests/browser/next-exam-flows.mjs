@@ -123,6 +123,7 @@ export async function nextExamFlows() {
     for(let i=0;i<3;i++) await answer(pass);
     await closeToRecap(pass);
     await dialog(pass.page).getByRole('button',{name:'Done',exact:true}).click();
+    await pass.page.waitForTimeout(200);
     await pass.page.reload(); await pass.settle();
     await pass.page.getByRole('button',{name:'Last pass',exact:true}).click();
     await pass.setOffline(false);
@@ -137,12 +138,12 @@ export async function nextExamFlows() {
     await pass.close();
     console.log('PASS: last pass ends, stays in one course, resumes after offline reload, and syncs six answers once');
 
-    const tool = await open({hash:'#/activity'});
+    const tool = await open({hash:'#/progress'});
     await tool.goto('#/tool/NotBuilt/il/argument');
     await dialog(tool.page).getByRole('heading',{name:'Tool unavailable',exact:true}).waitFor();
     await tool.page.keyboard.press('Escape');
-    await tool.page.waitForURL('**/#/activity');
-    assert.equal(await tool.page.getByRole('button',{name:'Activity',exact:true}).getAttribute('aria-current'),'page');
+    await tool.page.waitForURL('**/#/progress');
+    assert.equal(await tool.page.getByRole('button',{name:'Progress',exact:true}).getAttribute('aria-current'),'page');
     await noOverflow(tool); await tool.close();
     const deep = await open({hash:'#/tool/NotBuilt/il'});
     await close(deep.page); assert(deep.page.url().endsWith('#/study')); await noOverflow(deep); await deep.close();
