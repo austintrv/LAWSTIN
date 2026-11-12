@@ -22,7 +22,7 @@ export function BottomSheet({ title, eyebrow, onClose, children, className }: { 
         <div {...swipe.handle}>
           <div className={styles.grab} />
           <div className={styles.bsheetHead}>
-            <div>{eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}<h2>{title}</h2></div>
+            <span aria-hidden="true"/><div>{eyebrow && <span className={styles.eyebrow}>{eyebrow}</span>}<h2>{title}</h2></div>
             <button className={styles.x} onClick={close} aria-label="Close"><X size={15} strokeWidth={2.4} /></button>
           </div>
         </div>

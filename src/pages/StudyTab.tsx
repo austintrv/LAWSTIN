@@ -138,24 +138,24 @@ export function StudyView({ e, state, syllabus, moment, passNumbers, essaysWritt
           {!ready && !resuming && <Check size={18} />}{roundLabel}
         </Button>
         <div className={`${styles.list} ${styles.flat} ${styles.heroRows}`}>
-          <button className={styles.row} disabled={!review} onClick={() => onMode("due")} aria-label={`Review ${review} due items`}>
-            <span className={styles.dot} style={{ background: "var(--uh-red)" }}><RotateCcw size={12} color="#fff" strokeWidth={2.4} /></span>
+          {review > 0 && <button className={styles.row} disabled={!review} onClick={() => onMode("due")} aria-label={`Review ${review} due items`}>
+            <span className={styles.dot} style={{ background: "var(--uh-red)" }}><RotateCcw size={12} color="var(--on-brand)" strokeWidth={2.4} /></span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Ready to review</span></span>
             <span className={styles.rowEnd}><Num v={review} /></span>
             <ChevronRight size={18} className={styles.chev} />
-          </button>
-          <button className={styles.row} disabled={!fresh} onClick={() => onMode("new")} aria-label={`Study ${fresh} new items`}>
-            <span className={styles.dot} style={{ background: "var(--info)" }}><Sparkles size={12} color="#fff" strokeWidth={2.4} /></span>
+          </button>}
+          {fresh > 0 && <button className={styles.row} disabled={!fresh} onClick={() => onMode("new")} aria-label={`Study ${fresh} new items`}>
+            <span className={styles.dot} style={{ background: "var(--info)" }}><Sparkles size={12} color="var(--on-brand)" strokeWidth={2.4} /></span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Not seen yet</span></span>
             <span className={styles.rowEnd}><Num v={fresh} /></span>
             <ChevronRight size={18} className={styles.chev} />
-          </button>
-          <button className={styles.row} disabled={!missed.length} onClick={() => onLesson(missed)} aria-label={`Review ${missed.length} missed topics`}>
-            <span className={styles.dot} style={{ background: "var(--warning)" }}><GraduationCap size={12} color="#fff" strokeWidth={2.4} /></span>
+          </button>}
+          {missed.length > 0 && <button className={styles.row} disabled={!missed.length} onClick={() => onLesson(missed)} aria-label={`Review ${missed.length} missed topics`}>
+            <span className={styles.dot} style={{ background: "var(--warning)" }}><GraduationCap size={12} color="var(--on-brand)" strokeWidth={2.4} /></span>
             <span className={styles.rowMain}><span className={styles.rowTitle}>Missed topics</span></span>
             <span className={styles.rowEnd}><Num v={missed.length} /></span>
             <ChevronRight size={18} className={styles.chev} />
-          </button>
+          </button>}
         </div>
         {!ready && nextReview && <div className={styles.nextReview}>
           <span><CalendarDays size={16} />Next review · {new Date(`${nextReview}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
@@ -208,28 +208,28 @@ export function StudyView({ e, state, syllabus, moment, passNumbers, essaysWritt
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Practice exam</span></span>
                     <ChevronRight size={18} className={styles.chev} />
                   </button>
-                  <button className={styles.row} onClick={() => { haptic(); window.location.hash = "/courses/review"; }} disabled={!cards.list.length}>
-                    <span className={styles.dot} style={{ background: "#5e5ce6" }}><Layers3 size={12} color="#fff" strokeWidth={2.4} /></span>
+                  {cards.list.length > 0 && <button className={styles.row} onClick={() => { haptic(); window.location.hash = "/courses/review"; }} disabled={!cards.list.length}>
+                    <span className={styles.dot} style={{ background: "var(--course-clinic)" }}><Layers3 size={12} color="var(--on-brand)" strokeWidth={2.4} /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Flashcards</span></span>
                     <span className={styles.rowEnd}>{cards.list.length}</span>
                     <ChevronRight size={18} className={styles.chev} />
-                  </button>
+                  </button>}
                   <button className={styles.row} onClick={onWrite}>
-                    <span className={styles.dot} style={{ background: "var(--uh-red)" }}><PenLine size={12} color="#fff" strokeWidth={2.4} /></span>
+                    <span className={styles.dot} style={{ background: "var(--uh-red)" }}><PenLine size={12} color="var(--on-brand)" strokeWidth={2.4} /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Written practice</span></span>
                     <ChevronRight size={18} className={styles.chev} />
                   </button>
-                  <button className={styles.row} onClick={onMatch} disabled={!onMatch}>
-                    <span className={styles.dot} style={{ background: "var(--success)" }}><Shuffle size={12} color="#fff" strokeWidth={2.4} /></span>
+                  {!!onMatch && <button className={styles.row} onClick={onMatch} disabled={!onMatch}>
+                    <span className={styles.dot} style={{ background: "var(--success)" }}><Shuffle size={12} color="var(--on-brand)" strokeWidth={2.4} /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Match</span></span>
                     <ChevronRight size={18} className={styles.chev} />
-                  </button>
-                  <button className={styles.row} onClick={onStarred} disabled={!qs.starred.length}>
-                    <span className={styles.dot} style={{ background: "#e0a100" }}><Star size={12} color="#fff" fill="#fff" /></span>
+                  </button>}
+                  {qs.starred.length > 0 && <button className={styles.row} onClick={onStarred} disabled={!qs.starred.length}>
+                    <span className={styles.dot} style={{ background: "var(--warning)" }}><Star size={12} color="var(--on-brand)" fill="var(--on-brand)" /></span>
                     <span className={styles.rowMain}><span className={styles.rowTitle}>Starred</span></span>
                     <span className={styles.rowEnd}>{qs.starred.length}</span>
                     <ChevronRight size={18} className={styles.chev} />
-                  </button>
+                  </button>}
                 </div>
               </section>
           </div>
@@ -259,4 +259,3 @@ export function StudyView({ e, state, syllabus, moment, passNumbers, essaysWritt
       </div>
   );
 }
-

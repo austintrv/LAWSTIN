@@ -118,7 +118,7 @@ export async function safetyFlows() {
     await focusInside(c, 'Flashcards'); await cards.setOffline(true);
     await cardButton.click(); await tap(c, 'Review tomorrow');
     assert.equal((await queue(c)).length, 1); assert.equal(cards.events.length, 0);
-    await tap(c, 'Go over 1 missed');
+    await tap(c, 'Review 1 cards');
     await dialog(c).getByRole('button', { expanded: false }).filter({ hasText: 'Reveal answer' }).click(); await tap(c, 'Recalled it');
     assert.equal((await queue(c)).length, 1);
     const clientId = (await queue(c))[0].id;

@@ -38,11 +38,11 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         type={type}
         className={`
-        ${styles.button} 
-        ${styles[variant]} 
-        ${styles[size]} 
-        ${shape === "pill" ? styles.pill : ""} 
-        ${disabled ? styles.disabled : ""} 
+        ${styles.button}
+        ${styles[variant]}
+        ${styles[size]}
+        ${shape === "pill" ? styles.pill : ""}
+        ${disabled ? styles.disabled : ""}
         ${className || ""}
       `}
         disabled={disabled}

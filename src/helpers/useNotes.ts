@@ -473,3 +473,9 @@ export function useNotes(course?: CourseCode) {
     loading: query.isLoading,
   };
 }
+
+export function noteUnits(units: SyllabusUnit[] | undefined, questions: QuestionDTO[], course: CourseCode): SyllabusUnit[] {
+  if (units?.length) return units;
+  const seen = new Set<string>();
+  return questions.filter(q => q.course === course && !seen.has(q.topic) && !!seen.add(q.topic)).map(q => ({ topic: q.topic, dates: q.classDate ? [q.classDate] : [] }));
+}

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  noteUnits,
   mergeNotes,
   formatAllNotes,
   assembleTopicData,
@@ -305,4 +306,11 @@ test("topic page data assembly for a unit with also names", () => {
 
   // Status is shaky because q1 has missSneaky and wrong
   assert.equal(assembled.status, "shaky");
+});
+
+test("note units prefer the syllabus and keep the first occurrence in question order", () => {
+  const units = [{ topic: "Syllabus unit", dates: [] }];
+  const questions = [{course:"il",topic:"First",classDate:"2026-10-01"},{course:"asy",topic:"Other"},{course:"il",topic:"First",classDate:"2026-10-03"},{course:"il",topic:"Second"}] as QuestionDTO[];
+  assert.equal(noteUnits(units, questions, "il"), units);
+  assert.deepEqual(noteUnits(undefined, questions, "il"), [{topic:"First",dates:["2026-10-01"]},{topic:"Second",dates:[]}]);
 });

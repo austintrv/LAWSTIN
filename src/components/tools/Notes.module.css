@@ -24,7 +24,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 14px;
+  font-size:var(--type-13);
   font-weight: 600;
   color: var(--muted-foreground);
 }
@@ -59,7 +59,7 @@
   border-radius: var(--radius-full);
   background: var(--fill);
   color: var(--foreground);
-  font-size: 15px;
+  font-size:var(--type-15);
   font-weight: 600;
   cursor: pointer;
   transition: opacity 0.15s ease;
@@ -77,7 +77,7 @@
 
 .unitCard {
   background: var(--card);
-  border-radius: var(--radius-lg);
+  border-radius:var(--radius-lg);
   box-shadow: var(--shadow);
   overflow: hidden;
   display: flex;
@@ -157,7 +157,7 @@
 }
 
 .unitTitle {
-  font-size: 17px;
+  font-size:var(--type-17);
   font-weight: 600;
   color: var(--foreground);
   margin: 0;
@@ -165,13 +165,13 @@
 }
 
 .unitMeta {
-  font-size: 13px;
+  font-size:var(--type-13);
   color: var(--muted-foreground);
   font-weight: 400;
 }
 
 .unitEmptyTag {
-  font-size: 13px;
+  font-size:var(--type-13);
   font-weight: 600;
   color: var(--muted-foreground);
   background: var(--fill);
@@ -202,7 +202,7 @@
   border-radius: var(--radius);
   background: var(--fill);
   color: var(--foreground);
-  font-size: 14px;
+  font-size:var(--type-13);
   font-weight: 600;
   cursor: pointer;
 }
@@ -213,7 +213,7 @@
 .notesTextarea {
   width: 100%;
   font-family: var(--font-family-reading);
-  font-size: 18px;
+  font-size:var(--type-17);
   line-height: 1.6;
   color: var(--foreground);
   background: transparent;
@@ -226,7 +226,7 @@
 
 .renderedView {
   font-family: var(--font-family-reading);
-  font-size: 18px;
+  font-size:var(--type-17);
   line-height: 1.6;
   color: var(--foreground);
   display: flex;
@@ -236,7 +236,7 @@
 
 .renderedHeading {
   font-family: var(--font-family-base);
-  font-size: 19px;
+  font-size:var(--type-20);
   font-weight: 600;
   color: var(--foreground);
   margin-top: 10px;
@@ -288,7 +288,7 @@
 
   .unitListDesktop {
     background: var(--card);
-    border-radius: var(--radius-lg);
+    border-radius:var(--radius-lg);
     box-shadow: var(--shadow);
     overflow: hidden;
     display: flex;
@@ -317,7 +317,7 @@
 
   .editorCol {
     background: var(--card);
-    border-radius: var(--radius-lg);
+    border-radius:var(--radius-lg);
     box-shadow: var(--shadow);
     padding: 24px;
     display: flex;
@@ -335,7 +335,7 @@
   }
 
   .editorTitle {
-    font-size: 22px;
+    font-size:var(--type-22);
     font-weight: 700;
     color: var(--foreground);
     margin: 0;
@@ -355,7 +355,7 @@
     padding: 0 14px;
     border-radius: var(--radius-full);
     background: var(--fill);
-    font-size: 14px;
+    font-size:var(--type-13);
     font-weight: 600;
     color: var(--foreground);
     cursor: pointer;
@@ -363,7 +363,7 @@
 
   .referenceCol {
     background: var(--card);
-    border-radius: var(--radius-lg);
+    border-radius:var(--radius-lg);
     box-shadow: var(--shadow);
     padding: 20px;
     display: flex;
@@ -374,7 +374,7 @@
   }
 
   .refHeading {
-    font-size: 17px;
+    font-size:var(--type-17);
     font-weight: 600;
     color: var(--foreground);
     margin: 0;
@@ -395,20 +395,20 @@
 
   .refRule {
     font-family: var(--font-family-reading);
-    font-size: 15px;
+    font-size:var(--type-15);
     line-height: 1.5;
     margin: 0;
     color: var(--foreground);
   }
 
   .refSub {
-    font-size: 13px;
+    font-size:var(--type-13);
     font-weight: 600;
     color: var(--muted-foreground);
   }
 
   .refAuth {
-    font-size: 13px;
+    font-size:var(--type-13);
     color: var(--faint-foreground);
   }
 }
@@ -418,3 +418,5 @@
     transition: none !important;
   }
 }
+
+.tickBtn{width:44px;height:44px;min-width:44px;min-height:44px}.toolBtn,.referenceToggle{min-height:44px}.notesTextarea:focus-visible{outline:3px solid var(--accent);outline-offset:3px}

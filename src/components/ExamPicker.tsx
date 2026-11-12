@@ -26,7 +26,7 @@ export function ExamPicker({ e, onStart, onEssay, initialSize = 10 }: { e: Engin
         onStart(courses.size === 1 ? saved.questions[0].course : "all", Math.min(saved.questions.length, e.questions.length), !!saved.limit);
       }}>Resume exam</Button>}
       <div className={styles.seg} role="group" aria-label="Exam course">
-        {([["pr", "Pro Res"], ["il", "Intl Law"], ["asy", "Asylum"], ["all", "Mixed"]] as const).map(([k, l]) => (
+        {([["il", "Intl Law"], ["asy", "Asylum"], ["pr", "Pro Res"], ["all", "Mixed"]] as const).map(([k, l]) => (
           <button key={k} aria-pressed={f === k} className={f === k ? styles.segOn : ""} onClick={() => { haptic(); setF(k); }}>{l}</button>
         ))}
       </div>
@@ -55,4 +55,3 @@ export function ExamPicker({ e, onStart, onEssay, initialSize = 10 }: { e: Engin
     </div>
   );
 }
-

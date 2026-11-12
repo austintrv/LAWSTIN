@@ -72,7 +72,7 @@ type Props = {
   essays?: WrittenEntry[];
   notes?: NoteItem[];
   onTopic: (course: CourseCode, unit: string) => void;
-  onRule: (course: CourseCode, topic?: string) => void;
+  onRule: (course: CourseCode, topic?: string, match?: string) => void;
   onEssay: (entry: WrittenEntry) => void;
   initialQuery?: string;
 };
@@ -179,7 +179,7 @@ export function SearchTab({
     switch (item.kind) {
       case "Rules": {
         const q = item.raw as QuestionDTO;
-        onRule(q.course, q.topic);
+        onRule(q.course, q.topic, q.rule ?? undefined);
         break;
       }
       case "Flashcards":
@@ -260,7 +260,7 @@ export function SearchTab({
           type="search"
           role="searchbox"
           aria-label="Search rules, materials, and topics"
-          placeholder="Search rules, topics, cards, and tasks"
+          placeholder="Search"
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
@@ -419,9 +419,9 @@ export function SearchTab({
           <div className={styles.leftCol}>
             <div className={styles.resultsContainer}>
               {groupedResults.map((group) => (
-                <div key={group.kind} className={styles.kindGroup}>
+                <div key={group.kind === "Rule reviews" ? "Outlines" : group.kind} className={styles.kindGroup}>
                   <div className={styles.kindGroupHead}>
-                    <span className={styles.kindTitle}>{group.kind}</span>
+                    <span className={styles.kindTitle}>{group.kind === "Rule reviews" ? "Outlines" : group.kind}</span>
                     <span className={styles.kindCount}>{group.items.length}</span>
                   </div>
                   <div className={styles.resultList}>
@@ -475,7 +475,7 @@ export function SearchTab({
             <div className={styles.previewPane}>
               <div className={styles.previewHeader}>
                 <div className={styles.previewBadgeRow}>
-                  <span className={styles.previewBadge}>{highlightedItem.kind}</span>
+                  <span className={styles.previewBadge}>{highlightedItem.kind === "Rule reviews" ? "Outlines" : highlightedItem.kind}</span>
                   <span className={styles.previewCourse}>
                     <span
                       className={styles.courseDot}
@@ -502,9 +502,9 @@ export function SearchTab({
         /* Mobile single-column grouped layout */
         <div className={styles.resultsContainer}>
           {groupedResults.map((group) => (
-            <div key={group.kind} className={styles.kindGroup}>
+            <div key={group.kind === "Rule reviews" ? "Outlines" : group.kind} className={styles.kindGroup}>
               <div className={styles.kindGroupHead}>
-                <span className={styles.kindTitle}>{group.kind}</span>
+                <span className={styles.kindTitle}>{group.kind === "Rule reviews" ? "Outlines" : group.kind}</span>
                 <span className={styles.kindCount}>{group.items.length}</span>
               </div>
               <div className={styles.resultList}>

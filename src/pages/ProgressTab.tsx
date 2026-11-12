@@ -72,7 +72,7 @@ function MissedTopics({
             <GraduationCap size={22} />
           </span>
           <span className={styles.rowMain}>
-            <span className={styles.rowTitle}>Mixed lesson</span>
+            <span className={styles.rowTitle}>Missed topics</span>
             <span className={styles.rowSub}>
               {mix.length} topics · {count} questions
             </span>
@@ -255,7 +255,7 @@ export function ProgressView({
   for (const x of materials)
     byTopic.set(`${x.course}|${x.topic}`, (byTopic.get(`${x.course}|${x.topic}`) ?? 0) + 1);
 
-  const roleRow = (kind: string, n: number, color: string) => (
+  const roleRow = (kind: string, n: number, color: string) => n > 0 && (
     <button className={styles.row} onClick={() => setRole(kind)}>
       <span className={styles.rowMain}>
         <span className={styles.rowTitle}>{ANSWER_LABEL[kind]}</span>
@@ -276,7 +276,7 @@ export function ProgressView({
   const missedTopicsList = e.missedTopics();
 
   // Component sections
-  const tilesSection = (
+  const tilesSection = e.totalAnswers > 0 && (
     <div className={styles.tiles}>
       <div className={`${styles.card} ${styles.tile}`}>
         <b>{m.correct + m.wrong ? <Num v={pct(m.correct, m.correct + m.wrong)} suffix="%" /> : "—"}</b>
@@ -357,7 +357,7 @@ export function ProgressView({
       <MissedTopics topics={missedTopicsList} onLesson={onLesson} />
     ) : null;
 
-  const howMissSection = (
+  const howMissSection = misses + m.guessed > 0 && (
     <section className={`${styles.sec} ${styles.fullRow}`}>
       <div className={styles.secH}>
         <h2>How you miss</h2>
@@ -366,7 +366,7 @@ export function ProgressView({
         {roleRow("sneaky", m.sneaky, "var(--course-pr)")}
         {roleRow("average", m.average, "var(--course-il)")}
         {roleRow("bad", m.bad, "var(--error)")}
-        <button className={styles.row} onClick={() => setRole("guessed")}>
+        {m.guessed > 0 && <button className={styles.row} onClick={() => setRole("guessed")}>
           <span className={styles.rowMain}>
             <span className={styles.rowTitle}>Right, but guessed</span>
           </span>
@@ -374,7 +374,7 @@ export function ProgressView({
             <b>{m.guessed}</b>
           </span>
           <ChevronRight size={16} className={styles.chev} />
-        </button>
+        </button>}
       </div>
     </section>
   );
@@ -603,7 +603,7 @@ export function ProgressView({
             </div>
             {!ownAnswers.length && (
               <div className={`${toolStyles.card} ${toolStyles.empty}`}>
-                <h2>{history.isFetching ? "Loading answers…" : "No answers yet"}</h2>
+                <button className={toolStyles.row} onClick={() => go("#/study")}>Start studying<ChevronRight size={18}/></button>
               </div>
             )}
           </div>

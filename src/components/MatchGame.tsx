@@ -128,7 +128,7 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
     <div ref={modalRef} tabIndex={-1} className={`${styles.modal} ${closing ? styles.closing : ""}`} role="dialog" aria-modal="true" aria-label="Match">
       <div className={styles.top}>
         <div className={styles.topIn}>
-          {round ? <span className={styles.clock} role="timer">{clock(result ? result.seconds : seconds)}</span> : <span className={styles.spacer} />}
+          <span className={styles.spacer} />
           <span className={styles.topTitle}>Match</span>
           <button className={styles.x} onClick={close} aria-label="Close"><X size={17} strokeWidth={2.4} /></button>
         </div>
@@ -136,6 +136,7 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
 
       <div className={styles.scroll}>
         <div className={styles.body}>
+          {round && <span className={styles.clock} role="timer">{clock(result ? result.seconds : seconds)}</span>}
           {!round ? (
             <div className={styles.empty}><h2>No rules to match yet</h2></div>
           ) : (
@@ -151,7 +152,8 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
               )}
 
               {result ? (
-                <div className={styles.result}>
+                <div className={`${styles.result} finish`}>
+                  <h2>Session complete</h2>
                   <div className={`${styles.hero} ${auraHost}`}>
                     <Aura colors={result.isBest ? ["var(--success)", "var(--uh-red)", "var(--success)"] : ["var(--uh-red)", "var(--course-il)", "var(--uh-red-light)"]} />
                     <b>{clock(result.seconds)}</b>

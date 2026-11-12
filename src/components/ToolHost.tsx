@@ -24,7 +24,7 @@ function ToolFrame({ parts, onClose }: { parts: string[]; onClose: () => void })
   </div>;
 }
 
-export function ToolHost() {
+export function ToolHost({ preserveOverlay = false }: { preserveOverlay?: boolean }) {
   const [parts, setParts] = useState(route);
   const previous = useRef(window.location.hash.startsWith("#/tool/") ? "#/study" : window.location.hash || "#/study");
   const entered = useRef(false);
@@ -42,7 +42,8 @@ export function ToolHost() {
     entered.current = false;
     setParts(null);
     afterOverlayClose(() => {
-      if (back) history.back();
+      if (preserveOverlay) { history.replaceState(history.state, "", previous.current.startsWith("#/q/") ? "#/study" : previous.current); window.dispatchEvent(new HashChangeEvent("hashchange")); }
+      else if (back) history.back();
       else history.replaceState(null, "", previous.current);
     });
   };

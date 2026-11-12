@@ -358,7 +358,7 @@ for (const [day, kind, course] of [
   ["01", "eve", "il"], ["02", "morning", "il"], ["03", "normal", undefined], ["06", "eve", "asy"],
   ["07", "morning", "asy"], ["08", "eve", "pr"], ["09", "morning", "pr"], ["10", "done", undefined],
 ] as const) test(`exam moment on December ${day}`, () => {
-  assert.deepEqual(examMoment(`2026-12-${day}`), course ? { kind, course } : { kind });
+  assert.deepEqual(examMoment(`2026-12-${day}`, 9), course ? { kind, course } : { kind });
 });
 
 test("last pass orders misses, Shaky questions and cards, then due items; excludes other courses and ordinary new work", () => {
@@ -401,4 +401,16 @@ test("streak history counts the best run, fourteen days, and a broken run withou
   const result = streakHistory(days, "2026-11-10");
   assert.equal(result.best, 3); assert.equal(result.dots.length, 14);
   assert.equal(result.dots.at(-1)?.day, "2026-11-10");
+});
+
+test("the exam-day hero retires at 6pm local time", () => {
+  assert.deepEqual(examMoment("2026-12-02", 17), { kind: "morning", course: "il" });
+  assert.deepEqual(examMoment("2026-12-02", 18), { kind: "normal" });
+  assert.deepEqual(examMoment("2026-12-09", 18), { kind: "done" });
+});
+
+test("All drops the finished course at 6pm on exam day", () => {
+  assert.deepEqual(activeCourses("2026-12-02", "all", 17), ["il", "asy", "pr"]);
+  assert.deepEqual(activeCourses("2026-12-02", "all", 18), ["asy", "pr"]);
+  assert.deepEqual(activeCourses("2026-12-02", "il", 18), ["il"]);
 });

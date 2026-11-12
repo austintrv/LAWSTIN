@@ -111,14 +111,14 @@ try {
   await p.getByRole('button',{name:'Check answer',exact:true}).click();
   await p.getByText('Correct · Topic reviewed',{exact:true}).waitFor();
   await p.getByRole('button',{name:'Next',exact:true}).click();
-  await p.getByRole('heading',{name:'Topics reviewed',exact:true}).waitFor();
+  await p.getByRole('heading',{name:'Session complete',exact:true}).waitFor();
   await p.screenshot({path:`${artifacts}/lesson-complete-desktop.png`});
   await p.getByRole('button',{name:'Done',exact:true}).click();
-  await p.getByRole('button',{name:'Review 0 missed topics',exact:true}).waitFor();
+  await p.getByRole('button',{name:'Review 0 missed topics',exact:true}).waitFor({state:'hidden'});
   await p.waitForTimeout(1000);
   assert(lesson.rows.some(r=>r.key==='study:v1:reviews:il|Treaties'));
   await p.reload();
-  await p.getByRole('button',{name:'Review 0 missed topics',exact:true}).waitFor();
+  await p.getByRole('button',{name:'Review 0 missed topics',exact:true}).waitFor({state:'hidden'});
   lesson.miss('missed');
   await p.reload();
   await p.getByRole('button',{name:'Review 1 missed topics',exact:true}).waitFor();
@@ -169,8 +169,8 @@ try {
   await wrong.page.keyboard.press('b');await wrong.page.keyboard.press('Enter');
   await wrong.page.getByText('Answer: A',{exact:true}).waitFor();
   await wrong.page.getByRole('button',{name:'Next',exact:true}).click();
-  await wrong.page.getByRole('heading',{name:'Lesson complete',exact:true}).waitFor();
-  await wrong.page.getByText('0 reviewed · 1 to revisit',{exact:true}).waitFor();
+  await wrong.page.getByRole('heading',{name:'Session complete',exact:true}).waitFor();
+  await wrong.page.getByText('0/1',{exact:true}).waitFor();
   assert.equal(wrong.rows.some(r=>r.key.startsWith('study:v1:reviews:')),false);
   await wrong.page.getByRole('button',{name:'Done',exact:true}).click();
   await wrong.page.getByRole('button',{name:'Review 1 missed topics',exact:true}).waitFor();
@@ -319,3 +319,6 @@ await searchFlows();
 
 const { topicsNotesFlows } = await import('./topics-notes-flows.mjs');
 await topicsNotesFlows();
+
+const { consistencyFlows } = await import('./consistency-flows.mjs');
+await consistencyFlows();

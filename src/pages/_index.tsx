@@ -130,7 +130,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   };
   const [recap, setRecap] = useState<{ answered: number; right: number; changes: ReturnType<typeof recapChanges>; nextReview: string | null; session: NonNullable<typeof session>; snap?: QuizSnapshot } | null>(null);
   const [courseSheet, setCourseSheet] = useState<CourseCode | null>(null);
-  const [rulebook, setRulebook] = useState<{ course: CourseCode; topic?: string; warmup?: boolean; recall?: boolean } | null>(null);
+  const [rulebook, setRulebook] = useState<{ course: CourseCode; topic?: string; match?: string; warmup?: boolean; recall?: boolean } | null>(null);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { tasks } = useCourseTasks();
   const [streakOpen, setStreakOpen] = useState(false);
@@ -564,7 +564,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
                   essays={written.list}
                   notes={notes}
                   onTopic={(course, topic) => { haptic(); setTopicSheet({ course, topic }); }}
-                  onRule={(course, topic) => { haptic(); setRulebook({ course, topic, recall: false }); }}
+                  onRule={(course, topic, match) => { haptic(); setRulebook({ course, topic, match, recall: false }); }}
                   onEssay={(essay) => { haptic(); setWriting({ view: essay, course: essay.course }); }}
                 />
               )}
@@ -614,7 +614,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         <div className={styles.streakDots} aria-label="Last 14 days">{streakHistory(state?.days ?? [], day).dots.map((d) => <span key={d.day} title={d.day} aria-label={`${d.day}: ${d.studied ? "Studied" : "Rest"}`} data-studied={d.studied} />)}</div>
       </BottomSheet>}
       {rulebook && <CourseRulebook {...rulebook} state={state} e={e} onClose={() => setRulebook(null)} />}
-      <ToolHost />
+      <ToolHost preserveOverlay={!!session || !!lesson} />
       {recap && <SessionRecap {...recap} onClose={() => setRecap(null)} onContinue={() => {
         const saved = recap; setRecap(null);
         if (saved.snap) { setSession({ ...saved.session, resume: saved.snap, key: Date.now() }); }
@@ -631,11 +631,11 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
 
       {howOpen && (
         <BottomSheet onClose={() => setHowOpen(false)} title="How Lawstin works" className={styles.howSheet}>
-          <HowItWorks moment={moment} plan={plan.courses} planOn={planOn} goal={goal} />
+          <HowItWorks numbers={daily.numbers("all")} e={e} statuses={unitStatuses(e, syllabus).map(u => u.status)} onOpen={kind => { setHowOpen(false); if (kind === "streak") setStreakOpen(true); else if (kind === "missed") openLesson(e.missedTopics()); else if (kind === "progress") { window.location.hash = "#/progress"; } else start(mixed("all", kind === "due" ? "due" : "new")); }} moment={moment} plan={plan.courses} planOn={planOn} goal={goal} />
         </BottomSheet>
       )}
 
-      {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} onShortcuts={() => { closeSettings(); setShortcutsOpen(true); }} /></Suspense>}
+      {settingsOpen && <Suspense fallback={null}><SettingsPage email={email} onClose={closeSettings} onHow={() => { closeSettings(); setHowOpen(true); }} onShortcuts={() => { closeSettings(); setShortcutsOpen(true); }} /></Suspense>}
       {shortcutsOpen && <KeyboardShortcuts onClose={() => setShortcutsOpen(false)} />}
 
       {matching && state && <Suspense fallback={null}><MatchGame questions={state.questions} course={filter} onClose={() => setMatching(false)}
@@ -687,4 +687,3 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
     </div>
   );
 }
-

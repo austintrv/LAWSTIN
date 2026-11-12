@@ -16,7 +16,7 @@ type Mode = "read" | "recall";
 type Section = { topic: string; rules: { subtopic: string; rule: string; authority: string | null }[] };
 
 /** Every rule for a course by topic in class order. Read shows them all; Recall hides each behind a tap. */
-export function Rulebook({ course, state, topic, embedded = false, initialMode = "read", readOnly = false }: { course: CourseCode; state?: QuestionState; topic?: string; embedded?: boolean; initialMode?: Mode; readOnly?: boolean }) {
+export function Rulebook({ course, state, topic, match, embedded = false, initialMode = "read", readOnly = false }: { course: CourseCode; state?: QuestionState; topic?: string; match?: string; embedded?: boolean; initialMode?: Mode; readOnly?: boolean }) {
   const [search, setSearch] = useState(topic ?? "");
   const input = useRef<HTMLInputElement>(null);
   useEffect(() => { input.current?.focus({ preventScroll: true }); }, []);
@@ -33,6 +33,16 @@ export function Rulebook({ course, state, topic, embedded = false, initialMode =
     return [...first.keys()].sort((a, b) => first.get(a)! - first.get(b)! || a.localeCompare(b))
       .map(topic => ({ topic, rules: e.topicRules(course, topic) })).filter(s => s.rules.length);
   }, [course, state]);
+
+  useEffect(() => {
+    if (!match) return;
+    const el = [...(body.current?.querySelectorAll<HTMLElement>("[data-rule]") ?? [])].find(el => el.dataset.rule === match);
+    if (!el) return;
+    el.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    el.classList.add(styles.matched);
+    const timer = setTimeout(() => el.classList.remove(styles.matched), 2200);
+    return () => clearTimeout(timer);
+  }, [match, state]);
 
   const pick = (m: Mode) => { if (m === mode) return; haptic(); setMode(m); setShown(new Set()); };
   const toggle = (key: string) => { haptic(); setShown(prev => { const next = new Set(prev); if (!next.delete(key)) next.add(key); return next; }); };
@@ -55,7 +65,7 @@ export function Rulebook({ course, state, topic, embedded = false, initialMode =
         <div className={styles.sectionHead}><h3>{s.topic}</h3><span>{s.rules.length}</span></div>
         <div className={styles.card}>{s.rules.map(r => {
           const key = `${s.topic}|${r.subtopic}|${r.rule}`;
-          if (mode === "read") return <div key={key} className={styles.rule}><span className={styles.sub}>{r.subtopic}</span><p>{r.rule}</p>{r.authority && <small>{r.authority}</small>}</div>;
+          if (mode === "read") return <div key={key} data-rule={r.rule} className={styles.rule}><span className={styles.sub}>{r.subtopic}</span><p>{r.rule}</p>{r.authority && <small>{r.authority}</small>}</div>;
           const open = shown.has(key);
           return <button key={key} className={styles.rule} aria-expanded={open} onClick={() => toggle(key)}>
             <span className={styles.subRow}><span className={styles.sub}>{r.subtopic}</span><ChevronDown size={20} className={styles.chevron} /></span>

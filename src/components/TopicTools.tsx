@@ -18,7 +18,7 @@ export function TopicTools({ course, topic, onGo, topicCards }: { course: Course
     const Icon = KIND_ICON[kind];
     return (
       <button key={key} className={styles.row} onClick={() => onGo(hash)}>
-        <span className={styles.dot} style={{ background: COURSES[course].color }}><Icon size={12} color="#fff" strokeWidth={2.4} /></span>
+        <span className={styles.dot} style={{ background: COURSES[course].color }}><Icon size={12} color="var(--on-brand)" strokeWidth={2.4} /></span>
         <span className={styles.rowMain}><span className={styles.rowTitle}>{title}</span><span className={styles.rowSub}>{sub}</span></span>
         <ChevronRight size={18} className={styles.chev} />
       </button>
@@ -31,4 +31,3 @@ export function TopicTools({ course, topic, onGo, topicCards }: { course: Course
     </div>
   );
 }
-

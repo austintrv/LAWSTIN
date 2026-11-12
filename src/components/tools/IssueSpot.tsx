@@ -77,7 +77,7 @@ function Exercise({ material: h, entry, onClose, onNext, hasNext, onWrite, onSav
       <div className={shared.scroll}><div className={`${shared.body} ${styles.body}`}>
         {h ? <>
           <div className={styles.meta}><span style={{ color: COURSES[h.course].color }}>{COURSES[h.course].short}</span><span role="timer">{Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}</span><Button size="lg" variant="secondary" onClick={() => setRules(true)} aria-expanded={rules}><BookOpen size={18} />Rules</Button></div>
-          <h1 className={styles.title}>{result ? `${result.caught} of ${result.total} issues` : h.title}</h1>
+          {result ? <div className="finish"><h2>Session complete</h2><b className="finish-number">{result.caught}/{result.total}</b><div className="finish-chips">{result.missed.map(issue => <span key={issue}>{issue}</span>)}</div></div> : <h1 className={styles.title}>{h.title}</h1>}
           {!revealed ? <div className={styles.columns}>
             <div className={styles.facts}><p>{h.facts}</p><h2>{h.prompt}</h2></div>
             <div className={styles.work}><textarea aria-label="Your issues" placeholder="Your issues" value={lines} onChange={e => { setLines(e.target.value); keep({ lines: e.target.value, seconds, revealed, marks }); }} /><Button size="lg" className={shared.cta} onClick={() => { haptic(); setRevealed(true); }}>Show the issues</Button></div>

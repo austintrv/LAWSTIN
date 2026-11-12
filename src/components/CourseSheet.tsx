@@ -23,7 +23,7 @@ export function CourseSheet({ course, e, syllabus, numbers, onClose, onTopic, on
   onStudy: (mode: "due" | "new") => void; onEssay: (full: boolean) => void; onExam: () => void; onTool: (name: string) => void;
 }) {
   const exam = EXAMS[course], days = dateKey.diff(e.today, FINALS[course]), units = e.coverage(course, syllabus[course]);
-  const row = (label: string, value: string, onClick: () => void, disabled = false) => <button key={label} className={styles.row} disabled={disabled} onClick={onClick}><span className={styles.rowMain}><span className={styles.rowTitle}>{label}</span></span><span className={styles.rowEnd}>{value}</span><ChevronRight size={18} className={styles.chev} /></button>;
+  const row = (label: string, value: string, onClick: () => void, disabled = false) => disabled ? null : <button key={label} className={styles.row} disabled={disabled} onClick={onClick}><span className={styles.rowMain}><span className={styles.rowTitle}>{label}</span></span><span className={styles.rowEnd}>{value}</span><ChevronRight size={18} className={styles.chev} /></button>;
   return <BottomSheet title={COURSES[course].name} onClose={onClose}>
     <div className={styles.topicChips}><span>{new Date(`${FINALS[course]}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span><span>{days < 0 ? "Finished" : days === 0 ? "Today" : `${days} ${days === 1 ? "day" : "days"} left`}</span>{exam.labels.map((l) => <span key={l}>{l}</span>)}</div>
     <section className={styles.sec}><div className={styles.secH}><h2>Today</h2></div><div className={`${styles.card} ${styles.list}`}>
@@ -43,12 +43,12 @@ export function CourseSheet({ course, e, syllabus, numbers, onClose, onTopic, on
   </BottomSheet>;
 }
 
-export function CourseRulebook({ course, topic, state, e, warmup, recall, onClose }: { course: CourseCode; topic?: string; state?: QuestionState; e: Engine; warmup?: boolean; recall?: boolean; onClose: () => void }) {
+export function CourseRulebook({ course, topic, match, state, e, warmup, recall, onClose }: { course: CourseCode; topic?: string; match?: string; state?: QuestionState; e: Engine; warmup?: boolean; recall?: boolean; onClose: () => void }) {
   const ref = useModalFocus<HTMLDivElement>();
   useBackClose(onClose);
   const filtered = warmup && state ? { ...state, questions: weakestRules(e, course) } : state;
   return <div ref={ref} tabIndex={-1} className={layout.modal} role="dialog" aria-modal="true" aria-label={warmup ? "Warm up" : "Rulebook"}>
     <div className={layout.top}><div className={layout.topIn}><span /><span className={layout.examTitle}>{warmup ? "Warm up · 10 min" : "Rulebook"}</span><button className={layout.x} onClick={onClose} aria-label="Close"><X size={16} strokeWidth={2.4} /></button></div></div>
-    <Rulebook key={`${course}:${recall}:${topic ?? ""}`} course={course} topic={topic} state={filtered} initialMode={recall ? "recall" : "read"} readOnly={warmup} />
+    <Rulebook key={`${course}:${recall}:${topic ?? ""}`} course={course} topic={topic} match={match} state={filtered} initialMode={recall ? "recall" : "read"} readOnly={warmup} />
   </div>;
 }

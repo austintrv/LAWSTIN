@@ -168,13 +168,13 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
   return <div ref={root} className={styles.courses}>
     <div key={viewKey} className={styles.view} data-dir={dir}>
     {!course ? <>
-      <div className={styles.sectionHead}><h2>Your courses</h2><button className={`${styles.primary} ${styles.headButton}`} disabled={!queue.length} onClick={() => startCards()}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button></div>
+      <div className={styles.sectionHead}><h2>Your courses</h2></div>
       <div className={styles.courseGrid}>
         {SCHOOL_ORDER.map((key, index) => {
           const c = SCHOOL_COURSES[key], Icon = ICONS[key];
           const list = store.materials.filter(m => m.course === key);
           const due = cardQueue(list.filter((m): m is Flashcard => m.kind === "flashcard"), store.record, state).length;
-          return <button key={key} className={styles.courseCard} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
+          return <button key={key} className={`${styles.courseCard} course-tint`} style={{ "--course-color": c.color, "--order": index } as React.CSSProperties} onClick={() => go(key)}>
             <span className={styles.courseIcon}><Icon size={24} strokeWidth={1.7} /></span>
             <span className={styles.courseText}><h3>{c.name}</h3>{isStudyCourse(key) ? (store.loading ? <span className={styles.skel} /> : store.unavailable ? <p>Unavailable offline</p> : <p>{`${list.length} materials${due ? ` · ${due} cards ready` : ""}`}</p>) : <p>{workspaceLine(tasks.filter(t => t.course === key))}</p>}</span>
             <ChevronRight size={22} className={styles.courseArrow} />
@@ -188,7 +188,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
             const Icon = TOOLS[kind], count = store.materials.filter(m => m.kind === kind).length;
             // Flashcards start a review; the other tools list their materials below.
             const pick = () => { haptic(); if (kind === "flashcard") startCards(queue.length ? queue : cardQueue(cards, store.record, state, dateKey.today(), true)); else setHomeKind(k => k === kind ? null : kind); };
-            return <button key={kind} disabled={!count} aria-pressed={kind === "flashcard" ? undefined : homeKind === kind} onClick={pick}><Icon size={25} strokeWidth={1.6} /><h3>{MATERIAL_LABELS[kind]}</h3><span>{kind === "flashcard" && queue.length ? `${queue.length} ready` : count}</span></button>;
+            return count > 0 && <button key={kind} aria-pressed={kind === "flashcard" ? undefined : homeKind === kind} onClick={pick}><Icon size={25} strokeWidth={1.6} /><h3>{MATERIAL_LABELS[kind]}</h3><span>{kind === "flashcard" && queue.length ? `Review ${Math.min(queue.length, 30)} cards` : count}</span></button>;
           })}</div>
           {homeKind && <MaterialGrid list={store.materials.filter(m => m.kind === homeKind)} record={store.record} onOpen={open} showCourse />}
         </>}
@@ -323,12 +323,13 @@ function FlashcardSession({ cards, again, store, onClose, onAgain, onBack }: { c
     {card ? <div className={styles.cardSession}>
       <div className={styles.sessionMeta}><span style={{ color: SCHOOL_COURSES[card.course].color }}>{SCHOOL_COURSES[card.course].name}</span><span aria-live="polite">{index + 1} of {cards.length}</span></div>
       <progress max={cards.length} value={index} aria-label="Flashcard session progress" />
+      {!flipped && cards.length > index + 1 && <aside className={styles.sessionContext}><h2>Up next</h2>{cards.slice(index + 1, index + 4).map(c => <div key={c.id} className={styles.contextCard}>{c.topic}</div>)}</aside>}
       <button className={`${styles.recallCard} ${flipped ? styles.recalled : ""}`} onClick={() => { haptic(); setFlipped(v => !v); }} aria-expanded={flipped}>
         <span className={styles.overline}>{flipped ? "Answer" : card.topic}</span><h2>{flipped ? card.back : card.front}</h2>{flipped ? <p>{card.reason}</p> : <span className={styles.revealPrompt}>Reveal answer<ArrowRight size={20} /></span>}
       </button>
       {flipped && <><p className={styles.authority}>{card.authority}</p><div className={styles.gradeActions}><button className={styles.secondary} onClick={() => grade(false)}><RotateCcw size={20} />Review tomorrow</button><button className={styles.primary} onClick={() => grade(true)}><Check size={20} />Recalled it</button></div><SourceList material={card} /></>}
-    </div> : <div className={styles.sessionDone}><span className={styles.doneCircle}><Check size={40} /></span><h2>{again ? "Round complete" : "Session complete"}</h2><p>{known} of {cards.length} recalled</p>
-      <div className={styles.doneActions}>{missed.length > 0 && <button className={styles.primary} onClick={() => { haptic(); onAgain(missed); }}><RotateCcw size={20} />Go over {missed.length} missed</button>}<button className={missed.length ? styles.secondary : styles.primary} onClick={onClose}>Done</button></div></div>}
+    </div> : <div className={styles.sessionDone}><span className={styles.doneCircle}><Check size={40} /></span><h2>{again ? "Round complete" : "Session complete"}</h2><b className="finish-number">{known}/{cards.length}</b><span className="finish-chips">Recalled</span>
+      <div className={styles.doneActions}><button className={styles.primary} onClick={() => { haptic(); onAgain(missed.length ? missed : cards); }}><RotateCcw size={20} />Review {missed.length || cards.length} cards</button><button className={styles.secondary} onClick={onClose}>Done</button></div></div>}
   </StudyDialog>;
 }
 

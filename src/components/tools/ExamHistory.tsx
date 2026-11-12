@@ -28,7 +28,7 @@ export default function ExamHistory({ course, arg, onClose }: ToolProps) {
         <div className={styles.card}>{missed.map(q => <QuestionReview key={q.id} q={q} pick={entry.picks?.[q.id]} />)}</div>
       </div>
     </div> : <div className={styles.columns}>
-      <div className={styles.stack}>{list.length > 0 ? <><h2 className={styles.heading}>Score trend</h2><ScoreTrend list={list} onOpen={e => setSelected(e.at)} /></> : <div className={`${styles.card} ${styles.empty}`}><h2>{exams.loading ? "Loading exams…" : "No exams yet"}</h2></div>}
+      <div className={styles.stack}>{list.length > 0 ? <><h2 className={styles.heading}>Score trend</h2><ScoreTrend list={list} onOpen={e => setSelected(e.at)} /></> : <div className={`${styles.card} ${styles.empty}`}><Button className={quiz.cta} onClick={() => { onClose(); window.location.hash = "#/study"; }}>Practice exam</Button></div>}
         {exams.error && <Button variant="secondary" onClick={() => void exams.retry()}>Try again</Button>}
       </div>
       {list.length > 0 && <div className={styles.card}>{list.map(e => <button key={e.at} className={styles.row} onClick={() => setSelected(e.at)}><ScoreRing score={e.score} total={e.total} /><span className={styles.main}><span className={styles.title}>{label(e)} · {examDate(e.at)}</span><span className={styles.muted}>{examTime(Math.round(e.seconds / e.total))} per question</span></span><ChevronRight size={18} /></button>)}</div>}

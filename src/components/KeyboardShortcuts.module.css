@@ -12,7 +12,7 @@
 }
 
 .sectionTitle {
-  font-size: 13px;
+  font-size:var(--type-13);
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -22,12 +22,12 @@
 
 .card {
   background: var(--card);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border-radius:var(--radius-lg);
+  border:0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
+;box-shadow:var(--shadow)}
 
 .row {
   display: flex;
@@ -44,7 +44,7 @@
 }
 
 .desc {
-  font-size: 15px;
+  font-size:var(--type-15);
   color: var(--foreground);
   font-weight: 400;
 }
@@ -58,7 +58,7 @@
 
 .dash {
   color: var(--muted-foreground);
-  font-size: 13px;
+  font-size:var(--type-13);
 }
 
 .kbd {
@@ -72,8 +72,8 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   font-family: var(--font-family-monospace);
-  font-size: 12px;
+  font-size:var(--type-12);
   font-weight: 600;
   color: var(--foreground);
-  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 1px 1px var(--shadow-button);
 }

@@ -7,7 +7,7 @@
     flex-shrink: 0;
     color: currentColor;
   }
-  
+
   .spinnerInner {
     position: absolute;
     width: 100%;
@@ -17,34 +17,34 @@
     border-top-color: var(--spinner-color, var(--primary));
     animation: spin var(--animation-duration-slow) linear infinite;
   }
-  
+
   .sm {
     width: 1rem;
     height: 1rem;
   }
-  
+
   .sm .spinnerInner {
     border-width: 2px;
   }
-  
+
   .md {
     width: 1.5rem;
     height: 1.5rem;
   }
-  
+
   .md .spinnerInner {
     border-width: 2.5px;
   }
-  
+
   .lg {
     width: 2.5rem;
     height: 2.5rem;
   }
-  
+
   .lg .spinnerInner {
     border-width: 3px;
   }
-  
+
   @keyframes spin {
     0% {
       transform: rotate(0deg);

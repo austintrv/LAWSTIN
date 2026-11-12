@@ -4,7 +4,7 @@
      soft shadow. Shared by Input, Textarea and the Select trigger. */
   .input {
     font-family: var(--font-family-base);
-    font-size: 1rem;
+    font-size:var(--type-17);
     line-height: 1.5;
     color: var(--foreground);
     background-color: color-mix(in srgb, var(--foreground) 5%, var(--card));
@@ -37,8 +37,8 @@
     background-color: var(--card);
     border-color: color-mix(in srgb, var(--primary) 55%, transparent);
     box-shadow:
-      0 1px 2px rgb(0 0 0 / 0.06),
-      0 6px 16px -6px rgb(0 0 0 / 0.14);
+      0 1px 2px var(--shadow-subtle),
+      0 6px 16px -6px var(--shadow-soft);
   }
 
   .input[aria-invalid="true"] {
@@ -62,7 +62,7 @@
   :global(.dark) .input:focus,
   :global(.dark) .input[data-state="open"] {
     box-shadow:
-      0 1px 2px rgb(0 0 0 / 0.3),
-      0 8px 20px -6px rgb(0 0 0 / 0.5);
+      0 1px 2px var(--shadow-heavy),
+      0 8px 20px -6px var(--shadow-deep);
   }
 }
