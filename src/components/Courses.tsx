@@ -31,10 +31,11 @@ type Store = ReturnType<typeof useStudyMaterials>;
 /** `store` is the app's one study-progress store. `onWrite` opens Written practice, on a hypothetical when one is given. */
 type Props = { store: Store; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: (hypo?: Hypothetical) => void; lesson?: LessonReturn };
 type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string; rules?: boolean; topic?: string };
+const safeDecode = (v: string) => { try { return decodeURIComponent(v); } catch { return v; } };
 const readRoute = (): Route => {
   const [, section, course, kind, item] = window.location.hash.split("/");
   if (section !== "courses" || !SCHOOL_ORDER.includes(course as SchoolCourse)) return {};
-  if (kind === "rules") return { course: course as SchoolCourse, rules: true, topic: item ? decodeURIComponent(item) : undefined };
+  if (kind === "rules") return { course: course as SchoolCourse, rules: true, topic: item ? safeDecode(item) : undefined };
   return { course: course as SchoolCourse, kind: KINDS.includes(kind as MaterialKind) ? kind as MaterialKind : undefined, item };
 };
 const go = (course?: SchoolCourse, kind?: MaterialKind | "rules", item?: string) => {
@@ -140,7 +141,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
     if (section !== "courses" || review !== "review" || store.loading) return;
     history.replaceState(null, "", "#/courses");
     if (!c) { startCards(); return; }
-    const topicCards = store.materials.filter((m): m is Flashcard => m.kind === "flashcard" && m.course === c && m.topic === decodeURIComponent(t ?? ""));
+    const topicCards = store.materials.filter((m): m is Flashcard => m.kind === "flashcard" && m.course === c && m.topic === safeDecode(t ?? ""));
     const ready = cardQueue(topicCards, store.record, state);
     startCards(ready.length ? ready : cardQueue(topicCards, store.record, state, dateKey.today(), true));
   }, [store.loading, route]);

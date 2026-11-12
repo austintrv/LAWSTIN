@@ -515,3 +515,6 @@
     align-self: flex-start;
   }
 }
+
+/* One clear button: hide the browser's own. */
+[data-pane="search"] input[type="search"]::-webkit-search-cancel-button { display: none; }

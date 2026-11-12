@@ -85,7 +85,9 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
   const nextUnit = currentUnitIndex >= 0 && currentUnitIndex < units.length - 1 ? units[currentUnitIndex + 1] : null;
 
   const goToUnit = (u: SyllabusUnit) => {
-    window.location.hash = `#/tool/Topic/${course}/${encodeURIComponent(u.topic)}`;
+    // Stepping between units replaces the entry, so Close returns to where he came from.
+    history.replaceState(history.state, "", `#/tool/Topic/${course}/${encodeURIComponent(u.topic)}`);
+    window.dispatchEvent(new HashChangeEvent("hashchange"));
   };
 
   // Assembled data for this unit

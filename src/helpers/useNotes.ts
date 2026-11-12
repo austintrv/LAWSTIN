@@ -400,6 +400,13 @@ export function useNotes(course?: CourseCode) {
     }
   }, [query.data]);
 
+  // Other mounted readers of the same course (search, the topic page) follow each edit.
+  useEffect(() => {
+    const sync = (ev: Event) => { if ((ev as CustomEvent).detail === course) setLocalNotes((prev) => ({ ...prev, ...getCachedNotes() })); };
+    window.addEventListener("lawstin-notes", sync);
+    return () => window.removeEventListener("lawstin-notes", sync);
+  }, [course, getCachedNotes]);
+
   const flushTimer = useRef<ReturnType<typeof setTimeout> | undefined>();
 
   const getNote = useCallback(
@@ -425,6 +432,7 @@ export function useNotes(course?: CourseCode) {
       setLocalNotes(nextNotes);
       writeCache(`notes:${course}`, nextNotes);
       queueSetting(key, JSON.stringify(updated));
+      window.dispatchEvent(new CustomEvent("lawstin-notes", { detail: course }));
 
       // 2. Debounced background flush
       clearTimeout(flushTimer.current);

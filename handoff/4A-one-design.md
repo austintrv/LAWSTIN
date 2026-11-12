@@ -50,3 +50,15 @@ Write a small script (keep it in `tests/browser/` as `style-audit.mjs`) that wal
 
 ## Done
 List each numbered item as done / changed / not done, with the audit summary.
+
+## 9. Carried over from the stage 2 and 3 reviews (do these too)
+- Topic page header at 390px is left-aligned with Close beside the title; bring it to the shared header (title centered, Close right, previous/next where the brief put them).
+- Search results: the title is squeezed to “Ex parte c…” by the authority beside it. Give the title the row and put the authority on the snippet line. Search placeholder becomes “Search”.
+- A rule result opens the Rulebook filtered to its topic; make it scroll to and briefly mark the matched rule.
+- Remove these caption-style strings: “Tap to write notes”, “No reference material for this unit.”, “Write your notes here…”, “Write your notes for this topic…” (an empty editor needs no sentence), and change “Verified rules & framework” to “Rules and framework”.
+- Tap targets under 44px in the new screens: Notes tick (28px) and toolbar buttons, Notes Reference toggle, Topic authority chips and Bullet/Heading buttons, Search chips, suggestion chips and clear button.
+- `Notes.tsx` and `Topic.tsx` carry two near-identical note editors and a duplicated units-fallback block; make one shared editor component. Remove their unused imports. `Topic.tsx` builds its own second study-progress store from localStorage (around lines 34–43); pass the library in or use the read-only `useStudyLibrary` instead.
+- `_index.module.css` still has `data-pane="activity"` selectors; remove them.
+- “Rules you miss”, “Close calls” and “Exam history” use only half the window at 1440px; make them real two-column desktop layouts.
+- On the evening after a final the hero still reads “<Course> today” until midnight; after 6pm local on exam day show the normal Study hero for the remaining courses.
+- Add links to the Topic page from the topic names in the quiz review and in Missed topics.

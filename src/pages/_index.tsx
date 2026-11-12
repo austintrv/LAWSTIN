@@ -255,17 +255,22 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       return el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
     };
 
+    const focusSearch = () => requestAnimationFrame(() => document.querySelector<HTMLInputElement>('[data-pane="search"] input')?.focus({ preventScroll: true }));
     const handleKey = (e: KeyboardEvent) => {
+      // Shortcuts belong to the tabs: an open quiz, exam, tool or sheet keeps its own keys.
+      if (document.querySelector('[role="dialog"]')) return;
       if ((e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
         if (e.key === "1") { e.preventDefault(); navigate("study"); return; }
         if (e.key === "2") { e.preventDefault(); navigate("courses"); return; }
-        if (e.key === "3") { e.preventDefault(); navigate("search"); return; }
+        if (e.key === "3") { e.preventDefault(); navigate("search"); focusSearch(); return; }
         if (e.key === "4") { e.preventDefault(); navigate("progress"); return; }
-        if (e.key.toLowerCase() === "k") { e.preventDefault(); navigate("search"); return; }
+        if (e.key.toLowerCase() === "k") { e.preventDefault(); navigate("search"); focusSearch(); return; }
       }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === "/" && !isInputField(e.target)) {
         e.preventDefault();
         navigate("search");
+        focusSearch();
         return;
       }
       if (e.key === "?" && !isInputField(e.target)) {
