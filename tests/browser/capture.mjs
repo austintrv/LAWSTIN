@@ -276,9 +276,9 @@ const SCENES = {
     const solve = async n => {
       const left = board().locator('> div').nth(0).locator('button'), right = board().locator('> div').nth(1).locator('button');
       for (let i = 0; i < n; i++) {
-        const label = (await left.nth(i).innerText()).trim(), q = qs(s).find(q => q.authority === label);
+        const lines = (await left.nth(0).innerText()).trim().split('\n'), label = lines[lines.length - 1].trim(), q = qs(s).find(q => q.authority === label);
         if (!q) throw new Error('No pair for ' + label);
-        await left.nth(i).click();
+        await left.nth(0).click();
         await right.filter({ hasText: q.rule.slice(0, 40) }).first().click();
         if (i === 0 && n > 1) { /* first pair matched */ }
         await P.waitForTimeout(150);

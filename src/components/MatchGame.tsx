@@ -178,9 +178,10 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
                       <div className={styles.row}><span>{result.isBest ? "New best" : "Best"}</span><span className={result.isBest ? styles.ok : ""}>{clock(result.best)}</span></div>
                     )}
                   </div>
-                  <div className={styles.card}>
+                  <div className={`${styles.card} ${styles.pairList}`}>
                     {[...round.pairs].sort((a, b) => Number(missed.has(b.id)) - Number(missed.has(a.id))).map((p) => (
                       <button key={p.id} className={styles.review} onClick={() => openTopic(p)}>
+                        {missed.has(p.id) ? <X className={`${styles.mark} ${styles.miss}`} size={15} strokeWidth={3} role="img" aria-label="Missed" /> : <Check className={`${styles.mark} ${styles.hit}`} size={15} strokeWidth={3} role="img" aria-label="Matched" />}
                         <Named p={p} full />
                         <ChevronRight className={styles.go} size={16} />
                       </button>
