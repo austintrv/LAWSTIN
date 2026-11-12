@@ -16,7 +16,10 @@ export async function longevityFlows(){
  await p.screenshot({path:`artifacts/longevity/workspace-${width}-${dark?'dark':'light'}.png`});
  const handle=p.getByRole('button',{name:/^Reorder /}).first();await handle.focus();await p.keyboard.press('ArrowDown');await p.waitForTimeout(200);assert.ok(s.rows.some(r=>r.key==='workspace:task-order:clinic'));count++;
  await s.goto('#/tool/Semester');
- await p.getByRole('textbox',{name:'Semester name',exact:true}).waitFor();
+ const name=p.getByRole('textbox',{name:'Semester name',exact:true});await name.waitFor();
+ await name.fill('Spring ');await name.pressSequentially('2027');assert.equal(await name.inputValue(),'Spring 2027');count++;
+ await name.press('Tab');await p.waitForTimeout(150);assert.equal(JSON.parse(s.rows.find(r=>r.key==='semester:v1').value).name,'Spring 2027');count++;
+ await name.fill('Fall 2026');await name.press('Tab');
  await p.getByLabel('Pro Res exam date',{exact:true}).fill('2027-03-20');
  await p.screenshot({path:`artifacts/longevity/semester-${width}-${dark?'dark':'light'}.png`});
  await p.keyboard.press('Escape');await p.getByRole('dialog').waitFor({state:'hidden'});await p.waitForTimeout(600);

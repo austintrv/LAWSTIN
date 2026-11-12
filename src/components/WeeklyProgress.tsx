@@ -18,6 +18,6 @@ export function WeeklyProgress({e,syllabus,state,missed,ready}:{e:Engine;syllabu
   const best=streakHistory((state?.days??[]).filter(d=>d.date>=week),e.today).best;
   return <section className={styles.sec}><div className={styles.secH}><h2>This week</h2></div><div className={`${styles.card} ${styles.howCard}`}>
     <div className={styles.topicChips}>{diff.moved.map(u=><button key={`${u.course}|${u.topic}`} onClick={()=>{window.location.hash=`#/tool/Topic/${u.course}/${encodeURIComponent(u.topic)}`;}}>{u.topic} · {STATUS_LABEL[u.from]} → {STATUS_LABEL[u.status]}</button>)}</div>
-    <div className={styles.topicChips}><span>{diff.cleaned.length} rules cleaned</span><span>{diff.essays} essays</span>{diff.average!==null && <span>{diff.average.toFixed(1)}/10 average</span>}<span>{best} day best streak</span></div>
+    <div className={styles.topicChips}><span>{diff.cleaned.length} {diff.cleaned.length===1?"rule":"rules"} cleaned</span><span>{diff.essays} {diff.essays===1?"essay":"essays"}</span>{diff.average!==null && <span>{diff.average.toFixed(1)}/10 average</span>}<span>Best streak · {best} {best===1?"day":"days"}</span></div>
   </div></section>;
 }

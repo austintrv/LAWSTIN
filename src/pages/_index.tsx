@@ -640,7 +640,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         if (saved.snap) { setSession({ ...saved.session, resume: saved.snap, key: Date.now() }); }
         else start(mixed(saved.session.filter ?? filter), "practice", `round:${saved.session.filter ?? filter}`);
       }} />}
-      {celebrate && createPortal(<div className={styles.quizCelebration} role="status"><span className={styles.goalBurst}>✓</span><b>Daily goal done</b></div>, quizNode ?? document.querySelector<HTMLElement>('[role="dialog"]') ?? document.body)}
+      {celebrate && createPortal(<div className={styles.quizCelebration} role="status"><span className={styles.goalBurst}>✓</span><b>Daily goal done</b></div>, quizNode ?? Array.from(document.querySelectorAll<HTMLElement>('[role="dialog"]')).filter(el=>el.getClientRects().length && getComputedStyle(el).visibility!=="hidden" && !el.closest('[aria-hidden="true"]')).pop() ?? document.body)}
 
       {examSheet && (
         <BottomSheet onClose={() => setExamSheet(false)} title="Practice exam">
