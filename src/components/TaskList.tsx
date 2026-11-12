@@ -1,5 +1,8 @@
+import { ClinicHours } from "./ClinicHours";
+import { useSyncedSetting } from "../helpers/useSyncedSetting";
+import { reorder } from "../helpers/workspace";
 import React, { useEffect, useRef, useState } from "react";
-import { Plus, ArrowUp, ArrowUpRight, CalendarDays, Check, ChevronRight, FileText, Flag, Trash2, X } from "lucide-react";
+import { Plus, GripVertical, ArrowUp, ArrowUpRight, CalendarDays, Check, ChevronRight, FileText, Flag, Trash2, X } from "lucide-react";
 import { dateKey } from "../helpers/dateKey";
 import { haptic } from "../helpers/haptics";
 import { sortTasks, useCourseTasks, useWorkspaceSync, flushSettings, type CourseTask, type TaskCourse } from "../helpers/useCourseTasks";
@@ -23,7 +26,11 @@ export type WorkspaceLink = { title: string; url: string };
 export function TaskList({ course, color, links = [] }: { course: TaskCourse; color: string; links?: WorkspaceLink[] }) {
   const { tasks, add, update, removeWithUndo, completeWithUndo } = useCourseTasks();
   const mine = tasks.filter((t) => t.course === course);
-  const { open, done } = sortTasks(mine);
+  const sorted = sortTasks(mine);
+  const order = useSyncedSetting<string[]>(`workspace:task-order:${course}`,[]);
+  const open = [...sorted.open].sort((a,b) => { const rank=(id:string)=>{const n=order.value.indexOf(id);return n<0?99999:n;};return rank(a.id)-rank(b.id); }), done=sorted.done;
+  const dragged=useRef<string|null>(null);
+  const move=(id:string,before:string)=>order.save(reorder(open.map(t=>t.id),id,before));
   const [title, setTitle] = useState("");
   const [due, setDue] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -61,9 +68,12 @@ export function TaskList({ course, color, links = [] }: { course: TaskCourse; co
         {open.length > 0 && (
           <ul className={styles.list}>
             {open.map((t) => (
-              <TaskRow key={t.id} task={t} leaving={leaving.has(t.id)} open={expanded === t.id}
+              <li key={t.id} data-task-order={t.id} className={styles.orderedTask} draggable onDragStart={()=>{dragged.current=t.id;}} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();if(dragged.current)move(dragged.current,t.id);dragged.current=null;}}>
+              <button className={styles.dragHandle} aria-label={`Reorder ${t.title}`} onPointerDown={e=>{dragged.current=t.id;e.currentTarget.setPointerCapture(e.pointerId);}} onPointerUp={e=>{const target=document.elementFromPoint(e.clientX,e.clientY)?.closest<HTMLElement>('[data-task-order]')?.dataset.taskOrder;if(target && dragged.current && target!==dragged.current)move(dragged.current,target);dragged.current=null;}} onKeyDown={e=>{const i=open.findIndex(x=>x.id===t.id);if(e.key==='ArrowUp' && i>0){e.preventDefault();move(t.id,open[i-1].id);}if(e.key==='ArrowDown' && i<open.length-1){e.preventDefault();order.save(reorder(open.map(x=>x.id),open[i+1].id,t.id));}}}><GripVertical size={16}/></button>
+              <TaskRow task={t} leaving={leaving.has(t.id)} open={expanded === t.id}
                 onToggle={() => setExpanded((x) => (x === t.id ? null : t.id))} onComplete={() => complete(t)}
                 onPatch={(patch) => update.mutate({ id: t.id, patch })} onDelete={() => { haptic(); removeWithUndo(t); setExpanded(null); }} />
+              </li>
             ))}
           </ul>
         )}
@@ -127,7 +137,7 @@ function TaskRow({ task: t, leaving, open, onToggle, onComplete, onPatch, onDele
   const saveTitle = () => { const v = title.trim(); if (v && v !== t.title) onPatch({ title: v }); else setTitle(t.title); };
   const saveNotes = () => { if (notes !== t.notes) onPatch({ notes }); };
   return (
-    <li className={`${styles.task} ${leaving ? styles.leaving : ""} ${t.done_at ? styles.isDone : ""}`}>
+    <div className={`${styles.task} ${leaving ? styles.leaving : ""} ${t.done_at ? styles.isDone : ""}`}>
       <div className={styles.taskRow}>
         <button className={`${styles.check} ${done ? styles.checked : ""}`} onClick={onComplete} aria-label={t.done_at ? "Mark not done" : "Mark done"} aria-pressed={done}>
           {done && <Check size={14} strokeWidth={3.2} />}
@@ -149,6 +159,7 @@ function TaskRow({ task: t, leaving, open, onToggle, onComplete, onPatch, onDele
             onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }} aria-label="Task title" maxLength={300} />
           <textarea className={styles.editNotes} value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} placeholder="Notes" aria-label="Notes" rows={3} />
           <div className={styles.editBar}>
+            <label>Repeat<select aria-label="Repeat task" value={t.repeat??''} onChange={e=>onPatch({repeat:(e.target.value || null) as CourseTask['repeat']})}><option value="">Never</option><option value="weekly">Weekly</option><option value="fortnightly">Every two weeks</option></select></label>
             <DateChip value={t.due} onChange={(v) => onPatch({ due: v })} />
             {t.due && <button className={styles.ghost} onClick={() => onPatch({ due: null })} aria-label="Clear due date"><X size={16} /></button>}
             <button className={`${styles.ghost} ${t.flagged ? styles.flagOn : ""}`} onClick={() => { haptic(); onPatch({ flagged: !t.flagged }); }} aria-pressed={t.flagged} aria-label={t.flagged ? "Remove flag" : "Flag"}>
@@ -159,7 +170,7 @@ function TaskRow({ task: t, leaving, open, onToggle, onComplete, onPatch, onDele
           </div>
         </div>
       )}
-    </li>
+    </div>
   );
 }
 
@@ -198,78 +209,5 @@ function WorkspaceNotes({ course }: { course: TaskCourse }) {
       try { queueSetting(key, value); } catch { toast.error("Couldn’t save notes on this device"); }
       setText(value);
     }} onBlur={() => void flushSettings()} aria-label="Workspace notes" rows={Math.min(14, Math.max(4, text.split("\n").length + 1))} />
-  </section>;
-}
-
-type Hours = { logged: number; required: number; as_of: string };
-type HoursDraft = { mode: "set" | "add"; text: string };
-function readHours(value?: string): Hours | null {
-  try {
-    const h = JSON.parse(value ?? "null");
-    return h && Number.isFinite(h.logged) && h.logged >= 0 && Number.isFinite(h.required) && h.required > 0 && /^\d{4}-\d{2}-\d{2}$/.test(h.as_of) ? h : null;
-  } catch { return null; }
-}
-function ClinicHours() {
-  const key = "workspace:clinic:hours";
-  const [h, setH] = useState<Hours | null>(() => readHours(settingQueue()[key]?.value ?? readCache<string>(key)));
-  const [entry] = useState(() => readCache<HoursDraft>("clinic-hours-entry"));
-  const [editing, setEditing] = useState<null | "set" | "add">(entry?.mode ?? null);
-  const [draft, setDraft] = useState(entry?.text ?? "");
-  const saving = useRef(false);
-  const [loading, setLoading] = useState(true);
-  useWorkspaceSync();
-  useEffect(() => {
-    let live = true;
-    const fetch = async () => {
-      const pending = settingQueue()[key];
-      const before = readCache<string>(key);
-      const { data, error } = await supabase.from("app_settings").select("value").eq("key", key).maybeSingle();
-      if (!live) return;
-      setLoading(false);
-      if (error) return;
-      const value = settingQueue()[key]?.value ?? (pending || readCache<string>(key) !== before ? readCache<string>(key) : data?.value);
-      const known = readHours(value);
-      if (known) { writeCache(key, value); setH(known); }
-      else if (!data) setH((now) => now ?? { logged: 0, required: 200, as_of: dateKey.today() });
-    };
-    void fetch(); window.addEventListener("online", fetch);
-    return () => { live = false; window.removeEventListener("online", fetch); };
-  }, []);
-  if (!h && loading) return <section className={`${styles.card} ${styles.hours} ${styles.placeholder}`} aria-busy="true" />;
-  if (!h) return <section className={`${styles.card} ${styles.hours}`} aria-busy={loading}>
-    <span className={styles.hoursBig}>Hours unavailable</span>
-    <button className={styles.addGo} disabled aria-label="Add hours"><Plus size={18} /></button>
-  </section>;
-  const save = async () => {
-    if (saving.current) return;
-    const raw = draft.trim(), n = Number(raw);
-    if (!raw || !Number.isFinite(n) || n < 0) return;
-    const logged = Math.round((editing === "add" ? h.logged + n : n) * 100) / 100;
-    if (logged === h.logged) { setEditing(null); return; }
-    const next = { ...h, logged, as_of: dateKey.today() };
-    saving.current = true;
-    try {
-      queueSetting(key, JSON.stringify(next)); setH(next); haptic(); setEditing(null);
-      writeCache("clinic-hours-entry", null);
-      if (!navigator.onLine) toast("Hours saved on this device");
-      await flushSettings();
-    } catch { toast.error("Couldn’t save hours. Your entry is kept."); }
-    finally { saving.current = false; }
-  };
-  const begin = (mode: HoursDraft["mode"]) => {
-    const text = mode === "set" ? String(h.logged) : "";
-    writeCache("clinic-hours-entry", { mode, text }); setDraft(text); setEditing(mode);
-  };
-  const pct = Math.min(1, h.logged / h.required), circ = 2 * Math.PI * 26;
-  const asOf = new Date(`${h.as_of}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
-  return <section className={`${styles.card} ${styles.hours}`}>
-    <span className={styles.hoursRing}><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="26" className={styles.hoursTrack} /><circle cx="32" cy="32" r="26" className={styles.hoursVal} style={{ strokeDasharray: circ, strokeDashoffset: circ * (1 - pct) }} /></svg><b>{Math.round(pct * 100)}%</b></span>
-    {editing ? <form className={styles.hoursEdit} onSubmit={e => { e.preventDefault(); void save(); }}>
-      <input autoFocus inputMode="decimal" value={draft} onChange={e => { setDraft(e.target.value); writeCache("clinic-hours-entry", { mode: editing, text: e.target.value }); }} onBlur={() => void save()} aria-label="Hours logged" />
-      <span>{editing === "add" ? "hours to add" : `of ${h.required} hours`}</span>
-    </form> : <>
-      <button className={styles.hoursMain} onClick={() => begin("set")}><span className={styles.hoursBig}>{h.logged} <small>of {h.required} hours</small></span><span className={styles.hoursSub}>{Math.max(0, Math.round((h.required - h.logged) * 100) / 100)} to go · as of {asOf}</span></button>
-      <button className={styles.addGo} aria-label="Add hours" onClick={() => { haptic(); begin("add"); }}><Plus size={18} strokeWidth={2.6} /></button>
-    </>}
   </section>;
 }

@@ -45,7 +45,7 @@ function FinalsCard({ e, syllabus, courseNumbers, onCourse }: { e: Engine; sylla
 /** Clinic and Tutoring tasks that are overdue or due within two days. Hidden when there are none. */
 function DueSoonCard() {
   const { tasks, completeWithUndo } = useCourseTasks();
-  const list = dueSoon(tasks);
+  const list = dueSoon(tasks).slice(0, 3);
   if (!list.length) return null;
   return (
     <section className={styles.sec}>

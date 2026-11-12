@@ -46,15 +46,15 @@ export async function safetyFlows() {
     await p.getByRole('button', { name: /^87.5 of 200/ }).waitFor();
     clearExpected(workspace);
     await workspace.setOffline(true);
-    await tap(p, 'Add hours'); await p.getByRole('textbox', { name: 'Hours logged' }).fill('2'); await p.keyboard.press('Enter');
+    await tap(p, 'Add hours'); await p.getByRole('spinbutton', { name: 'Hours logged' }).fill('2'); await p.keyboard.press('Enter');
     await p.getByRole('button', { name: /^89.5 of 200/ }).waitFor();
     await p.reload(); await p.getByRole('button', { name: /^89.5 of 200/ }).waitFor();
     assert.equal(JSON.parse(workspace.rows.find(r => r.key === 'workspace:clinic:hours').value).logged, 87.5);
     await workspace.setOffline(false);
     await until(() => JSON.parse(workspace.rows.find(r => r.key === 'workspace:clinic:hours').value).logged === 89.5);
     await p.getByRole('button', { name: /^89.5 of 200/ }).click();
-    await p.getByRole('textbox', { name: 'Hours logged' }).fill('90'); await p.reload();
-    assert.equal(await p.getByRole('textbox', { name: 'Hours logged' }).inputValue(), '90');
+    await p.getByRole('spinbutton', { name: 'Hours logged' }).fill('0.5'); await p.reload();
+    assert.equal(await p.getByRole('spinbutton', { name: 'Hours logged' }).inputValue(), '0.5');
     await p.keyboard.press('Enter'); await p.getByRole('button', { name: /^90 of 200/ }).waitFor();
     await until(() => JSON.parse(workspace.rows.find(r => r.key === 'workspace:clinic:hours').value).logged === 90);
     clearExpected(workspace);
