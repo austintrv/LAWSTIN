@@ -396,7 +396,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
               {ai ? <span className={`${styles.pill} ${styles.aiPill}`}><Sparkles size={11} /> Harder</span> : (() => {
                 const bp = before.current[q.id];
                 const w = whyPill(bp, !!bp && bp.guessed > 0 && bp.box === 1 && bp.lastCorrect === true);
-                return <details><summary className={`${styles.pill} ${w.tone === "bad" ? styles.pillBad : w.tone === "ok" ? styles.pillOk : ""}`}>{w.text}</summary>{bp && <span className={styles.authority}>Seen {bp.seen} times · {bp.correct} right · {bp.wrong} missed</span>}</details>;
+                return <details><summary className={`${styles.pill} ${w.tone === "bad" ? styles.pillBad : w.tone === "ok" ? styles.pillOk : ""}`}>{w.text}</summary>{bp && bp.seen > 0 && <span className={styles.authority}>Seen {bp.seen === 1 ? "once" : `${bp.seen} times`} · {bp.correct} right · {bp.wrong} missed</span>}</details>;
               })()}
               <span className={styles.topic}>{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ""}</span>
             </div>
