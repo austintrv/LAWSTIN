@@ -5,7 +5,8 @@ import { EXAM_PREFIX, localExams } from "../helpers/useExams";
 import { useBackClose } from "../helpers/useBackClose";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { clearCaches } from "../helpers/offlineCache";
-import { Bell, CalendarCheck, PenLine, ChevronLeft, ChevronRight, Download, Link2, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
+import { Bell, CalendarCheck, Command, PenLine, ChevronLeft, ChevronRight, Download, Link2, LogOut, Mail, Minus, Moon, Plus, Send, Smartphone, Sparkles, Target, Type, Vibrate, Zap } from "lucide-react";
+import { useWide } from "../helpers/useWide";
 import { Switch } from "./Switch";
 import { Spinner } from "./Spinner";
 import { useLawstinSettings } from "../helpers/useLawstinSettings";
@@ -44,7 +45,8 @@ function Segments<T extends string>({ value, options, onChange, label }: { value
 }
 
 /** Full-page settings, opened from the avatar at #/settings. */
-export function SettingsPage({ email: account, onClose }: { email: string | null; onClose: () => void }) {
+export function SettingsPage({ email: account, onClose, onShortcuts }: { email: string | null; onClose: () => void; onShortcuts?: () => void }) {
+  const wide = useWide();
   const { query, action } = useLawstinSettings();
   const s = query.data?.settings;
   const [prefs, setPrefs] = useState(readPrefs);

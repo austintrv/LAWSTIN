@@ -11,9 +11,10 @@ fs.mkdirSync(artifacts, { recursive: true });
 const server = await createServer({ server: { host: '127.0.0.1', port: 5174, strictPort: true } });
 await server.listen();
 import { applyLocalAnswer } from '../../src/helpers/localAnswer.ts';
+import { dateKey } from '../../src/helpers/dateKey.tsx';
 
-const today = new Date().toISOString().slice(0,10);
-const add = n => new Date(Date.now()+n*86400000).toISOString().slice(0,10);
+const today = dateKey.today();
+const add = n => dateKey.addDays(today, n);
 const question = (id, topic='Treaties', course='il') => ({id, course, topic, subtopic:topic, classDay:1, classDate:'2026-10-01', source:null,batch:'2026-11-10',stem:`Practice scenario ${id}. A change in the facts raises an issue for analysis. Consider the facts carefully before choosing your answer.`,prompt:`Which result follows in scenario ${id}?`,choices:['A','B','C','D'].map((id,i)=>({id,role:['correct','sneaky','average','bad'][i],text:['The first result follows.','The second result follows.','The third result follows.','The fourth result follows.'][i],why:`Explanation for choice ${id}.`})),answer:'A',rule:'Identify the issue and apply the governing rule to the facts.',authority:'Course rule'});
 const progress = (id, patch={}) => ({questionId:id,seen:1,correct:1,wrong:0,box:2,due:add(5),lastChoice:'A',lastCorrect:true,lastAt:add(-1)+'T12:00:00Z',missSneaky:0,missAverage:0,missBad:0,guessed:0,starred:false,flagged:false,...patch});
 const browser = await chromium.launch({executablePath:process.env.LAWSTIN_CHROMIUM_PATH ?? (fs.existsSync('/usr/bin/chromium') ? '/usr/bin/chromium' : undefined),headless:true,args:['--no-sandbox']}).catch(async error=>{await server.close();throw error});
