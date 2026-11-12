@@ -84,9 +84,9 @@ export function TaskList({ course, color, links = [] }: { course: TaskCourse; co
           <summary><span>Completed</span><span className={styles.count}>{done.length}</span><ChevronRight size={16} className={styles.chev} /></summary>
           <ul className={styles.list}>
             {done.slice(0, 50).map((t) => (
-              <TaskRow key={t.id} task={t} leaving={false} open={expanded === t.id}
+              <li key={t.id}><TaskRow task={t} leaving={false} open={expanded === t.id}
                 onToggle={() => setExpanded((x) => (x === t.id ? null : t.id))} onComplete={() => complete(t)}
-                onPatch={(patch) => update.mutate({ id: t.id, patch })} onDelete={() => { haptic(); removeWithUndo(t); setExpanded(null); }} />
+                onPatch={(patch) => update.mutate({ id: t.id, patch })} onDelete={() => { haptic(); removeWithUndo(t); setExpanded(null); }} /></li>
             ))}
           </ul>
         </details>

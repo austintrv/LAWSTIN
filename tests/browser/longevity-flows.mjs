@@ -8,9 +8,10 @@ export async function longevityFlows(){
  await p.getByRole('button',{name:/^87.5 of 200/}).waitFor();
  await p.getByRole('button',{name:/^Submit weekly hour log/}).click();
  await p.getByRole('combobox',{name:'Repeat task'}).selectOption('weekly');
+ await p.screenshot({path:`artifacts/longevity/repeat-${width}-${dark?'dark':'light'}.png`});
  const before=s.tasks.length;await p.getByRole('button',{name:'Mark done',exact:true}).first().click();
  await p.waitForTimeout(800);assert.equal(s.tasks.length,before+1);assert.ok(s.tasks.some(t=>t.due==='2026-11-17'));count++;
- await p.getByRole('button',{name:'Add hours',exact:true}).click();await p.getByRole('spinbutton',{name:'Hours logged'}).fill('2');await p.getByRole('button',{name:'Save hours',exact:true}).click();
+ await p.getByRole('button',{name:'Add hours',exact:true}).click();await p.getByRole('spinbutton',{name:'Hours logged'}).fill('2');await p.screenshot({path:`artifacts/longevity/hours-entry-${width}-${dark?'dark':'light'}.png`});await p.getByRole('button',{name:'Save hours',exact:true}).click();
  await p.getByRole('button',{name:/^89.5 of 200/}).waitFor();await p.getByRole('button',{name:'Undo',exact:true}).click();await p.getByRole('button',{name:/^87.5 of 200/}).waitFor();count++;
  await p.screenshot({path:`artifacts/longevity/workspace-${width}-${dark?'dark':'light'}.png`});
  const handle=p.getByRole('button',{name:/^Reorder /}).first();await handle.focus();await p.keyboard.press('ArrowDown');await p.waitForTimeout(200);assert.ok(s.rows.some(r=>r.key==='workspace:task-order:clinic'));count++;

@@ -5,10 +5,10 @@ import type { Engine } from "../pages/StudyParts";
 import { STATUS_COLOR } from "../pages/StudyParts";
 import styles from "../pages/_index.module.css";
 
-type Props = { plan: PlanCourse[]; planOn: boolean; goal: number; moment: ExamMoment; e: Engine; numbers: { review: number; fresh: number }; statuses: CoverageStatus[]; onOpen: (kind: "due" | "new" | "missed" | "streak" | "progress") => void };
-export function HowItWorks({ plan, goal, moment, e, numbers, statuses, onOpen }: Props) {
+type Props = { semesterName?: string; plan: PlanCourse[]; planOn: boolean; goal: number; moment: ExamMoment; e: Engine; numbers: { review: number; fresh: number }; statuses: CoverageStatus[]; onOpen: (kind: "due" | "new" | "missed" | "streak" | "progress") => void };
+export function HowItWorks({ semesterName = "Fall 2026", plan, goal, moment, e, numbers, statuses, onOpen }: Props) {
   return <div className={styles.how}>
-    <section className={styles.sec}><div className={styles.secH}><h2>{moment.kind === "normal" ? "Today’s goal" : moment.kind === "eve" ? "Last pass" : moment.kind === "morning" ? "Warm up" : "Fall finals done"}</h2></div>
+    <section className={styles.sec}><div className={styles.secH}><h2>{moment.kind === "normal" ? "Today’s goal" : moment.kind === "eve" ? "Last pass" : moment.kind === "morning" ? "Warm up" : `${semesterName.replace(/ 20\d\d$/, "")} finals done`}</h2></div>
       <div className={`${styles.card} ${styles.howCard}`}><b className="finish-number">{moment.kind === "normal" ? goal : moment.kind === "eve" ? "≤25" : moment.kind === "morning" ? "10 min" : "✓"}</b>
         <div className="finish-chips">{moment.kind === "normal" && COURSE_KEYS.map(k => <span key={k} className={styles.status} style={{color:COURSES[k].color,background:"var(--fill)"}}>{COURSES[k].short} · {plan.find(p => p.course === k)?.target ?? 0}</span>)}</div>
       </div>

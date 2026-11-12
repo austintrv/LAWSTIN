@@ -644,7 +644,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       {recapOpen && (recapStore.value ?? currentRecap) && <SemesterRecap value={(recapStore.value ?? currentRecap)!} onClose={()=>setRecapOpen(false)}/>}
       {howOpen && (
         <BottomSheet onClose={() => setHowOpen(false)} title="How Lawstin works" className={styles.howSheet}>
-          <HowItWorks numbers={daily.numbers("all")} e={e} statuses={unitStatuses(e, syllabus).map(u => u.status)} onOpen={kind => { setHowOpen(false); if (kind === "streak") setStreakOpen(true); else if (kind === "missed") openLesson(e.missedTopics()); else if (kind === "progress") { window.location.hash = "#/progress"; } else start(mixed("all", kind === "due" ? "due" : "new")); }} moment={moment} plan={plan.courses} planOn={planOn} goal={goal} />
+          <HowItWorks semesterName={semester.value.name} numbers={daily.numbers("all")} e={e} statuses={unitStatuses(e, syllabus).map(u => u.status)} onOpen={kind => { setHowOpen(false); if (kind === "streak") setStreakOpen(true); else if (kind === "missed") openLesson(e.missedTopics()); else if (kind === "progress") { window.location.hash = "#/progress"; } else start(mixed("all", kind === "due" ? "due" : "new")); }} moment={moment} plan={plan.courses} planOn={planOn} goal={goal} />
         </BottomSheet>
       )}
 
