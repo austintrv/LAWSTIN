@@ -20,7 +20,7 @@ exam-question exam-results lesson-rule lesson-slipped lesson-check lesson-correc
 flashcard-front flashcard-back flashcards-done written-setup written-prompt written-typed written-graded written-history written-essay match-board match-picked match-result
 courses-home courses-tool course-il course-asy course-pr course-next course-kind reader-flowchart reader-outline reader-comparison reader-drill reader-drill-answered reader-hypothetical rulebook-read rulebook-recall workspace-clinic workspace-clinic-task workspace-tutoring
 progress-top progress-full progress-expanded topic-sheet progress-how search-top search-results search-preview settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-search night-before-study night-before-finals deep-link
-exam-map exam-confirm exam-history exam-history-detail missed-rules close-calls close-calls-review close-calls-result progress-close-call progress-plausible progress-way-off progress-right-but-guessed`.split(/\s+/);
+exam-map exam-confirm exam-history exam-history-detail missed-rules close-calls close-calls-review close-calls-result progress-close-call progress-plausible progress-way-off progress-right-but-guessed topic-page notes-tool`.split(/\s+/);
 
 const index = [], log = [];
 let W, T, ctxTag;
@@ -204,6 +204,8 @@ const SCENES = {
     await step('close-calls', async () => { await s.gotoTool('CloseCalls', 'pr'); await P.getByRole('group', { name: 'Close call choices' }).waitFor(); await snap(s, 'close-calls', 'Close call fact pattern and two choices.', 'How you miss > Close call > Practice close calls', { full: true }); }, s);
     await step('close-calls-review', async () => { await P.keyboard.press('1'); await P.getByRole('button', { name: 'Next', exact: true }).waitFor(); await snap(s, 'close-calls-review', 'Both explanations and the governing rule.', 'Close calls > 1', { full: true }); }, s);
     await step('close-calls-result', async () => { await P.keyboard.press('Enter'); for (let i = 1; i < 10; i++) { await P.keyboard.press('1'); await P.keyboard.press('Enter'); } await P.getByRole('button', { name: 'Next round' }).waitFor(); await snap(s, 'close-calls-result', 'Close call round result.', 'Close calls > complete ten', { full: true }); }, s);
+    await step('topic-page', async () => { await s.gotoTool('Topic', 'il', 'Laws of War'); await P.getByRole('heading', { name: 'Laws of War' }).waitFor(); await snap(s, 'topic-page', 'Topic page for syllabus unit with practice row, rules, framework, and notes.', 'Courses > Intl Law > Laws of War', { full: true }); }, s);
+    await step('notes-tool', async () => { await s.gotoTool('Notes', 'il'); await P.getByRole('button', { name: 'Copy all' }).waitFor(); await snap(s, 'notes-tool', 'Course notes tool with progress strip, unit sections, and editor.', 'Courses > Intl Law > My notes', { full: true }); }, s);
     await s.close();
   },
 

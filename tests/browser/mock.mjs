@@ -193,6 +193,7 @@ export function richState(opts = {}) {
     ...cards.map(({ id, ...c }) => [`study:v1:cards:${id}`, JSON.stringify(c)]),
     [`study:v1:starred:${pick('outline', 'il')}`, 'true'], [`study:v1:confidence:${pick('flowchart', 'il')}`, '"shaky"'], [`study:v1:confidence:${pick('comparison', 'asy')}`, '"solid"'],
     [`study:v1:completed:${pick('outline', 'pr')}`, 'true'], [`study:v1:notes:${pick('outline', 'il')}`, '"Remember: classification decides which body of rules applies."'],
+    ['notes:v1:il:Laws of War', JSON.stringify({ text: 'Customary rules require distinction and proportionality.', inNotes: false, at: iso(-2) })],
     ['workspace:notes:clinic', 'Supervising attorney: sample name\nTeam meeting Thursdays 2:00 pm\nCase files live in the shared Drive folder.'],
     ['workspace:notes:tutoring', 'Sessions: Tue and Fri\nBring the Rule 12 handout.'],
     ['workspace:clinic:hours', JSON.stringify({ logged: 87.5, required: 200, as_of: d(-2) })],
