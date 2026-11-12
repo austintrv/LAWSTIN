@@ -1,32 +1,30 @@
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
+import { firstClause, firstSentence, plainName } from "./plainName";
 
 export type MatchCourse = "all" | QuestionDTO["course"];
-export type MatchPair = { id: string; course: QuestionDTO["course"]; topic: string; label: string; rule: string };
-export type MatchRound = { pairs: MatchPair[]; labels: MatchPair[]; rules: MatchPair[] };
+export type MatchPair = { id: string; course: QuestionDTO["course"]; topic: string; name: string; cite: string; rule: string; sentence: string };
+export type MatchRound = { pairs: MatchPair[]; names: MatchPair[]; rules: MatchPair[] };
 
-const MAX_LABEL = 70;
+const MAX_NAME = 80;
 const MIN_RULE = 25;
 /** The smallest board worth playing. */
 export const MIN_ROUND = 3;
 
 const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
-/** Unique rule/label pairs built from the questions already in the app. */
+/** Rule/name pairs built from the questions already in the app; a question whose only name is its own rule is skipped. */
 export function matchPairs(questions: QuestionDTO[], course: MatchCourse = "all"): MatchPair[] {
-  const labels = new Set<string>();
   const rules = new Set<string>();
   const out: MatchPair[] = [];
   for (const q of questions) {
     if (course !== "all" && q.course !== course) continue;
     const rule = q.rule?.trim().replace(/\s+/g, " ") ?? "";
-    const label = (q.authority?.trim() || q.subtopic?.trim() || "").replace(/\s+/g, " ");
-    if (!label || label.length > MAX_LABEL || rule.length < MIN_RULE) continue;
-    const nl = norm(label);
+    if (rule.length < MIN_RULE) continue;
+    const { name, cite } = plainName(q);
     const nr = norm(rule);
-    if (!nl || !nr || labels.has(nl) || rules.has(nr)) continue;
-    labels.add(nl);
+    if (!name || name.length > MAX_NAME || norm(name) === norm(firstClause(rule)) || rules.has(nr)) continue;
     rules.add(nr);
-    out.push({ id: q.id, course: q.course, topic: q.topic, label, rule });
+    out.push({ id: q.id, course: q.course, topic: q.topic, name, cite, rule, sentence: firstSentence(rule) });
   }
   return out;
 }
@@ -40,13 +38,13 @@ function shuffle<T>(items: T[], random: () => number): T[] {
   return a;
 }
 
-/** Takes up to `size` pairs in order, never two with the same label. */
+/** Takes up to `size` pairs in order, never two with the same name. */
 function take(list: MatchPair[], size: number, chosen: MatchPair[] = []): MatchPair[] {
-  const seen = new Set(chosen.map((p) => norm(p.label)));
+  const seen = new Set(chosen.map((p) => norm(p.name)));
   const out = chosen.slice();
   for (const p of list) {
     if (out.length >= size) break;
-    const k = norm(p.label);
+    const k = norm(p.name);
     if (seen.has(k) || out.some((o) => o.id === p.id)) continue;
     seen.add(k);
     out.push(p);
@@ -75,5 +73,5 @@ export function matchRound(pairs: MatchPair[], size = 4, random: () => number = 
     chosen = take(mixed, n, take(mixed.filter((p) => p.course === biggest), n));
   }
   if (chosen.length < MIN_ROUND) return null;
-  return { pairs: chosen, labels: shuffle(chosen, random), rules: shuffle(chosen, random) };
+  return { pairs: chosen, names: shuffle(chosen, random), rules: shuffle(chosen, random) };
 }

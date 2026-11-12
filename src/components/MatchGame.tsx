@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { X, Check } from "lucide-react";
+import { X, Check, ChevronRight } from "lucide-react";
 import { Button } from "./Button";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { useBackClose } from "../helpers/useBackClose";
 import { haptic } from "../helpers/haptics";
 import { COURSES, COURSE_KEYS, type CourseCode } from "../helpers/studyEngine";
-import { matchPairs, matchRound, MIN_ROUND, type MatchCourse, type MatchRound } from "../helpers/matchPairs";
+import { matchPairs, matchRound, MIN_ROUND, type MatchCourse, type MatchPair, type MatchRound } from "../helpers/matchPairs";
 import type { QuestionDTO } from "../endpoints/state_GET.schema";
 import styles from "./MatchGame.module.css";
 
@@ -30,6 +30,14 @@ type Props = {
 };
 type Pick = { side: "l" | "r"; id: string };
 type Result = { seconds: number; misses: number; best: number | null; isBest: boolean };
+
+function Named({ p, full }: { p: MatchPair; full?: boolean }) {
+  return <>
+    <span className={styles.name}>{p.name}</span>
+    {p.cite && <span className={styles.cite}>{p.cite}</span>}
+    {full && <span className={styles.full}>{p.rule}</span>}
+  </>;
+}
 
 export function MatchGame({ questions, course: openCourse = "all", onClose, onRound }: Props) {
   const modalRef = useModalFocus<HTMLDivElement>();
@@ -58,6 +66,8 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
   const [pick, setPick] = useState<Pick | null>(null);
   const [wrong, setWrong] = useState<{ l: string; r: string } | null>(null);
   const [misses, setMisses] = useState(0);
+  const [missed, setMissed] = useState<Set<string>>(new Set());
+  const [order, setOrder] = useState<string[]>([]);
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(true);
   const [result, setResult] = useState<Result | null>(null);
@@ -76,7 +86,7 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
     timers.current.forEach(clearTimeout);
     timers.current = [];
     setRound(draw(c));
-    setMatched(new Set()); setPick(null); setWrong(null); setMisses(0); setSeconds(0); setResult(null); setRunning(true);
+    setMatched(new Set()); setOrder([]); setMissed(new Set()); setPick(null); setWrong(null); setMisses(0); setSeconds(0); setResult(null); setRunning(true);
   };
   const choose = (c: MatchCourse) => { if (c === course) return; haptic(); used.current.clear(); setCourse(c); start(c); };
 
@@ -109,19 +119,23 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
       setWrong(null);
       const now = new Set(matched).add(l);
       setMatched(now);
+      setOrder((o) => [...o, l]);
       if (now.size === round.pairs.length) finish(seconds, misses, round.pairs.length);
     } else {
       setMisses((m) => m + 1);
+      setMissed((m) => new Set(m).add(l).add(r));
       setWrong({ l, r });
-      timers.current.push(window.setTimeout(() => setWrong((w) => (w && w.l === l && w.r === r ? null : w)), 520));
+      timers.current.push(window.setTimeout(() => setWrong((w) => (w && w.l === l && w.r === r ? null : w)), 1600));
     }
   };
 
+  const byId = (id: string) => round?.pairs.find((p) => p.id === id);
+  const openTopic = (p: MatchPair) => { haptic(); window.location.hash = `#/tool/Topic/${p.course}/${encodeURIComponent(p.topic)}`; onClose(); };
+
   const cls = (side: "l" | "r", id: string) => {
-    const k = matched.has(id) ? styles.done : "";
     const on = pick && pick.side === side && pick.id === id ? styles.on : "";
     const bad = wrong && wrong[side] === id ? styles.bad : "";
-    return `${styles.item} ${side === "l" ? styles.tile : styles.rule} ${k} ${on} ${bad}`;
+    return `${styles.item} ${side === "l" ? styles.tile : styles.rule} ${on} ${bad}`;
   };
 
   return (
@@ -164,30 +178,46 @@ export function MatchGame({ questions, course: openCourse = "all", onClose, onRo
                       <div className={styles.row}><span>{result.isBest ? "New best" : "Best"}</span><span className={result.isBest ? styles.ok : ""}>{clock(result.best)}</span></div>
                     )}
                   </div>
+                  <div className={styles.card}>
+                    {[...round.pairs].sort((a, b) => Number(missed.has(b.id)) - Number(missed.has(a.id))).map((p) => (
+                      <button key={p.id} className={styles.review} onClick={() => openTopic(p)}>
+                        <Named p={p} full />
+                        <ChevronRight className={styles.go} size={16} />
+                      </button>
+                    ))}
+                  </div>
                   <div className={styles.actions}>
                     <Button ref={next} className={`${styles.big} ${styles.cta}`} onClick={() => { haptic(); start(course); }}>Next round</Button>
                     <Button variant="secondary" className={styles.big} onClick={() => { haptic(); close(); }}>Done</Button>
                   </div>
                 </div>
               ) : (
-                <div className={styles.board} role="group" aria-label="Match each rule to its name">
-                  <div className={`${styles.col} ${styles.colL}`}>
-                    {round.labels.map((p) => (
-                      <button key={p.id} className={cls("l", p.id)} disabled={matched.has(p.id)} aria-pressed={pick?.side === "l" && pick.id === p.id} onClick={() => tap("l", p.id)}>
-                        <span className={styles.text}>{p.label}</span>
-                        {matched.has(p.id) && <Check className={styles.check} size={16} strokeWidth={3} />}
-                      </button>
-                    ))}
+                <>
+                  {order.length > 0 && (
+                    <div className={styles.joined}>
+                      {order.map((id) => { const p = byId(id)!; return <div key={id} className={`${styles.item} ${styles.pairCard}`}><Check className={styles.check} size={16} strokeWidth={3} /><Named p={p} full /></div>; })}
+                    </div>
+                  )}
+                  <div className={styles.board} role="group" aria-label="Match each rule to its name">
+                    <div className={`${styles.col} ${styles.colL}`}>
+                      {round.names.filter((p) => !matched.has(p.id)).map((p) => (
+                        <button key={p.id} className={cls("l", p.id)} aria-pressed={pick?.side === "l" && pick.id === p.id} onClick={() => tap("l", p.id)}>
+                          <span className={styles.text}><Named p={p} /></span>
+                        </button>
+                      ))}
+                    </div>
+                    <div className={`${styles.col} ${styles.colR}`}>
+                      {round.rules.filter((p) => !matched.has(p.id)).map((p) => (
+                        <button key={p.id} className={cls("r", p.id)} aria-pressed={pick?.side === "r" && pick.id === p.id} onClick={() => tap("r", p.id)}>
+                          <span className={styles.text}>
+                            <span className={styles.sentence}>{p.sentence}</span>
+                            {wrong?.r === p.id && <span className={styles.cite}>{p.name}</span>}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className={`${styles.col} ${styles.colR}`}>
-                    {round.rules.map((p) => (
-                      <button key={p.id} className={cls("r", p.id)} disabled={matched.has(p.id)} aria-pressed={pick?.side === "r" && pick.id === p.id} onClick={() => tap("r", p.id)}>
-                        <span className={styles.text}>{p.rule}</span>
-                        {matched.has(p.id) && <Check className={styles.check} size={16} strokeWidth={3} />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                </>
               )}
             </>
           )}

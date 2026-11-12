@@ -9,36 +9,44 @@ const q = (id: string, course: QuestionDTO["course"], patch: Partial<QuestionDTO
   choices: (["A", "B", "C", "D"] as const).map((c, i) => ({ id: c, role: (["correct", "sneaky", "average", "bad"] as const)[i], text: c, why: c })),
   answer: "A", rule: `${RULE} ${id}`, authority: `Authority ${id}`, ...patch,
 });
-const pair = (id: string, course: MatchPair["course"]): MatchPair => ({ id, course, topic: "T", label: `Label ${id}`, rule: `${RULE} ${id}` });
+const pair = (id: string, course: MatchPair["course"]): MatchPair => ({ id, course, topic: "T", name: `Name ${id}`, cite: `Cite ${id}`, rule: `${RULE} ${id}. More.`, sentence: `${RULE} ${id}.` });
 /** A repeatable random source. */
 const seeded = (seed = 7) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 
-test("authority is preferred, subtopic is the fallback, and questions with neither are skipped", () => {
-  const out = matchPairs([
-    q("a", "il"),
-    q("b", "il", { authority: null }),
-    q("c", "il", { authority: "  ", subtopic: null }),
-    q("d", "il", { authority: null, subtopic: null }),
-  ]);
-  assert.deepEqual(out.map((p) => [p.id, p.label]), [["a", "Authority a"], ["b", "Subtopic b"]]);
+test("a pair is the plain name, its citation and the rule; the name comes from the subtopic first", () => {
+  const out = matchPairs([q("a", "il", { subtopic: "Duty to former clients", authority: "Rule 1.9", rule: "A lawyer may not act against a former client in the same matter. Consent can cure it." })]);
+  assert.deepEqual(out[0], { id: "a", course: "il", topic: "Topic", name: "Duty to former clients", cite: "Rule 1.9", rule: "A lawyer may not act against a former client in the same matter. Consent can cure it.", sentence: "A lawyer may not act against a former client in the same matter." });
 });
 
-test("pairs with duplicate labels or rules are dropped, keeping the first", () => {
-  const out = matchPairs([
-    q("a", "il", { authority: "Kiobel v. Royal Dutch" }),
-    q("b", "il", { authority: "  KIOBEL v. Royal Dutch! " }),
-    q("c", "asy", { authority: "Other", rule: "A RULE long enough to be worth matching, number a" }),
-    q("d", "pr", { authority: "Fourth" }),
-  ]);
-  assert.deepEqual(out.map((p) => p.id), ["a", "d"]);
+test("a bare-citation subtopic falls back to the topic, never to the citation", () => {
+  const out = matchPairs([q("a", "il", { subtopic: "Rule 1.18", authority: "Rule 1.18", topic: "Prospective clients" })]);
+  assert.deepEqual(out.map((p) => [p.name, p.cite]), [["Prospective clients", "Rule 1.18"]]);
 });
 
-test("long labels, short rules and missing rules are skipped", () => {
+test("a question whose only name would be its own rule is skipped", () => {
   const out = matchPairs([
-    q("a", "il", { authority: "x".repeat(71) }),
+    q("a", "il", { subtopic: "Rule 1.18", topic: "Rule 3.8(d)", rule: "Disclose evidence that tends to negate guilt; then more words follow here." }),
+    q("b", "il", { subtopic: null, topic: "", authority: "Rule 3.8(d)", rule: "Disclose evidence that tends to negate guilt; then more words follow here." }),
+    q("c", "il"),
+  ]);
+  assert.deepEqual(out.map((p) => p.id), ["c"]);
+});
+
+test("pairs with duplicate rules are dropped, keeping the first; a shared name is allowed", () => {
+  const out = matchPairs([
+    q("a", "il", { subtopic: "Same name" }),
+    q("b", "asy", { subtopic: "Other", rule: "A RULE long enough to be worth matching, number a" }),
+    q("c", "pr", { subtopic: "Same name" }),
+  ]);
+  assert.deepEqual(out.map((p) => p.id), ["a", "c"]);
+});
+
+test("long names, short rules and missing rules are skipped", () => {
+  const out = matchPairs([
+    q("a", "il", { subtopic: "x".repeat(81), topic: "y".repeat(81) }),
     q("b", "il", { rule: "Too short" }),
     q("c", "il", { rule: null }),
-    q("d", "il", { authority: "x".repeat(70) }),
+    q("d", "il", { subtopic: "x".repeat(80) }),
   ]);
   assert.deepEqual(out.map((p) => p.id), ["d"]);
 });
@@ -49,12 +57,12 @@ test("course filter keeps only that course", () => {
   assert.equal(matchPairs(qs, "all").length, 3);
 });
 
-test("a round has the requested size, unique labels, and shuffled columns of the same pairs", () => {
+test("a round has the requested size, unique names, and shuffled columns of the same pairs", () => {
   const pairs = ["a", "b", "c", "d", "e", "f"].map((id) => pair(id, "il"));
   const r = matchRound(pairs, 4, seeded())!;
   assert.equal(r.pairs.length, 4);
-  assert.equal(new Set(r.pairs.map((p) => p.label)).size, 4);
-  assert.deepEqual(r.labels.map((p) => p.id).sort(), r.pairs.map((p) => p.id).sort());
+  assert.equal(new Set(r.pairs.map((p) => p.name)).size, 4);
+  assert.deepEqual(r.names.map((p) => p.id).sort(), r.pairs.map((p) => p.id).sort());
   assert.deepEqual(r.rules.map((p) => p.id).sort(), r.pairs.map((p) => p.id).sort());
 });
 
@@ -65,11 +73,11 @@ test("a round falls back to three pairs and is null below three", () => {
   assert.equal(matchRound([]), null);
 });
 
-test("pairs sharing a label never share a round", () => {
-  const pairs = [pair("a", "il"), { ...pair("b", "il"), label: "Label a" }, pair("c", "il"), pair("d", "il")];
+test("pairs sharing a name never share a round", () => {
+  const pairs = [pair("a", "il"), { ...pair("b", "il"), name: "Name a" }, pair("c", "il"), pair("d", "il")];
   const r = matchRound(pairs, 4, seeded())!;
   assert.equal(r.pairs.length, 3);
-  assert.equal(new Set(r.pairs.map((p) => p.label)).size, 3);
+  assert.equal(new Set(r.pairs.map((p) => p.name)).size, 3);
 });
 
 test("a round stays in one course when that course can fill it", () => {
