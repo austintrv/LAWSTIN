@@ -291,7 +291,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       if (greeted.current) return;
       greeted.current = true;
       const kind = moment.kind === "eve" || moment.kind === "morning" ? moment.kind : streakHistory(s?.days ?? [], day).broken ? "welcome" : null;
-      const g = kind ? momentGreeting(kind, NAME, readRecent()) : moment.kind === "done" ? "Well done, counselor" : makeGreeting(s, NAME, readRecent(), daily.numbers(filter).goal, daily.numbers(filter).review, filter, daily.numbers(filter).answered, { solidYesterday: learning.solidYesterday, bestStreak: studyEngine(s).streak() >= streakHistory(s?.days ?? [], day).best });
+      const g = kind ? momentGreeting(kind, NAME, readRecent()) : moment.kind === "done" ? "Well done, counselor" : makeGreeting(s, NAME, readRecent(), daily.numbers(filter).goal, daily.numbers(filter).review, filter, daily.numbers(filter).answered, { solidYesterday: learning.solidYesterday, bestStreak: studyEngine(s).streak() > streakHistory((s?.days ?? []).filter(d => d.date < day), dateKey.addDays(day, -1)).best });
       setGreeting(g); saveRecent(g);
     };
     if (planReady) { pick(state); return; }

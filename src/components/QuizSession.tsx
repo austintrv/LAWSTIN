@@ -209,10 +209,10 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
     recorded.current.add(card.id);
     haptic();
     const at = i;
-    await confirmFeedback(modalRef.current?.querySelector("[data-card-feedback]"));
     setResults((r) => { const n = [...r]; n[at] = ok; return n; });
     setPicks((p) => { const n = [...p]; n[at] = ok ? "Y" : "N"; return n; });
     onCard(card, ok);
+    void confirmFeedback(modalRef.current?.querySelector("[data-card-feedback]"));
     goNext();
   }, [card, checked, i, onCard, goNext]);
 
