@@ -5,6 +5,12 @@ Read `handoff/STANDARDS.md` and `AI-MEMORY.md` first. Start only after 4A is mer
 ## Why
 Austin wants to love the app so he studies more (“Joy matters”). A review found the rewards polite rather than fun (a 300 ms fade for right and wrong, nothing when grading a card), nothing that shows what he has learned rather than what is left, Clinic and Tutoring workspaces that cannot replace Reminders (no repeating tasks, hours are a single total), an evening reminder at 6pm for someone who studies from evening to 3am, and an app hard-wired to Fall 2026 that has nothing to say after the last final.
 
+## Before you start
+- The app changed a lot since this brief was written: read the 2026-11-11 and 2026-11-12 Log entries in `AI-MEMORY.md` for the current structure (tabs are Study, Courses, Search, Progress; tools live in `src/components/tools/`; design tokens and shared header/button/finish patterns are in `src/base.css` and must be reused, not extended).
+- Verification is lighter now (see STANDARDS): check only the screens you change, and run the full browser suite once at the end. Commit and push after each numbered section so nothing is lost.
+- In section 2, “How Lawstin works” should again state the goal range (5 to 40) and the limit of 10 overdue reviews per course as chips, since the 4A rebuild dropped them.
+- In `CloseCalls`, `ExamHistory` and the Progress “Practice exams” card, do not show the empty-state action while data is still loading.
+
 ## 1. Feedback that feels good (all disabled under reduced motion; haptics via `src/helpers/haptics.tsx`)
 - Right answer: the chosen choice confirms with a quick spring and check; wrong: a short shake and the correct one lights. Subtle, under 400 ms, no confetti on single answers.
 - In-a-row: at 3, 5 and 10 the flame in the quiz bar pulses and the count ticks up.
