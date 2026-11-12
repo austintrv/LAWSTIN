@@ -1,4 +1,5 @@
 import { confirmFeedback } from "../helpers/feedback";
+import { isBareCitation, plainName } from "../helpers/plainName";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { buildSearchIndex, searchIndex } from "../helpers/searchIndex";
 import { Aura, auraHost } from "./Aura";
@@ -329,7 +330,7 @@ function FlashcardSession({ cards, again, store, onClose, onAgain, onBack }: { c
       <progress max={cards.length} value={index} aria-label="Flashcard session progress" />
       {!flipped && cards.length > index + 1 && <aside className={styles.sessionContext}><h2>Up next</h2>{cards.slice(index + 1, index + 4).map(c => <div key={c.id} className={styles.contextCard}>{c.topic}</div>)}</aside>}
       <button className={`${styles.recallCard} ${flipped ? styles.recalled : ""}`} onClick={() => { haptic(); setFlipped(v => !v); }} aria-expanded={flipped}>
-        <span className={styles.overline}>{flipped ? "Answer" : card.topic}</span><h2>{flipped ? card.back : card.front}</h2>{flipped ? <p>{card.reason}</p> : <span className={styles.revealPrompt}>Reveal answer<ArrowRight size={20} /></span>}
+        <span className={styles.overline}>{flipped ? "Answer" : card.topic}</span><h2>{flipped ? card.back : isBareCitation(card.front) ? plainName(card).name : card.front}</h2>{flipped ? <p>{card.reason}</p> : <span className={styles.revealPrompt}>Reveal answer<ArrowRight size={20} /></span>}
       </button>
       {flipped && <><p className={styles.authority}>{card.authority}</p><div className={styles.gradeActions}><button className={styles.secondary} onClick={() => grade(false)}><RotateCcw size={20} />Review tomorrow</button><button className={styles.primary} onClick={() => grade(true)}><Check size={20} />Recalled it</button></div><SourceList material={card} /></>}
     </div> : <div className={styles.sessionDone}><span className={styles.doneCircle}><Check size={40} /></span><h2>{again ? "Round complete" : "Session complete"}</h2><b className="finish-number">{known}/{cards.length}</b><span className="finish-chips">Recalled</span>

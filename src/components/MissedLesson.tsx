@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ruleTitle } from "../helpers/plainName";
 import { Check, ChevronLeft, ChevronRight, RotateCcw, X } from "lucide-react";
 import { Button } from "./Button";
 import { COURSES, ROLE_LABEL, type CourseCode } from "../helpers/studyEngine";
@@ -143,13 +144,16 @@ export function MissedLesson({ topics, away = false, onAnswer, onReviewed, onDri
           {step.kind === "rule" && <>
             <div className={styles.head}>{label(step.t)}<h2>The rule</h2></div>
             <div className={styles.rules}>
-              {step.t.rules.map((r, k) => (
-                <section key={k} className={`${q.rc} ${q.answerCard}`}>
-                  <span className={q.label}>{r.subtopic}</span>
-                  <p className={styles.rule}>{r.rule}</p>
-                  {r.authority && <span className={q.authority}>{r.authority}</span>}
-                </section>
-              ))}
+              {step.t.rules.map((r, k) => {
+                const { title, cite } = ruleTitle(r);
+                return (
+                  <section key={k} className={`${q.rc} ${q.answerCard}`}>
+                    <span className={q.label}>{title}</span>
+                    {cite && <span className={q.authority}>{cite}</span>}
+                    <p className={styles.rule}>{r.rule}</p>
+                  </section>
+                );
+              })}
             </div>
             <button className={q.listRow} onClick={() => { history.replaceState(history.state, "", `#/tool/Topic/${step.t.course}/${encodeURIComponent(step.t.topic)}`); window.dispatchEvent(new HashChangeEvent("hashchange")); }}>{step.t.topic}<ChevronRight size={16}/></button>{tools?.(step.t.course, step.t.topic)}
           </>}

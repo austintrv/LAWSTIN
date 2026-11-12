@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { plainName } from "../helpers/plainName";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useModalFocus } from "../helpers/useModalFocus";
@@ -37,7 +38,7 @@ export function ScoreTrend({ list, onOpen }: { list: ExamEntry[]; onOpen: (e: Ex
 }
 export function QuestionReview({ q, pick }: { q: QuestionDTO; pick?: string }) {
   const chosen = q.choices.find(c => c.id === pick), right = q.choices.find(c => c.id === q.answer)!;
-  return <details className={styles.review}><summary><span className={styles.main}><span className={styles.title}>{q.subtopic ?? q.topic}</span><span>{q.prompt}</span></span><ChevronRight size={18} /></summary>
+  return <details className={styles.review}><summary><span className={styles.main}><span className={styles.title}>{plainName({ subtopic: q.subtopic, topic: q.topic }).name}</span><span>{q.prompt}</span></span><ChevronRight size={18} /></summary>
     <div className={styles.detail}>
       <p className={styles.reading}>{q.stem}</p>
       {chosen ? <div className={styles.stack}><span className={`${styles.chip} ${chosen.id === q.answer ? styles.correct : styles.wrong}`}>Your answer · {ANSWER_LABEL[chosen.role]}</span><p className={styles.reading}>{chosen.text}</p><p className={styles.reading}>{chosen.why}</p></div> : <span className={styles.chip}>Unanswered</span>}

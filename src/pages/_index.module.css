@@ -200,7 +200,7 @@ button.row:disabled { cursor: default; opacity: 0.5; }
 .bsheetBody { overflow-y: auto; overscroll-behavior: contain; padding: 12px 20px 20px; display: flex; flex-direction: column; gap: 16px; }
 .rules { display: flex; flex-direction: column; gap: 12px; }
 .ruleItem { background: var(--muted); border-radius: var(--radius); padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
-.ruleSub { font-size:var(--type-12); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted-foreground); }
+.ruleSub { font-size:var(--type-15); font-weight: 600; line-height: 1.35; color: var(--foreground); }
 .ruleItem p { margin: 0; font-family: var(--font-family-reading); font-size:var(--type-17); line-height: 1.5; }
 .ruleItem small { font-size:var(--type-13); color: var(--muted-foreground); }
 .examPick { display: flex; flex-direction: column; gap: 14px; }
@@ -309,7 +309,7 @@ button.row:disabled { cursor: default; opacity: 0.5; }
   .missGrid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); }
   .missGrid .row { min-height: 0; padding: 18px 20px; }
   .missGrid .row + .row::before { top: 16px; bottom: 16px; left: 0; right: auto; width: 0.5px; height: auto; }
-  .tile > span, .rowSub, .secH small, .updHead span, .ruleSub, .ruleItem small { font-size:var(--type-15); }
+  .tile > span, .rowSub, .secH small, .updHead span, .ruleItem small { font-size:var(--type-15); }
   .seg button { font-size:var(--type-15); min-height: 44px; }
   .row { min-height: 76px; padding: 20px; }
   .rowTitle { font-size:var(--type-17); }

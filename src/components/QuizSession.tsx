@@ -17,6 +17,7 @@ import { BottomSheet } from "./BottomSheet";
 import { ANSWER_LABEL } from "../helpers/missedRules";
 import { writeCache } from "../helpers/offlineCache";
 import { examSummary, takeExamResume, clearExamResume, useExams, examDate, type ActiveExam, type ExamEntry } from "../helpers/useExams";
+import { cardName, isBareCitation, plainName, ruleTitle } from "../helpers/plainName";
 import { toast } from "../helpers/toast";
 import { useLawstinData } from "../helpers/useLawstinData";
 import styles from "./QuizSession.module.css";
@@ -345,7 +346,8 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
             <div className={styles.paneL}>
               <div className={styles.cardFront}>
                 {card.rule && <span className={styles.label}>State the rule</span>}
-                <h2>{card.front}</h2>
+                <h2>{cardName(card).name}</h2>
+                {cardName(card).cite && <span className={styles.authority}>{cardName(card).cite}</span>}
               </div>
             </div>
             <div className={styles.paneR}>
@@ -365,7 +367,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
             <div className={styles.paneL}>
               <section className={`${styles.rc} ${styles.answerCard}`}>
                 <span className={styles.label}><i style={{ background: course.color }} />{course.short} · {card.topic}</span>
-                <p className={styles.strong}>{card.front}</p>
+                <p className={styles.strong}>{cardName(card).name}</p>
               </section>
             </div>
             <div className={styles.paneR}>
@@ -401,7 +403,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
                 const w = whyPill(bp, !!bp && bp.guessed > 0 && bp.box === 1 && bp.lastCorrect === true);
                 return <details><summary className={`${styles.pill} ${w.tone === "bad" ? styles.pillBad : w.tone === "ok" ? styles.pillOk : ""}`}>{w.text}</summary>{bp && bp.seen > 0 && <span className={styles.authority}>Seen {bp.seen === 1 ? "once" : `${bp.seen} times`} · {bp.correct} right · {bp.wrong} missed</span>}</details>;
               })()}
-              <span className={styles.topic}>{q.topic}{q.subtopic ? ` · ${q.subtopic}` : ""}</span>
+              <span className={styles.topic}>{q.topic}{q.subtopic && !isBareCitation(q.subtopic) ? ` · ${q.subtopic}` : ""}</span>
             </div>
             <div className={styles.paneL}><div className={styles.stem}>{paras(q.stem)}</div></div>
             <div className={styles.paneR}>
@@ -434,7 +436,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
             <div className={styles.paneL}>
             <details className={styles.rc}>
               <summary className={styles.factHead}>
-                <span className={styles.label}><i style={{ background: course.color }} />{course.short} · {q.subtopic ?? q.topic}</span>
+                <span className={styles.label}><i style={{ background: course.color }} />{course.short} · {plainName({ subtopic: q.subtopic, topic: q.topic }).name}</span>
                 <span className={styles.strong}>{q.prompt}</span>
                 <span className={styles.factToggle}>Fact pattern <ChevronRight size={15} /></span>
               </summary>
@@ -442,9 +444,9 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
             </details>
             {q.rule && (
               <section className={`${styles.rc} ${styles.answerCard}`}>
-                <span className={styles.label}>Rule</span>
+                <span className={styles.label}>{ruleTitle(q).title}</span>
                 <p className={styles.bodyText}>{q.rule}</p>
-                {q.authority && <span className={styles.authority}>{q.authority}</span>}
+                {ruleTitle(q).cite && <span className={styles.authority}>{ruleTitle(q).cite}</span>}
               </section>
             )}
 <button className={styles.listRow} onClick={() => { history.replaceState(history.state, "", `#/tool/Topic/${q.course}/${encodeURIComponent(q.topic)}`); window.dispatchEvent(new HashChangeEvent("hashchange")); }}>{q.topic}<ChevronRight size={16}/></button>
@@ -695,7 +697,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
               <div key={k} className={styles.reviewItem}>
                 <button className={styles.reviewHead} onClick={() => setOpen(isOpen ? null : k)} aria-expanded={isOpen}>
                   <span className={`${styles.mark} ${res[k] ? styles.markOk : styles.markBad}`}>{res[k] ? <Check size={13} strokeWidth={3} /> : <X size={13} strokeWidth={3} />}</span>
-                  <span className={styles.rowMain}><span className={styles.rowTitle}>{it.q.subtopic ?? it.q.topic}</span><span className={styles.rowSub}>{it.q.prompt}</span></span>
+                  <span className={styles.rowMain}><span className={styles.rowTitle}>{plainName({ subtopic: it.q.subtopic, topic: it.q.topic }).name}</span><span className={styles.rowSub}>{it.q.prompt}</span></span>
                   <ChevronRight size={16} className={`${styles.chev} ${isOpen ? styles.chevOpen : ""}`} />
                 </button>
                 {isOpen && (
@@ -716,7 +718,7 @@ function Results({ items: all, results, picks, mode, used, after, onAnother, onR
           {missed.map((it) => (
             <button key={itemId(it)} className={`${styles.row} ${styles.rowBtn}`} onClick={() => onOpen(all.indexOf(it))}>
               <span className={`${styles.mark} ${styles.markBad}`}><X size={13} strokeWidth={3} /></span>
-              <span className={styles.rowMain}><span className={styles.rowTitle}>{it.card ? it.card.topic : it.q.subtopic ?? it.q.topic}</span><span className={styles.rowSub}>{it.card ? it.card.front : it.q.prompt}</span></span>
+              <span className={styles.rowMain}><span className={styles.rowTitle}>{it.card ? it.card.topic : plainName({ subtopic: it.q.subtopic, topic: it.q.topic }).name}</span><span className={styles.rowSub}>{it.card ? cardName(it.card).name : it.q.prompt}</span></span>
               <ChevronRight size={16} className={styles.chev} />
             </button>
           ))}

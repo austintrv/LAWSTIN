@@ -59,6 +59,8 @@ const TOPIC_DAYS = {
 const ROLES = ['correct', 'sneaky', 'average', 'bad'];
 const PROMPTS = ['Which outcome is correct on these facts?', 'What is the best analysis?', 'How should the tribunal rule?', 'Which statement is most accurate?', 'What result follows under the sample rule?', 'Which response best fits the rule?'];
 
+// Citation-only authorities in the shapes real data has, on a few subtopics (some of which are themselves bare citations).
+const BARE = { 'Rule 1.18': 'Rule 1.18', 'Rule 3.8(d) timely disclosure': 'Rule 3.8(d)', 'Military objectives': 'Additional Protocol I, art. 52(2)', 'Sexual orientation': '8 C.F.R. § 1208.13(b)(1)' };
 const cap = t => t[0].toUpperCase() + t.slice(1);
 function buildQuestions(today) {
   const tax = fixture('study-taxonomy.json').topics;
@@ -94,7 +96,7 @@ function buildQuestions(today) {
           id: `${course}-${String(k % 30 + 1).padStart(2, '0')}`, course, topic: t.topic, subtopic: t.subtopic, classDay: cd, classDate: addDays(today, -td),
           source: `Day ${cd} notes`, batch: null, stem, prompt: PROMPTS[(n + j) % 6],
           choices: 'ABCD'.split('').map((L, i) => ({ id: L, role: roles[i], text: cap(text[ROLES.indexOf(roles[i])]), why: why[ROLES.indexOf(roles[i])] })),
-          answer: ans, rule, authority: `${t.subtopic}, sample authority ${si + 1}.${j + 1} (placeholder)`,
+          answer: ans, rule, authority: BARE[t.subtopic] && (si > 0 || j >= 1) ? BARE[t.subtopic] : `${t.subtopic}, sample authority ${si + 1}.${j + 1} (placeholder)`,
         });
       }
     });

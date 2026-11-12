@@ -8,6 +8,8 @@ import { STATUS_COLOR } from "../../pages/StudyParts";
 import { useSyllabus } from "../../helpers/useSyllabus";
 import { useLawstinData } from "../../helpers/useLawstinData";
 import { noteUnits, useNotes, assembleTopicData } from "../../helpers/useNotes";
+import { describeAuthority, firstSentence, isBareCitation } from "../../helpers/plainName";
+import { useAuthorityIndex } from "../../helpers/useAuthorityIndex";
 import { useWritten } from "../../helpers/useWritten";
 import { useStudyLibrary } from "../../helpers/useStudyLibrary";
 import { useLogStudy } from "../../helpers/useLogStudy";
@@ -35,6 +37,7 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
   const written = useWritten();
   const library = useStudyLibrary();
   const log = useLogStudy();
+  const authorityIndex = useAuthorityIndex();
   const { getNote, saveNote, flush } = useNotes(course);
 
   // Units in class order
@@ -294,14 +297,12 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
                   <h2 className={styles.sectionTitle}>Rules</h2>
                   {displayedRulesBySubtopic.map((group) => (
                     <div key={group.subtopic} className={styles.subtopicGroup}>
-                      <h3 className={styles.subtopicTitle}>{group.subtopic}</h3>
+                      {!isBareCitation(group.subtopic) && <h3 className={styles.subtopicTitle}>{group.subtopic}</h3>}
                       {group.rules.map((r, i) => {
-                        const firstSentence =
-                          r.rule.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim() ?? r.rule;
                         return (
                           <details key={`${r.subtopic}-${i}`} className={styles.ruleCard}>
                             <summary className={styles.ruleSummary}>
-                              <span className={styles.ruleSentence}>{firstSentence}</span>
+                              <span className={styles.ruleSentence}>{firstSentence(r.rule)}</span>
                               {r.isMissed && (
                                 <span className={styles.missedMarker}>Missed</span>
                               )}
@@ -385,17 +386,21 @@ export default function Topic({ course = "il", arg, onClose }: ToolProps) {
               {data.authorities.length > 0 && (
                 <section className={styles.section}>
                   <h2 className={styles.sectionTitle}>Authorities</h2>
-                  <div className={styles.authChips}>
+                  <div className={styles.authList}>
                     {data.authorities.map((auth) => {
                       const isActive = selectedAuth === auth;
+                      const d = describeAuthority(auth, authorityIndex);
+                      const name = d?.name ?? auth;
                       return (
                         <button
                           key={auth}
-                          className={`${styles.authChip} ${isActive ? styles.active : ""}`}
+                          className={`${styles.authRow} ${isActive ? styles.active : ""}`}
                           onClick={() => setSelectedAuth(isActive ? null : auth)}
                           aria-pressed={isActive}
                         >
-                          {auth}
+                          <span className={styles.authName}>{name}</span>
+                          {name !== auth && <span className={styles.ruleAuth}>{auth}</span>}
+                          {isActive && d?.rule && <span className={styles.authRule}>{d.rule}</span>}
                         </button>
                       );
                     })}

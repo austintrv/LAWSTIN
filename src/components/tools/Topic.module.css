@@ -211,29 +211,6 @@
 }
 
 /* Authorities */
-.authChips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.authChip {
-  display: inline-flex;
-  align-items: center;
-  min-height: 36px;
-  padding: 4px 12px;
-  border-radius: var(--radius-full);
-  background: var(--fill);
-  color: var(--foreground);
-  font-size:var(--type-13);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.authChip.active {
-  background: var(--uh-red);
-  color: var(--primary-foreground);
-}
 
 /* Misses */
 .missesCard {
@@ -334,6 +311,12 @@
 
 @media(min-width:1000px){[class*="_examTop_"]:has(.headerNavDesktop){grid-template-columns:96px minmax(0,1fr) 96px}}
 
-.authChip{min-height:44px}
+.authList{display:flex;flex-direction:column;background:var(--card);border-radius:var(--radius-lg);box-shadow:var(--shadow);overflow:hidden}
+.authRow{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:52px;padding:12px 16px;text-align:left;color:var(--foreground);background:none}
+.authRow+.authRow{border-top:1px solid var(--border)}
+.authRow.active{background:var(--uh-red-tint)}
+.authRow:focus-visible{outline:3px solid var(--uh-red);outline-offset:-3px}
+.authName{font-size:var(--type-15);font-weight:600;line-height:1.35}
+.authRule{font-family:var(--font-family-reading);font-size:var(--type-15);line-height:1.45;margin-top:4px}
 
 .headerNavDesktop+h1{grid-column:2;grid-row:1}.headerNavDesktop+h1+div{grid-column:3;grid-row:1;justify-self:end}

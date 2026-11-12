@@ -1,4 +1,5 @@
 import { NoteEditor } from "../NoteEditor";
+import { plainName } from "../../helpers/plainName";
 import { useEffect, useState, useMemo } from "react";
 import { Check, ChevronRight, Copy, Share2, BookOpen } from "lucide-react";
 import { ToolFrame, type ToolProps } from "../ExamTools";
@@ -199,7 +200,7 @@ export default function Notes({ course = "il", arg, onClose }: ToolProps) {
                 <h3 className={styles.refHeading}>Rules and framework</h3>
                 {unitQuestions.map((q) => (
                   <div key={q.id} className={styles.refItem}>
-                    <span className={styles.refSub}>{q.subtopic ?? q.topic}</span>
+                    <span className={styles.refSub}>{plainName({ subtopic: q.subtopic, topic: q.topic }).name}</span>
                     <p className={styles.refRule}>{q.rule}</p>
                     {q.authority && <span className={styles.refAuth}>{q.authority}</span>}
                   </div>

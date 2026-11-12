@@ -4,6 +4,7 @@ import type { OutputType as QuestionState } from "../endpoints/state_GET.schema"
 import { studyEngine, type CourseCode } from "../helpers/studyEngine";
 import { haptic } from "../helpers/haptics";
 import { createPortal } from "react-dom";
+import { plainName } from "../helpers/plainName";
 import { useLawstinData } from "../helpers/useLawstinData";
 import { useModalFocus } from "../helpers/useModalFocus";
 import { useBackClose } from "../helpers/useBackClose";
@@ -65,11 +66,12 @@ export function Rulebook({ course, state, topic, match, embedded = false, initia
         <div className={styles.sectionHead}><h3>{s.topic}</h3><span>{s.rules.length}</span></div>
         <div className={styles.card}>{s.rules.map(r => {
           const key = `${s.topic}|${r.subtopic}|${r.rule}`;
-          if (mode === "read") return <div key={key} data-rule={r.rule} className={styles.rule}><span className={styles.sub}>{r.subtopic}</span><p>{r.rule}</p>{r.authority && <small>{r.authority}</small>}</div>;
+          const { name, cite } = plainName(r);
+          if (mode === "read") return <div key={key} data-rule={r.rule} className={styles.rule}><span className={styles.head}><span className={styles.sub}>{name}</span>{cite && <small>{cite}</small>}</span><p>{r.rule}</p></div>;
           const open = shown.has(key);
           return <button key={key} className={styles.rule} aria-expanded={open} onClick={() => toggle(key)}>
-            <span className={styles.subRow}><span className={styles.sub}>{r.subtopic}</span><ChevronDown size={20} className={styles.chevron} /></span>
-            {open && <><p>{r.rule}</p>{r.authority && <small>{r.authority}</small>}</>}
+            <span className={styles.subRow}><span className={styles.sub}>{name}</span><ChevronDown size={20} className={styles.chevron} /></span>
+            {open && <><p>{r.rule}</p>{cite && <small>{cite}</small>}</>}
           </button>;
         })}</div>
       </section>)}</div>

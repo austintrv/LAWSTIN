@@ -11,6 +11,7 @@ import {
   type Hypothetical,
 } from "./studyMaterials";
 import type { Syllabus } from "./studyEngine";
+import { isBareCitation, plainName } from "./plainName";
 import type { WrittenEntry } from "./useWritten";
 
 export type SearchKind =
@@ -114,6 +115,7 @@ function createSearchItem(
   raw: unknown
 ): SearchItem {
   const normTitle = normalizeSearch(title);
+  const shown = isBareCitation(title) ? plainName({ topic, rule: body }).name || title : title;
   const normTopic = normalizeSearch(topic);
   const normAuthority = normalizeSearch(authority ?? "");
   const normBody = normalizeSearch(body);
@@ -124,7 +126,7 @@ function createSearchItem(
     id,
     kind,
     course,
-    title,
+    title: shown,
     authority: authority || undefined,
     topic,
     subtopic: subtopic || undefined,

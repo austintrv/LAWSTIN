@@ -221,3 +221,11 @@ test("search suggestions return closest topics and authorities", () => {
   assert.ok(suggestions.length > 0);
   assert.ok(suggestions.some((s) => s.includes("Immunity")));
 });
+
+test("a bare-citation title shows plain words but stays searchable by the citation", () => {
+  const items = buildSearchIndex({
+    questions: [mockQuestion({ id: "q-bare", topic: "Prospective clients", subtopic: "Rule 1.18", rule: "A lawyer owes duties to a prospective client who consults in confidence.", authority: "Rule 1.18" })],
+  });
+  assert.equal(items[0].title, "Prospective clients");
+  assert.equal(searchIndex(items, "Rule 1.18")[0].item.id, "rule:q-bare");
+});

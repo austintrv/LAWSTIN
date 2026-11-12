@@ -1,3 +1,4 @@
+import { cardName, plainName } from "../helpers/plainName";
 import { useSemester } from "../helpers/useSemester";
 import { useSyncedSetting } from "../helpers/useSyncedSetting";
 import { makeSemesterRecap, type SemesterRecap as Recap } from "../helpers/semesterRecap";
@@ -392,7 +393,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   };
   const onExplain = async (card: SessionCard, answer: string) => {
     try {
-      const r = await explain.mutateAsync({ course: card.course, topic: card.topic, prompt: card.rule ? `State the rule: ${card.front}` : card.front,
+      const r = await explain.mutateAsync({ course: card.course, topic: card.topic, prompt: card.rule ? `State the rule: ${cardName(card).name}` : card.front,
         reference: [card.back, card.reason, card.authority].filter(Boolean).join("\n"), answer });
       return r.explain;
     } catch { return null; }
@@ -611,13 +612,16 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       {topicSheet && (
         <BottomSheet onClose={() => setTopicSheet(null)} title={topicSheet.topic} eyebrow={COURSES[topicSheet.course].name}>
           <div className={styles.rules}>
-            {e.topicRules(topicSheet.course, topicSheet.topic).map((r, k) => (
-              <div key={k} className={styles.ruleItem}>
-                <span className={styles.ruleSub}>{r.subtopic}</span>
-                <p>{r.rule}</p>
-                {r.authority && <small>{r.authority}</small>}
-              </div>
-            ))}
+            {e.topicRules(topicSheet.course, topicSheet.topic).map((r, k) => {
+              const { name, cite } = plainName(r);
+              return (
+                <div key={k} className={styles.ruleItem}>
+                  <span className={styles.ruleSub}>{name}</span>
+                  {cite && <small>{cite}</small>}
+                  <p>{r.rule}</p>
+                </div>
+              );
+            })}
           </div>
           <TopicTools course={topicSheet.course} topic={topicSheet.topic} onGo={(hash) => { haptic(); afterOverlayClose(() => { window.location.hash = hash; }); setTopicSheet(null); }} />
           <Button className={`${styles.big} ${styles.cta}`} onClick={() => start((eng) => eng.topicRound(topicSheet.course, topicSheet.topic))}>Drill this topic</Button>

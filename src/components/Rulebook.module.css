@@ -19,7 +19,8 @@
 .card{background:var(--card);border:0;border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow)}
 .rule{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;padding:16px 18px;color:var(--foreground)}
 .rule+.rule{border-top:1px solid var(--border)}
-.sub{font-size:var(--type-15);font-weight:600;color:var(--muted-foreground);line-height:1.4}
+.sub{font-size:var(--type-15);font-weight:600;color:var(--foreground);line-height:1.4}
+.head{display:flex;flex-direction:column;gap:2px}
 .rule p{font-family:var(--font-family-reading);font-size:var(--type-20);line-height:1.55}
 .rule small{font-size:var(--type-15);line-height:1.5;color:var(--muted-foreground)}
 .subRow{display:flex;align-items:center;justify-content:space-between;gap:12px}

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ruleTitle } from "../../helpers/plainName";
 import { Check, X } from "lucide-react";
 import { closeCallOrder, ANSWER_LABEL } from "../../helpers/missedRules";
 import { useLawstinData } from "../../helpers/useLawstinData";
@@ -73,7 +74,7 @@ export default function CloseCalls({ course, onClose }: ToolProps) {
         <div className={styles.stack}><h2 className={styles.heading}>{pair.q.prompt}</h2><p className={styles.reading}>{pair.q.stem}</p></div>
         <div className={styles.stack}>
           <div className={quiz.choices} role="group" aria-label="Close call choices">{pair.choices.map((c, n) => <button key={c.id} disabled={revealed} aria-pressed={picked === n} className={`${quiz.choice} ${picked === n ? quiz.selected : ""}`} onClick={() => choose(n)}><span className={quiz.letter}>{"AB"[n]}</span><span className={quiz.choiceText}>{c.text}</span>{revealed && (c.id === pair.q.answer ? <Check size={20} className={styles.correct} /> : <X size={20} className={styles.wrong} />)}</button>)}</div>
-          {revealed && <><div className={styles.card}>{pair.choices.map(c => <div key={c.id} className={styles.detail}><span className={`${styles.chip} ${c.id === pair.q.answer ? styles.correct : styles.wrong}`}>{ANSWER_LABEL[c.role]}</span><p className={styles.reading}>{c.why}</p></div>)}{pair.q.rule && <div className={styles.detail}><span className={styles.title}>Rule</span><p className={styles.reading}>{pair.q.rule}</p><span className={styles.muted}>{pair.q.authority}</span></div>}</div><div className={styles.buttons}><Button className={quiz.cta} ref={nextRef} onClick={next}>Next</Button></div></>}
+          {revealed && <><div className={styles.card}>{pair.choices.map(c => <div key={c.id} className={styles.detail}><span className={`${styles.chip} ${c.id === pair.q.answer ? styles.correct : styles.wrong}`}>{ANSWER_LABEL[c.role]}</span><p className={styles.reading}>{c.why}</p></div>)}{pair.q.rule && <div className={styles.detail}><span className={styles.title}>{ruleTitle(pair.q).title}</span>{ruleTitle(pair.q).cite && <span className={styles.muted}>{ruleTitle(pair.q).cite}</span>}<p className={styles.reading}>{pair.q.rule}</p></div>}</div><div className={styles.buttons}><Button className={quiz.cta} ref={nextRef} onClick={next}>Next</Button></div></>}
         </div>
       </div>
     </>}

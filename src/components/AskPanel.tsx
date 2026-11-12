@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { isBareCitation } from "../helpers/plainName";
 import { ArrowUp, X } from "lucide-react";
 import { Textarea } from "./Textarea";
 import { useLawstinAi } from "../helpers/useLawstinAi";
@@ -66,7 +67,7 @@ export function AskPanel({ question, picked, onClose, className }: { question: Q
       <div className={styles.scroll}>
         <div className={styles.thread}>
           <div className={styles.context}>
-            <span>{question.topic}{question.subtopic ? ` · ${question.subtopic}` : ""}</span>
+            <span>{question.topic}{question.subtopic && !isBareCitation(question.subtopic) ? ` · ${question.subtopic}` : ""}</span>
             <p>{question.prompt}</p>
           </div>
           {!msgs.length && (

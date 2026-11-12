@@ -326,3 +326,5 @@ const { longevityFlows } = await import('./longevity-flows.mjs');
 await longevityFlows();
 const { feedbackFlows } = await import('./feedback-flows.mjs');
 await feedbackFlows();
+const { plainNameFlows } = await import('./plain-name-flows.mjs');
+await plainNameFlows();
