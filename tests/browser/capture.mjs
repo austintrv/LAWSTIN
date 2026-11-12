@@ -21,7 +21,7 @@ quiz-recall quiz-question quiz-selected quiz-review-wrong quiz-review-facts ask-
 exam-question exam-results lesson-rule lesson-slipped lesson-check lesson-correct lesson-complete
 flashcard-front flashcard-back flashcards-done written-setup written-prompt written-typed written-graded written-history written-essay match-board match-picked match-result
 courses-home courses-tool course-il course-asy course-pr course-next course-kind reader-flowchart reader-outline reader-comparison reader-drill reader-drill-answered reader-hypothetical rulebook-read rulebook-recall workspace-clinic workspace-clinic-task workspace-tutoring
-progress-top progress-full progress-expanded topic-sheet progress-how search-top search-results search-preview settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-search night-before-study night-before-finals deep-link
+semester-edit semester-recap clinic-log clinic-repeat reminder-time progress-top progress-full progress-expanded topic-sheet progress-how search-top search-results search-preview settings-top settings-scrolled connected-apps sign-in offline-fresh offline-answer empty-study empty-progress empty-search night-before-study night-before-finals deep-link
 exam-map exam-confirm exam-history exam-history-detail missed-rules close-calls close-calls-review close-calls-result progress-close-call progress-plausible progress-way-off progress-right-but-guessed topic-page notes-tool`.split(/\s+/);
 
 const index = [], log = [];
@@ -336,6 +336,19 @@ const SCENES = {
       await P.waitForTimeout(400);
       await snap(s, 'search-results', 'Search results grouped by kind with snippets and marked terms.', 'Search results');
     }, s);
+    await s.close();
+  },
+
+  async longevity() {
+    const s = await O({hash:'#/tool/Semester'}), P=s.page;
+    await step('semester-edit',async()=>{await snap(s,'semester-edit','Semester dates, formats and course names.','Settings > Semester');},s);
+    await fresh(s,'#/progress');
+    await step('semester-recap',async()=>{await tap(P,'Semester recap');await snap(s,'semester-recap','Semester recap.','Progress > Semester recap');},s);
+    await fresh(s,'#/courses/clinic');
+    await step('clinic-repeat',async()=>{await P.getByRole('button',{name:/^Submit weekly hour log/}).click();await snap(s,'clinic-repeat','Repeating task and reorder controls.','Clinic > task');},s);
+    await step('clinic-log',async()=>{await tap(P,'Add hours');await snap(s,'clinic-log','Dated hours entry and weekly hours.','Clinic > Add hours');},s);
+    await fresh(s,'#/settings');
+    await step('reminder-time',async()=>{await P.getByLabel('Reminder time',{exact:true}).scrollIntoViewIfNeeded();await snap(s,'reminder-time','Evening reminder time.','Settings > Reminder time');},s);
     await s.close();
   },
 

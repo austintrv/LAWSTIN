@@ -109,7 +109,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const flashcards = useMemo(() => store.materials.filter((m): m is Flashcard => m.kind === "flashcard"), [store.materials]);
   const hypos = useMemo(() => store.materials.filter((m): m is Hypothetical => m.kind === "hypothetical"), [store.materials]);
   const [prefs, setPrefs] = useState(readPrefs);
-  const planReady = !!state && !store.loading && (!settings.query.isPending || !navigator.onLine);
+  const planReady = semester.loaded && !!state && !store.loading && (!settings.query.isPending || !navigator.onLine);
   const daily = useDayPlan({ e, record: store.record, flashcards, entries: written.list, lastEssay: written.lastEssay,
     fallbackGoal: settings.query.data?.settings.dailyGoal, enabled: prefs.plan, ready: planReady, userId });
   const { plan, cardsFor } = daily;

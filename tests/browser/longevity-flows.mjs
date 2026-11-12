@@ -26,6 +26,11 @@ export async function longevityFlows(){
  await p.getByRole('dialog',{name:'Fall 2026 recap',exact:true}).waitFor();
  await p.screenshot({path:`artifacts/longevity/recap-${width}-${dark?'dark':'light'}.png`});
  await p.keyboard.press('Escape');count++;
+ await p.getByRole('dialog').waitFor({state:'hidden'});await p.waitForTimeout(400);
+ await s.goto('#/settings');
+ const time=p.getByLabel('Reminder time',{exact:true});await time.fill('22:00');await p.waitForTimeout(200);
+ assert.equal(s.rows.find(r=>r.key==='notify_evening_hour')?.value,'22');count++;
+ await time.scrollIntoViewIfNeeded();await p.screenshot({path:`artifacts/longevity/settings-${width}-${dark?'dark':'light'}.png`});
  assert.deepEqual(s.errors,[]);await s.close();
  }console.log(`PASS: longevity workspaces, ${count} assertions, five size/theme combinations`);
  }finally{await closeAll();}

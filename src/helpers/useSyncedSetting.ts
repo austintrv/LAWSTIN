@@ -13,7 +13,7 @@ export function useSyncedSetting<T>(key: string, fallback: T, localKey?: string)
     const {data,error} = await supabase.from("app_settings").select("key,value").eq("key",key);
     if (error) throw error;
     return parse(settingQueue()[key]?.value ?? data?.[0]?.value);
-  }, initialData: cached, initialDataUpdatedAt: 0, staleTime:60000 });
+  }, retry:false, initialData: cached, initialDataUpdatedAt: 0, staleTime:60000 });
   useEffect(() => { if (query.data !== undefined) { writeCache(key,JSON.stringify(query.data)); if (localKey) { try { localStorage.setItem(localKey,JSON.stringify(query.data)); } catch {} } } },[query.data,key,localKey]);
   useEffect(() => {
     const refresh = () => { void qc.invalidateQueries({queryKey}); };
