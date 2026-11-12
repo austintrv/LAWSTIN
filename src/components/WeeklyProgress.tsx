@@ -1,3 +1,4 @@
+import { useIsFetching } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useSyncedSetting } from "../helpers/useSyncedSetting";
 import { weekStart, weeklyDiff, type WeekSnapshot } from "../helpers/weeklyProgress";
@@ -8,10 +9,11 @@ import type { Engine } from "../pages/StudyParts";
 import type { OutputType as State } from "../endpoints/state_GET.schema";
 import styles from "../pages/_index.module.css";
 export function WeeklyProgress({e,syllabus,state,missed,ready}:{e:Engine;syllabus:Syllabus;state?:State;missed:string[];ready:boolean}) {
+  const fetching = useIsFetching({ queryKey: ["lawstin-syllabus"] });
   const week=weekStart(e.today), written=useWritten();
   const snapshot=useSyncedSetting<WeekSnapshot|null>(`snapshot:v1:${week}`,null,"lawstin-week-snapshot");
   const units=unitStatuses(e,syllabus);
-  useEffect(()=>{if(ready && snapshot.loaded && !snapshot.error && (!snapshot.value || snapshot.value.week!==week)) snapshot.save({week,units,missed});},[ready,snapshot.loaded,snapshot.error,snapshot.value?.week,week]);
+  useEffect(()=>{if(ready && !fetching && snapshot.loaded && !snapshot.error && (!snapshot.value || snapshot.value.week!==week)) snapshot.save({week,units,missed});},[ready,fetching,snapshot.loaded,snapshot.error,snapshot.value?.week,week]);
   const diff=weeklyDiff(snapshot.value?.week===week ? snapshot.value : {week,units,missed},units,missed,written.list,e.today);
   const best=streakHistory((state?.days??[]).filter(d=>d.date>=week),e.today).best;
   return <section className={styles.sec}><div className={styles.secH}><h2>This week</h2></div><div className={`${styles.card} ${styles.howCard}`}>
