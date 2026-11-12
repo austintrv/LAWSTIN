@@ -15,8 +15,8 @@ Then tell Claude the package is ready. Claude reviews it, runs the checks, merge
 | 2 Fit each exam (merged) | 2A The next exam drives Study | `2A-next-exam.md` | 2B, 2C |
 | 2 Fit each exam (merged) | 2B Essays he will actually write | `2B-essays.md` | 2A, 2C |
 | 2 Fit each exam (merged) | 2C Pro Res under exam conditions | `2C-exam-conditions.md` | 2A, 2B |
-| 3 Find and own | 3A Search and tabs | `3A-search.md` | 3B |
-| 3 Find and own | 3B Topic pages and notes | `3B-topics-notes.md` | 3A |
+| 3 Find and own (merged) | 3A Search and tabs | `3A-search.md` | 3B |
+| 3 Find and own (merged) | 3B Topic pages and notes | `3B-topics-notes.md` | 3A |
 | 4 Polish, joy, longevity | 4A One design | `4A-one-design.md` | run alone |
 | 4 Polish, joy, longevity | 4B Joy and longevity | `4B-joy-longevity.md` | run alone, after 4A |
 
