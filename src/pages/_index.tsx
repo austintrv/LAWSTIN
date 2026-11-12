@@ -1,3 +1,4 @@
+import { useLearningMilestones } from "../helpers/useLearningMilestones";
 import { BarChart3, BookCheck, LibraryBig, Search } from "lucide-react";
 import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { createPortal } from "react-dom";
@@ -109,6 +110,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
   const { plan, cardsFor } = daily;
   const planOn = plan.active;
   const goal = plan.goal;
+  const learning = useLearningMilestones(unitStatuses(e, syllabus), planReady, userId);
   const [tab, setTab] = useState<Tab>(tabFromHash);
   const [coursesVisited, setCoursesVisited] = useState(() => tabFromHash() === "courses");
   const [filter, setFilter] = useState<Filter>(() => (readPractice(userId)?.key.split(":")[1] as Filter | undefined) ?? "all");
@@ -289,7 +291,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       if (greeted.current) return;
       greeted.current = true;
       const kind = moment.kind === "eve" || moment.kind === "morning" ? moment.kind : streakHistory(s?.days ?? [], day).broken ? "welcome" : null;
-      const g = kind ? momentGreeting(kind, NAME, readRecent()) : moment.kind === "done" ? "Well done, counselor" : makeGreeting(s, NAME, readRecent(), daily.numbers(filter).goal, daily.numbers(filter).review, filter, daily.numbers(filter).answered);
+      const g = kind ? momentGreeting(kind, NAME, readRecent()) : moment.kind === "done" ? "Well done, counselor" : makeGreeting(s, NAME, readRecent(), daily.numbers(filter).goal, daily.numbers(filter).review, filter, daily.numbers(filter).answered, { solidYesterday: learning.solidYesterday, bestStreak: studyEngine(s).streak() >= streakHistory(s?.days ?? [], day).best });
       setGreeting(g); saveRecent(g);
     };
     if (planReady) { pick(state); return; }
@@ -338,7 +340,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
       writeCache(`goal-celebrated:${userId}`, day);
       setCelebrate(true);
       haptic();
-      if (!session) toast("Daily goal done");
+
     }
   }, [todayAnswered, state, celebrationGoal, day]);
   useEffect(() => {
@@ -620,7 +622,7 @@ export default function LawstinApp({ userId, email }: { userId: string; email: s
         if (saved.snap) { setSession({ ...saved.session, resume: saved.snap, key: Date.now() }); }
         else start(mixed(saved.session.filter ?? filter), "practice", `round:${saved.session.filter ?? filter}`);
       }} />}
-      {celebrate && quizNode && createPortal(<div className={styles.quizCelebration} role="status"><span className={styles.goalBurst}>✓</span><b>Daily goal done</b></div>, quizNode)}
+      {celebrate && createPortal(<div className={styles.quizCelebration} role="status"><span className={styles.goalBurst}>✓</span><b>Daily goal done</b></div>, quizNode ?? document.querySelector<HTMLElement>('[role="dialog"]') ?? document.body)}
 
       {examSheet && (
         <BottomSheet onClose={() => setExamSheet(false)} title="Practice exam">

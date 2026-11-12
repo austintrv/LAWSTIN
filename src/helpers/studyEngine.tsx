@@ -311,7 +311,7 @@ export function studyEngine(state: State | undefined, todayKey?: string, opts?: 
 }
 
 /** A greeting picked once per app open. Context lines only when the data supports them. */
-export function makeGreeting(state: State | undefined, name: string, recent: string[], goal = DAILY_GOAL, readyReviews?: number, filter: Filter = "all", answeredToday?: number): string {
+export function makeGreeting(state: State | undefined, name: string, recent: string[], goal = DAILY_GOAL, readyReviews?: number, filter: Filter = "all", answeredToday?: number, achievements?: { solidYesterday: boolean; bestStreak: boolean }): string {
   const now = new Date();
   const h = now.getHours();
   const dow = now.getDay();
@@ -404,6 +404,9 @@ export function makeGreeting(state: State | undefined, name: string, recent: str
     const weak = e.weakTopics().filter((t) => activeCourses(e.today, filter).includes(t.course)).sort((a, b) => a.c / (a.c + a.w) - b.c / (b.c + b.w))[0];
     if (weak) ctx.push(`${weak.topic} could use a round`, `${weak.topic} wants a rematch`);
   }
+  if (h < 5) ctx.push(`Midnight docket, ${name}`, `The court has after-hours counsel`, `One quiet holding before bed`, `Even the footnotes are asleep`, `Last brief under the desk lamp`);
+  if (achievements?.solidYesterday) ctx.push(`Yesterday’s shaky ground is solid`, `One more unit on firm ground`, `You built a little precedent yesterday`, `Yesterday’s work is holding up`, `A stronger record, counselor`);
+  if (achievements?.bestStreak && state && studyEngine(state).streak() > 1) ctx.push(`A personal best on the record`, `Your longest run yet, ${name}`, `Consistency sustained, counselor`, `The streak has set a precedent`, `New record. Same good counsel.`);
   const pools: [string[], number][] = [[season, 0.2], [ctx, 0.3], [day, 0.1], [time, 0.2], [general, 0.45]];
   const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
   for (let i = 0; i < 8; i++) {
@@ -420,7 +423,7 @@ export function momentGreeting(kind: "eve" | "morning" | "welcome", name: string
   const lines = {
     eve: [`Easy does it, ${name}`, `One last pass, counselor`, `You’ve put in the work, ${name}`, `A little review, then rest`, `Steady as you go, ${name}`, `Tonight’s docket is short`, `Counsel may take a breath`, `One calm pass, ${name}`, `The record is ready`, `Close the briefs, then sleep`],
     morning: [`Good luck today, ${name}`, `You’ve got this, counselor`, `Take your time, ${name}`, `The floor is yours, ${name}`, `Ready for your appearance`, `Breathe. Read. Begin.`, `Go make your case, ${name}`, `Your preparation goes with you`, `One rule at a time, counselor`, `Court is yours today`],
-    welcome: [`Welcome back, ${name}`, `Good to see you, counselor`, `Fresh docket, ${name}`, `Pick up right here, ${name}`, `A few questions will do`, `The briefs kept your place`, `Counsel returns. Court smiles.`, `Let’s ease back in, ${name}`, `Your seat is still here`, `A new day on the docket`],
+    welcome: [`Counsel returns from recess`, `The docket kept your seat`, `No objection to a fresh start`, `A comeback worth entering`, `Back in chambers, ${name}`, `Welcome back, ${name}`, `Good to see you, counselor`, `Fresh docket, ${name}`, `Pick up right here, ${name}`, `A few questions will do`, `The briefs kept your place`, `Counsel returns. Court smiles.`, `Let’s ease back in, ${name}`, `Your seat is still here`, `A new day on the docket`],
   }[kind];
   const fresh = lines.filter((line) => !recent.includes(line));
   const pool = fresh.length ? fresh : lines;

@@ -1,3 +1,4 @@
+import { confirmFeedback } from "../helpers/feedback";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { buildSearchIndex, searchIndex } from "../helpers/searchIndex";
 import { Aura, auraHost } from "./Aura";
@@ -299,13 +300,16 @@ function FlashcardSession({ cards, again, store, onClose, onAgain, onBack }: { c
   const log = useLogStudy();
   const [index, setIndex] = useState(0), [flipped, setFlipped] = useState(false), [missed, setMissed] = useState<Flashcard[]>([]);
   const card = cards[index];
-  const grade = (correct: boolean) => {
-    if (!flipped || !card) return;
+  const grading = useRef(false);
+  const grade = async (correct: boolean) => {
+    if (!flipped || !card || grading.current) return;
+    grading.current = true;
     haptic();
     if (!again) store.update(prev => ({ ...prev, cards: { ...prev.cards, [card.id]: reviewCard(prev.cards[card.id], correct) } }));
     if (!again) log("card", card.id, correct);
     if (!correct) setMissed(m => [...m, card]);
-    setIndex(n => n + 1); setFlipped(false);
+    await confirmFeedback(document.querySelector("[class*=\"_recallCard_\"]"));
+    setIndex(n => n + 1); setFlipped(false); grading.current = false;
   };
   const known = index - missed.length;
   useEffect(() => {

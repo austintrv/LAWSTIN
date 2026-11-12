@@ -1,3 +1,4 @@
+import { answerFeedback, confirmFeedback } from "../helpers/feedback";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { useModalFocus } from "../helpers/useModalFocus";
@@ -203,11 +204,12 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
     if (card) slide();
   }, [revealed, checking, i, card, mine, onExplain]);
 
-  const gradeCard = useCallback((ok: boolean) => {
+  const gradeCard = useCallback(async (ok: boolean) => {
     if (!card || checked || moving.current || recorded.current.has(card.id)) return;
     recorded.current.add(card.id);
     haptic();
     const at = i;
+    await confirmFeedback(modalRef.current?.querySelector("[data-card-feedback]"));
     setResults((r) => { const n = [...r]; n[at] = ok; return n; });
     setPicks((p) => { const n = [...p]; n[at] = ok ? "Y" : "N"; return n; });
     onCard(card, ok);
@@ -222,6 +224,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
     const at = i;
     try {
       const correct = await onAnswer(q, sel);
+      await answerFeedback(modalRef.current, sel, q.answer);
       recorded.current.add(q.id);
       setResults((r) => { const n = [...r]; n[at] = correct; return n; });
       setPicks((p) => { const n = [...p]; n[at] = sel; return n; });
@@ -318,7 +321,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
         </div>
         <div className={styles.tally} aria-live="polite">
                 {answered > 0 && <><span className={styles.tallyOk}><Check size={13} strokeWidth={3} />{right}</span><span className={styles.tallyBad}><X size={13} strokeWidth={3} />{answered - right}</span></>}
-                {run >= 3 && <span key={run} className={styles.streak} role="img" aria-label={`${run} correct in a row`}><Flame size={14} strokeWidth={2.4} />{run}</span>}
+                {run >= 3 && <span key={run} className={`${styles.streak} ${[3,5,10].includes(run) ? styles.milestone : ""}`} role="img" aria-label={`${run} correct in a row`}><Flame size={14} strokeWidth={2.4} />{run}</span>}
                 {goalOn && <span className={`${styles.dayCount} ${goalMet ? styles.dayMet : ""}`} aria-hidden="true">{goalMet && <Check size={13} strokeWidth={3} />}{goalMet ? day!.answered : `${day!.answered}/${day!.goal}`}</span>}
               </div>
         {goalOn && (
@@ -332,7 +335,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
         {done ? (
           <Results items={items} results={results} picks={picks} mode="practice" after={after} onAnother={onAnother} onRetry={onRetry} onClose={close} onOpen={reopen} />
         ) : card && !reviewing ? (
-          <div className={`${styles.body} ${styles.split} ${animCls}`} key={`c-${i}-${card.id}`}>
+          <div className={`${styles.body} ${styles.split} ${animCls}`} key={`c-${i}-${card.id}`} data-card-feedback>
             <span className={styles.courseLine} style={{ background: course.color }} aria-hidden="true" />
             <div className={styles.meta}>
               {chip}
@@ -408,7 +411,7 @@ function PracticeSession({ items: initial, getProgress, onAnswer, onCard, onExpl
               ) : (
                 <div className={styles.choices} role="group" aria-label="Answer choices">
                   {q.choices.map((c) => (
-                    <button key={c.id} className={`${styles.choice} ${c.id === shownPick ? styles.selected : ""}`} disabled={checked} aria-pressed={c.id === shownPick}
+                    <button data-choice={c.id} key={c.id} className={`${styles.choice} ${c.id === shownPick ? styles.selected : ""}`} disabled={checked} aria-pressed={c.id === shownPick}
                       onClick={() => { if (submitting.current) return; haptic(); setSel((cur) => (cur === c.id ? null : c.id)); }}>
                       <span className={styles.letter}>{c.id}</span>
                       <span className={styles.choiceText}>{c.text}</span>

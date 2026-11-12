@@ -25,3 +25,6 @@
 .actions>*{flex:1;min-height:48px;white-space:normal}
 .empty{padding:40px 0;display:flex;flex-direction:column;gap:24px}
 @media(min-width:1000px){.columns{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:32px}.title{font-size:var(--type-34)}.work textarea{min-height:330px}.actions{max-width:760px;margin-left:auto;width:100%}}
+
+@keyframes confirmMark{0%{transform:scale(.97)}60%{transform:scale(1.02)}100%{transform:none}}
+@media(prefers-reduced-motion:no-preference){.marks button[aria-pressed=true]{animation:confirmMark .24s ease-out}}
