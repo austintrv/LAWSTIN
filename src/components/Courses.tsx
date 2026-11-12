@@ -12,7 +12,9 @@ import { toast } from "../helpers/toast";
 import type { useStudyMaterials } from "../helpers/useStudyMaterials";
 import { useLogStudy } from "../helpers/useLogStudy";
 import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, weakMaterialTopics, type Flashcard, type Hypothetical, type MaterialKind, type SchoolCourse, type StudyMaterial, type StudyRecord } from "../helpers/studyMaterials";
-import { EXAMS, type CourseCode } from "../helpers/studyEngine";
+import { EXAMS, studyEngine, type CourseCode } from "../helpers/studyEngine";
+import { useSyllabus } from "../helpers/useSyllabus";
+import { STATUS_COLOR } from "../pages/StudyParts";
 import { Rulebook } from "./Rulebook";
 import IssueSpot from "./tools/IssueSpot";
 import { TaskList, type WorkspaceLink } from "./TaskList";
@@ -27,11 +29,11 @@ export type LessonReturn = { back: () => void; end: () => void };
 type Store = ReturnType<typeof useStudyMaterials>;
 /** `store` is the app's one study-progress store. `onWrite` opens Written practice, on a hypothetical when one is given. */
 type Props = { store: Store; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: (hypo?: Hypothetical) => void; lesson?: LessonReturn };
-type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string; rules?: boolean };
+type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string; rules?: boolean; topic?: string };
 const readRoute = (): Route => {
   const [, section, course, kind, item] = window.location.hash.split("/");
   if (section !== "courses" || !SCHOOL_ORDER.includes(course as SchoolCourse)) return {};
-  if (kind === "rules" && !item) return { course: course as SchoolCourse, rules: true };
+  if (kind === "rules") return { course: course as SchoolCourse, rules: true, topic: item ? decodeURIComponent(item) : undefined };
   return { course: course as SchoolCourse, kind: KINDS.includes(kind as MaterialKind) ? kind as MaterialKind : undefined, item };
 };
 const go = (course?: SchoolCourse, kind?: MaterialKind | "rules", item?: string) => {
@@ -51,8 +53,16 @@ const LINKS: Record<"clinic" | "tutoring", WorkspaceLink[]> = {
   ],
 };
 const isStudyCourse = (c: SchoolCourse): c is CourseCode => c === "il" || c === "asy" || c === "pr";
+const formatDate = (d: string) => {
+  try {
+    return new Date(`${d}T12:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  } catch {
+    return d;
+  }
+};
 
 export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
+  const syllabus = useSyllabus();
   const { tasks } = useCourseTasks();
   const [route, setRoute] = useState(readRoute);
   const [search, setSearch] = useState("");
@@ -182,13 +192,39 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
         <Aura colors={[SCHOOL_COURSES[course].color, "var(--uh-red)", SCHOOL_COURSES[course].color]} />
         <button className={styles.back} onClick={() => go()}><ArrowLeft size={20} />All courses</button>
         <h2>{SCHOOL_COURSES[course].name}</h2>
-        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions</button><button className={styles.secondary} onClick={() => openRules(course)}>Rulebook</button>{EXAMS[course].format === "essay" && <button className={styles.secondary} onClick={() => onWrite()}>Written practice</button>}</div> : null}
+        {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions</button><button className={styles.secondary} onClick={() => openRules(course)}>Rulebook</button><button className={styles.secondary} onClick={() => { window.location.hash = `#/tool/Notes/${course}`; }}>My notes</button>{EXAMS[course].format === "essay" && <button className={styles.secondary} onClick={() => onWrite()}>Written practice</button>}</div> : null}
       </section>
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!view.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={view.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;
         })}</nav></aside>
         <div className={styles.materialsPanel}>
+          {isStudyCourse(course) && !view.kind && studyEngine(state).coverage(course, syllabus[course]).length > 0 && (
+            <div className={styles.topicsSection}>
+              <div className={styles.sectionHead}><h3>Topics</h3></div>
+              <div className={styles.topicsCard}>
+                {studyEngine(state).coverage(course, syllabus[course]).map((u) => (
+                  <button
+                    key={u.topic}
+                    className={styles.topicRow}
+                    onClick={() => {
+                      window.location.hash = `#/tool/Topic/${course}/${encodeURIComponent(u.topic)}`;
+                    }}
+                  >
+                    <span
+                      className={styles.topicDot}
+                      style={{ background: STATUS_COLOR[u.status] }}
+                    />
+                    <span className={styles.topicTitle}>{u.topic}</span>
+                    {u.dates && u.dates[0] && (
+                      <span className={styles.topicDate}>{formatDate(u.dates[0])}</span>
+                    )}
+                    <ChevronRight size={18} className={styles.topicChev} />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className={styles.sectionHead}><h3>{view.kind ? MATERIAL_LABELS[view.kind] : "Study materials"}</h3></div>
           <StudyPlan materials={materials} record={store.record} weak={weak} onOpen={open} expanded={planOpen} onToggle={() => setPlanOpen(v => !v)} />
           {topics.length > 1 && <div className={styles.topicChips} role="group" aria-label="Topic">{["all", ...topics].map(t => <button key={t} aria-pressed={topic === t} onClick={() => { haptic(); setTopic(t); }}>{t === "all" ? "All" : t}</button>)}</div>}
@@ -202,7 +238,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
     {deck && <FlashcardSession key={deck.map(c => c.id).join(",") + (again ? ":again" : "")} cards={deck} again={again} store={store}
       onClose={() => { setDeck(null); lesson?.end(); }} onAgain={list => { setAgain(true); setDeck(list); }}
       onBack={lesson && (() => { setDeck(null); lesson.back(); })} />}
-    {rulesOpen && route.course && isStudyCourse(route.course) && <StudyDialog title="Rulebook" onClose={closeRules}><Rulebook course={route.course} state={state} /></StudyDialog>}
+    {rulesOpen && route.course && isStudyCourse(route.course) && <StudyDialog title="Rulebook" onClose={closeRules}><Rulebook course={route.course} state={state} topic={route.topic} /></StudyDialog>}
     {selected && <MaterialReader key={selected.id} material={selected} store={store} onWrite={onWrite}
       onQuiz={() => { openedHere.current = false; go(selected.course, listRoute.current.course === selected.course ? listRoute.current.kind : selected.kind); lesson?.end(); onQuiz(selected.course, selected.topic); }}
       onClose={() => { closeReader(selected); lesson?.end(); }} onBack={lesson && (() => { haptic(); lesson.back(); })} />}
