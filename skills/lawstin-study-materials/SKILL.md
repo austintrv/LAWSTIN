@@ -137,6 +137,8 @@ All six formats use the discriminated union in `src/helpers/studyMaterials.ts`.
 
 Plain, literal language. Curly quotes and apostrophes. No filler, encouragement, jokes, or unsupported claims. Match Lawstin’s Apple-style UI, red accent, readable text, and existing screen conventions; no small helper captions. Item text states the rule and cites legal authority; it never refers to the source documents or the drafting process (no “the notes,” “Day 18 notes,” question numbers, paragraph numbers, or instructions such as “check the state analogue”). Do not change UI during a routine content run.
 
+Plain names before citations: `authority` on every item, and inside sections, rows, nodes and drill items, reads as what the authority is in a few plain words followed by its citation (“Intended future use counts as purpose, Additional Protocol I art. 52(2)”), never a bare citation. A new `subtopic` is descriptive words, not a citation; existing subtopic strings stay as they are.
+
 IDs: `{course}-{kind}-{YYYYMMDD}-{nn}`. Check all IDs against the published library before drafting. Keep IDs stable after publication. `class_day`, `class_date`, `batch`, `topic`, `subtopic`, and authority are required. Never add `verified` during drafting.
 
 ## 5. Independent verification is mandatory

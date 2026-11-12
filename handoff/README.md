@@ -18,7 +18,8 @@ Then tell Claude the package is ready. Claude reviews it, runs the checks, merge
 | 3 Find and own (merged) | 3A Search and tabs | `3A-search.md` | 3B |
 | 3 Find and own (merged) | 3B Topic pages and notes | `3B-topics-notes.md` | 3A |
 | 4 Polish, joy, longevity (merged) | 4A One design | `4A-one-design.md` | run alone |
-| 4 Polish, joy, longevity | 4B Joy and longevity | `4B-joy-longevity.md` | run alone, after 4A |
+| 4 Polish, joy, longevity (merged) | 4B Joy and longevity | `4B-joy-longevity.md` | done |
+| 5 Follow-up | 4C Plain names before citations | `4C-plain-names.md` | run alone |
 
 Start a stage only after Claude has merged the stage before it; each brief says so.
 

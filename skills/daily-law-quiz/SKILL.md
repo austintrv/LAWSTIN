@@ -71,7 +71,7 @@ Course codes (`course_code` enum): `il` = International Law, `asy` = Asylum Law,
   ],
   "answer": "A",
   "rule": "The rule in one or two sentences, 240 characters at most, stated so it could go in an outline. The first sentence alone must state the rule.",
-  "authority": "Case names, rule numbers, page cites",
+  "authority": "What the authority is in a few plain words, then its citation: “Prosecutor’s duty to disclose exculpatory evidence, Rule 3.8(d)”. Never a bare citation; the app shows this line to him and a bare number tells him nothing.",
   "verified": {"at": "2026-10-29T12:58:00Z", "rounds": 1, "notes": "Passed independent check"}
 }
 ```
@@ -88,6 +88,7 @@ Course codes (`course_code` enum): `il` = International Law, `asy` = Asylum Law,
 
 ### Syllabus rows (`app_settings`, keys `syllabus:v1:il`, `syllabus:v1:asy`, `syllabus:v1:pr`)
 `value` is JSON text: `{"units":[{"topic":"Treaties","dates":["2026-09-02","2026-09-09"],"also":["An older topic string"]}, …]}`, in the order taught. `topic` is the exact string questions use; `dates` are the class dates; `also` (optional) lists older question topic strings that belong to the unit. The app’s Progress tab shows each unit whose first date has passed as Not covered, New, Shaky, Learning, or Solid.
+- A new `subtopic` is descriptive words (“Prosecutor’s disclosure duty”), never a bare citation (“Rule 3.8(d)”); reuse an existing subtopic string as it is.
 - Every question’s `topic` must equal a unit’s `topic` (or one of its `also` strings). Never invent a topic outside the syllabus rows.
 - Keep the rows true to what was taught. When a class covered something no unit names, or the DAY notes show a unit’s title or dates are wrong (some were taken from the syllabus and from file names before class), correct the row in Step 6. Change a unit’s `topic` only when no question uses it; otherwise add the old string to `also`.
 - Update a row by writing the whole corrected JSON: `UPDATE app_settings SET value = $j$…$j$, updated_at = now() WHERE key = 'syllabus:v1:il';`
