@@ -1,10 +1,14 @@
+let studyTimeZone: string | undefined;
+export const setStudyTimeZone = (zone?: string) => { studyTimeZone = zone; };
 /** Date helpers that work on plain "YYYY-MM-DD" day keys (no time zone drift). */
 export const dateKey = {
   /** Today's day key in the device's local time zone. */
   today(d: Date = new Date()): string {
+    if(studyTimeZone) return new Intl.DateTimeFormat("en-CA",{timeZone:studyTimeZone,year:"numeric",month:"2-digit",day:"2-digit"}).format(d);
     const p = (n: number) => String(n).padStart(2, "0");
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   },
+  hour(d:Date=new Date()):number {return studyTimeZone?Number(new Intl.DateTimeFormat("en-US",{timeZone:studyTimeZone,hour:"numeric",hourCycle:"h23"}).format(d)):d.getHours();},
   /** A DB date (returned as a UTC-midnight Date) or string, as a day key. */
   fromDb(v: Date | string | null | undefined): string | null {
     if (!v) return null;

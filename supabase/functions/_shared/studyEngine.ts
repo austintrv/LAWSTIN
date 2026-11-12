@@ -1,9 +1,18 @@
 import type { State, QuestionDTO, ProgressDTO } from "./types.ts";
 import { dateKey } from "./dateKey.ts";
+import { needsTopicReview, type TopicReview } from "./topicReview.ts";
 
 export type CourseCode = "il" | "asy" | "pr";
 export type Filter = "all" | CourseCode;
-export type RoundItem = { q: QuestionDTO; review: boolean };
+export type StudyMode = "mixed" | "due" | "new" | "ahead";
+/** A recall card in a study session: a library flashcard, or a rule to state from memory. */
+export type SessionCard = { id: string; course: CourseCode; topic: string; front: string; back: string; reason: string; authority: string; rule?: boolean };
+export type QuestionItem = { q: QuestionDTO; review: boolean; card?: undefined };
+export type CardItem = { card: SessionCard; review: boolean; q?: undefined };
+export type RoundItem = QuestionItem | CardItem;
+export const itemId = (it: RoundItem) => (it.card ? it.card.id : it.q.id);
+export const itemCourse = (it: RoundItem): CourseCode => (it.card ? it.card.course : it.q.course);
+export const itemTopic = (it: RoundItem) => (it.card ? it.card.topic : it.q.topic);
 
 export const COURSES: Record<CourseCode, { name: string; short: string; color: string }> = {
   il: { name: "International Law", short: "Intl Law", color: "var(--course-il)" },
@@ -11,24 +20,94 @@ export const COURSES: Record<CourseCode, { name: string; short: string; color: s
   pr: { name: "Professional Responsibility", short: "Pro Res", color: "var(--course-pr)" },
 };
 export const COURSE_KEYS: CourseCode[] = ["il", "asy", "pr"];
+/** Fall 2026 final exam dates, from Austin. */
+export const FINALS: Record<CourseCode, string> = { il: "2026-12-02", asy: "2026-12-07", pr: "2026-12-09" };
+/** How each final is given. Closed-book multiple choice rewards recall; open-note essays reward analysis. */
+export const EXAMS: Record<CourseCode, { format: "mc" | "essay"; notes: "closed" | "open"; labels: string[] }> = {
+  il: { format: "essay", notes: "open", labels: ["Essay", "Printed notes"] }, asy: { format: "essay", notes: "open", labels: ["Essay", "Open book"] }, pr: { format: "mc", notes: "closed", labels: ["Multiple choice", "Closed book"] },
+};
+/** Exam pace for timed multiple choice, in seconds per question. */
+export const EXAM_PACE = 120;
 
-const shuffle = <T,>(a: T[]): T[] => {
+export type CourseCounts = Record<CourseCode, number>;
+export const courseCounts = (value = 0): CourseCounts => ({ il: value, asy: value, pr: value });
+export function activeCourses(today: string, filter: Filter = "all", hour = dateKey.hour()): CourseCode[] {
+  if (filter !== "all") return [filter];
+  const ahead = COURSE_KEYS.filter((c) => FINALS[c] > today || FINALS[c] === today && hour < 18);
+  return ahead.length ? ahead : COURSE_KEYS;
+}
+
+/** Largest remainder rounding, with stable course-order ties. */
+export function apportion(weights: number[], total: number): number[] {
+  if (!weights.length) return [];
+  const clean = weights.map((w) => Number.isFinite(w) ? Math.max(0, w) : 0);
+  const sum = clean.reduce((a, n) => a + n, 0);
+  const exact = clean.map((w) => Math.max(0, Math.round(total)) * (sum ? w / sum : 1 / weights.length));
+  const out = exact.map(Math.floor);
+  const order = exact.map((n, i) => ({ i, remainder: n - out[i] })).sort((a, b) => b.remainder - a.remainder || a.i - b.i);
+  for (let n = Math.round(total) - out.reduce((a, x) => a + x, 0), i = 0; i < n; i++) out[order[i].i]++;
+  return out;
+}
+
+/** A unit of a course as taught: the topic string questions use, the class dates, and older topic strings that belong to it. */
+export type SyllabusUnit = { topic: string; dates: string[]; also?: string[] };
+export type Syllabus = Partial<Record<CourseCode, SyllabusUnit[]>>;
+export type CoverageStatus = "none" | "unseen" | "shaky" | "learning" | "solid";
+export const STATUS_LABEL: Record<CoverageStatus, string> = { none: "Not covered", unseen: "New", shaky: "Shaky", learning: "Learning", solid: "Solid" };
+
+/**
+ * The review date that counts before a final: anything whose next review would land on or after
+ * the exam comes back in the last five days instead, unless it was already reviewed in that window.
+ */
+export function examDue(due: string | null | undefined, lastDay: string | null | undefined, final: string | undefined, today: string): string | null {
+  if (!due) return null;
+  if (!final || today > final || due < final) return due;
+  const open = dateKey.addDays(final, -5);
+  return lastDay && lastDay >= open ? due : open;
+}
+const dayOf = (iso: string | null | undefined) => (iso ? dateKey.today(new Date(iso)) : null);
+
+export const ROLE_LABEL: Record<string, string> = {
+  correct: "Correct answer",
+  sneaky: "Close call",
+  average: "Plausible",
+  bad: "Way off",
+};
+export const ROUND_SIZE = 10;
+export const DAILY_GOAL = 20;
+
+const shuffle = <T,>(a: T[], random = Math.random): T[] => {
   const b = [...a];
   for (let i = b.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(random() * (i + 1));
     [b[i], b[j]] = [b[j], b[i]];
   }
   return b;
 };
 
-/** Server copy of the app's study logic (only the parts notifications and the weekly email use). */
-export function studyEngine(state: State | undefined, todayKey?: string) {
+function interleave<T>(lists: T[][]): T[] {
+  const ls = lists.map((l) => [...l]);
+  const out: T[] = [];
+  while (ls.some((l) => l.length)) for (const l of ls) if (l.length) out.push(l.shift() as T);
+  return out;
+}
+
+function byCourse<T extends RoundItem>(items: T[], random = Math.random): T[][] {
+  const m: Record<string, T[]> = {};
+  for (const it of items) (m[itemCourse(it)] ||= []).push(it);
+  return shuffle(Object.values(m), random);
+}
+
+/** Pure study logic over the loaded state. */
+export function studyEngine(state: State | undefined, todayKey?: string, opts?: { weakExtra?: string[]; reviews?: Record<string, TopicReview>; random?: () => number }) {
   const questions = state?.questions ?? [];
   const pmap = new Map<string, ProgressDTO>((state?.progress ?? []).map((p) => [p.questionId, p]));
   const days = new Map((state?.days ?? []).map((d) => [d.date, d]));
   const today = todayKey ?? dateKey.today();
+  const random = opts?.random ?? Math.random;
   const prog = (id: string) => pmap.get(id);
-  const inFilter = (q: QuestionDTO, f: Filter) => f === "all" || q.course === f;
+  const seen = (id: string) => (prog(id)?.seen ?? 0) > 0;
+  const inFilter = (q: QuestionDTO, f: Filter) => activeCourses(today, f).includes(q.course);
 
   function queues(f: Filter = "all") {
     const due: QuestionDTO[] = [], fresh: QuestionDTO[] = [], ahead: QuestionDTO[] = [], missed: QuestionDTO[] = [], starred: QuestionDTO[] = [];
@@ -37,9 +116,14 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
       const p = prog(q.id);
       if (p?.starred) starred.push(q);
       if (!p || !p.seen) { fresh.push(q); continue; }
-      if (p.lastCorrect === false) missed.push(q);
-      if ((p.due ?? today) <= today) due.push(q); else ahead.push(q);
+      if (p.lastCorrect === false && needsTopicReview(p, opts?.reviews?.[`${q.course}|${q.topic}`])) missed.push(q);
+      if ((examDue(p.due, dayOf(p.lastAt), FINALS[q.course], today) ?? today) <= today) due.push(q); else ahead.push(q);
     }
+    const order = (a: QuestionDTO, b: QuestionDTO) => {
+      const pa = prog(a.id)!, pb = prog(b.id)!;
+      return (pa.due ?? "").localeCompare(pb.due ?? "") || pa.box - pb.box;
+    };
+    due.sort(order); ahead.sort(order);
     return { due, fresh, ahead, missed, starred, total: questions.filter((q) => inFilter(q, f)).length };
   }
 
@@ -54,6 +138,133 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
       if (p && p.seen) { s.seen++; s.c += p.correct; s.w += p.wrong; }
     }
     return [...m.values()];
+  }
+
+  /** Under 70% with at least two answers, or a recent essay on the topic that scored low. */
+  function weakTopics() {
+    const extra = new Set(opts?.weakExtra ?? []);
+    return topicStats().filter((t) => (t.c + t.w >= 2 && t.c / (t.c + t.w) < 0.7) || extra.has(`${t.course}|${t.topic}`));
+  }
+
+  /**
+   * Unresolved misses and guesses, worst first. Successful answers and topic lessons clear
+   * the review queue; new misses bring a topic back without erasing its history.
+   */
+  function missedTopics() {
+    const m = new Map<string, { course: CourseCode; topic: string; items: { q: QuestionDTO; p: ProgressDTO }[]; c: number; w: number; score: number }>();
+    for (const q of questions) {
+      const p = prog(q.id);
+      const k = `${q.course}|${q.topic}`;
+      if (!p || !needsTopicReview(p, opts?.reviews?.[k])) continue;
+      if (!m.has(k)) m.set(k, { course: q.course, topic: q.topic, items: [], c: 0, w: 0, score: 0 });
+      const t = m.get(k)!;
+      t.items.push({ q, p });
+      t.score += (p.lastCorrect === false ? 3 : 0) + p.wrong + p.guessed;
+    }
+    for (const t of m.values()) {
+      for (const st of topicStats()) if (st.course === t.course && st.topic === t.topic) { t.c = st.c; t.w = st.w; }
+      t.items.sort((a, b) => Number(b.p.lastCorrect === false) - Number(a.p.lastCorrect === false) || b.p.wrong - a.p.wrong);
+    }
+    return [...m.values()].sort((a, b) => b.score - a.score);
+  }
+
+  function courseStats(c: CourseCode) {
+    let n = 0, s = 0, cor = 0, wr = 0;
+    for (const q of questions) {
+      if (q.course !== c) continue;
+      n++;
+      const p = prog(q.id);
+      if (p && p.seen) { s++; cor += p.correct; wr += p.wrong; }
+    }
+    return { n, seen: s, cor, wr, acc: cor + wr ? Math.round((cor / (cor + wr)) * 100) : 0 };
+  }
+
+  function pickFresh(fresh: QuestionDTO[], n: number, targets?: Partial<CourseCounts>) {
+    const weak = new Set(weakTopics().map((t) => `${t.course}|${t.topic}`));
+    const score = (q: QuestionDTO) => {
+      const age = q.classDate ? dateKey.diff(q.classDate, today) : 30;
+      return (age <= 7 ? 3 : age <= 21 ? 1.6 : 1) + (weak.has(`${q.course}|${q.topic}`) ? 1.5 : 0) + random();
+    };
+    const lists = COURSE_KEYS.map((c) => fresh.filter((q) => q.course === c).map((q) => ({ q, score: score(q) })).sort((a, b) => b.score - a.score).map((x) => x.q));
+    const weights = COURSE_KEYS.map((c, i) => targets?.[c] ?? Math.ceil(lists[i].length / Math.max(1, dateKey.diff(today, FINALS[c]) - 2)));
+    const out: QuestionDTO[][] = COURSE_KEYS.map(() => []);
+    while (out.flat().length < n && lists.some((l) => l.length)) {
+      const live = lists.map((l, i) => l.length ? i : -1).filter((i) => i >= 0);
+      const share = apportion(live.map((i) => weights[i]), n - out.flat().length);
+      live.forEach((i, j) => out[i].push(...lists[i].splice(0, share[j])));
+    }
+    return interleave(out);
+  }
+
+  function buildRound(f: Filter, mode: StudyMode = "mixed", targets?: Partial<CourseCounts>): QuestionItem[] {
+    const { due, fresh, ahead } = queues(f);
+    const reviews = (list: QuestionDTO[], n: number) => interleave(COURSE_KEYS.map((c) => list.filter((q) => q.course === c))).slice(0, n);
+    if (mode === "due") return reviews(due, ROUND_SIZE).map((q) => ({ q, review: true }));
+    if (mode === "new") return pickFresh(fresh, ROUND_SIZE, targets).map((q) => ({ q, review: false }));
+    if (mode === "ahead") return reviews(ahead, ROUND_SIZE).map((q) => ({ q, review: true }));
+    let rev = reviews(due, Math.ceil(ROUND_SIZE / 2));
+    const nw = pickFresh(fresh, ROUND_SIZE - rev.length, targets);
+    if (rev.length + nw.length < ROUND_SIZE) rev = reviews(due, ROUND_SIZE - nw.length);
+    return interleave<QuestionItem>([rev.map((q) => ({ q, review: true })), nw.map((q) => ({ q, review: false }))]);
+  }
+
+  function listRound(list: QuestionDTO[]): QuestionItem[] {
+    return interleave(byCourse(shuffle(list, random).slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) })), random));
+  }
+
+  function topicRound(course: CourseCode, topic: string): QuestionItem[] {
+    const list = questions.filter((q) => q.course === course && q.topic === topic);
+    const unseen = list.filter((q) => !seen(q.id));
+    const rest = list.filter((q) => seen(q.id)).sort((a, b) => (prog(a.id)!.lastCorrect ? 1 : 0) - (prog(b.id)!.lastCorrect ? 1 : 0));
+    return [...shuffle(unseen, random), ...rest].slice(0, ROUND_SIZE).map((q) => ({ q, review: seen(q.id) }));
+  }
+
+  /** Unseen questions first, then the ones answered longest ago, so an exam is not a memory test of recent answers. */
+  function examRound(f: Filter, size: number): QuestionItem[] {
+    const rank = (q: QuestionDTO) => (seen(q.id) ? 1 : 0);
+    const pool = shuffle(questions.filter((q) => inFilter(q, f)), random)
+      .sort((a, b) => rank(a) - rank(b) || (prog(a.id)?.lastAt ?? "").localeCompare(prog(b.id)?.lastAt ?? ""));
+    return interleave(byCourse(shuffle(pool.slice(0, size), random).map((q) => ({ q, review: seen(q.id) })), random));
+  }
+
+  /**
+   * Rules to state from memory, one per doctrine, for closed-book courses. Only rules from questions
+   * already answered, so a card never gives away a question that is still new.
+   */
+  function ruleCards(f: Filter = "all"): SessionCard[] {
+    const done = new Set<string>();
+    const out: SessionCard[] = [];
+    for (const q of questions) {
+      if (!inFilter(q, f) || EXAMS[q.course].notes !== "closed" || !q.rule || !seen(q.id)) continue;
+      const key = `${q.course}|${q.subtopic ?? q.rule}`;
+      if (done.has(key)) continue;
+      done.add(key);
+      out.push({ id: `rule:${q.id}`, course: q.course, topic: q.topic, front: q.subtopic ?? q.topic, back: q.rule, reason: "", authority: q.authority ?? "", rule: true });
+    }
+    return out;
+  }
+
+  /**
+   * The course as taught, unit by unit, against what the bank holds. Units whose first class has
+   * not happened are left out; question topics outside the syllabus get their own rows.
+   */
+  function coverage(course: CourseCode, units: SyllabusUnit[] | undefined, materials?: Map<string, number>) {
+    const weak = new Set(weakTopics().filter((t) => t.course === course).map((t) => t.topic));
+    const stats = topicStats().filter((t) => t.course === course);
+    const used = new Set<string>();
+    const row = (topic: string, names: string[], dates: string[]) => {
+      const mine = stats.filter((t) => names.includes(t.topic));
+      mine.forEach((t) => used.add(t.topic));
+      const n = mine.reduce((a, t) => a + t.n, 0), sn = mine.reduce((a, t) => a + t.seen, 0);
+      const c = mine.reduce((a, t) => a + t.c, 0), w = mine.reduce((a, t) => a + t.w, 0);
+      const m = names.reduce((a, t) => a + (materials?.get(`${course}|${t}`) ?? 0), 0);
+      const acc = c + w ? c / (c + w) : 0;
+      const status: CoverageStatus = !n ? "none" : !sn ? "unseen" : names.some((t) => weak.has(t)) ? "shaky" : sn < n || acc < 0.85 ? "learning" : "solid";
+      return { topic, topics: mine.map((t) => t.topic), dates, n, seen: sn, c, w, materials: m, status };
+    };
+    const rows = (units ?? []).filter((u) => u.dates[0] && u.dates[0] <= today).map((u) => row(u.topic, [u.topic, ...(u.also ?? [])], u.dates));
+    for (const t of stats) if (!used.has(t.topic)) rows.push(row(t.topic, [t.topic], []));
+    return rows;
   }
 
   function streak() {
@@ -73,5 +284,148 @@ export function studyEngine(state: State | undefined, todayKey?: string) {
     return out;
   }
 
-  return { questions, prog, today, queues, topicStats, streak, lastNDays, todayCount: days.get(today), shuffle };
+  function missProfile() {
+    const r = { sneaky: 0, average: 0, bad: 0, correct: 0, wrong: 0, guessed: 0, seen: 0 };
+    for (const p of pmap.values()) {
+      r.sneaky += p.missSneaky; r.average += p.missAverage; r.bad += p.missBad;
+      r.correct += p.correct; r.wrong += p.wrong; r.guessed += p.guessed;
+      if (p.seen) r.seen++;
+    }
+    return r;
+  }
+
+  function topicRules(course: CourseCode, topic: string) {
+    const seenSub = new Set<string>();
+    const out: { subtopic: string; rule: string; authority: string | null }[] = [];
+    for (const q of questions) {
+      if (q.course !== course || q.topic !== topic || !q.rule) continue;
+      const key = q.subtopic ?? q.rule;
+      if (seenSub.has(key)) continue;
+      seenSub.add(key);
+      out.push({ subtopic: q.subtopic ?? topic, rule: q.rule, authority: q.authority });
+    }
+    return out;
+  }
+
+  return { questions, prog, today, queues, topicStats, weakTopics, missedTopics, courseStats, buildRound, listRound, topicRound, examRound, streak, lastNDays, missProfile, topicRules, ruleCards, coverage, totalAnswers: [...days.values()].reduce((a, d) => a + d.answered, 0), todayCount: days.get(today) };
+}
+
+/** A greeting picked once per app open. Context lines only when the data supports them. */
+export function makeGreeting(state: State | undefined, name: string, recent: string[], goal = DAILY_GOAL, readyReviews?: number, filter: Filter = "all", answeredToday?: number, achievements?: { solidYesterday: boolean; bestStreak: boolean }): string {
+  const now = new Date();
+  const h = now.getHours();
+  const dow = now.getDay();
+  const month = now.getMonth();
+  const date = now.getDate();
+  const tod = h < 5 ? "late" : h < 12 ? "morning" : h < 17 ? "afternoon" : h < 22 ? "evening" : "late";
+  const time = {
+    morning: [
+      `Good morning, ${name}`, `Morning, ${name}`, `Morning, counselor`, `Rise and brief, ${name}`,
+      `Coffee, then case law, ${name}`, `Up before opposing counsel`, `The early bird gets the holding`,
+      `Good morning, future Esq.`, `Morning docket is open, ${name}`, `Court opens at 9. You’re early.`,
+    ],
+    afternoon: [
+      `Good afternoon, ${name}`, `Afternoon, ${name}`, `Afternoon, counselor`, `Lunch recess is over, ${name}`,
+      `The afternoon session is called to order`, `Post-lunch docket, ${name}`, `Afternoon arguments, ${name}?`,
+    ],
+    evening: [
+      `Good evening, ${name}`, `Evening, ${name}`, `Evening, counselor`, `Night court is in session`,
+      `Evening docket is open, ${name}`, `Overtime, ${name}?`, `After-hours session, ${name}`,
+    ],
+    late: [
+      `Still up, ${name}?`, `Late session, ${name}?`, `Late filing, ${name}?`, `Emergency motion at this hour?`,
+      `Burning the midnight oil, ${name}?`, `The night is young. The law is old.`, `Even judges sleep, ${name}`,
+      `Night court, ${name}?`, `Studying past curfew, ${name}?`,
+    ],
+  }[tod];
+  const general = [
+    `What should we work on, ${name}?`, `Ready when you are, ${name}`, `Let’s get a few in, ${name}`, `Where should we start, ${name}?`,
+    `Court is now in session, ${name}`, `All rise for ${name}`, `Oyez, oyez, ${name}`, `Order in the court, ${name}`,
+    `The Honorable ${name}, presiding`, `Counsel may approach, ${name}`, `The court recognizes ${name}`,
+    `May it please the court: ${name}`, `Counselor ${name}, the floor is yours`, `Ready for oral argument, ${name}?`,
+    `Let the record reflect: ${name} showed up`, `Appearance entered, ${name}`, `Habeas corpus, ${name}. Body produced.`,
+    `In re ${name}`, `${name} v. The Exam`, `${name} v. Procrastination`, `${name}, J.D. loading…`, `Esquire in training, ${name}`,
+    `Motion to study: granted`, `Motion to procrastinate: denied`, `Motion to snooze: denied`, `Leave to study: granted`,
+    `Cert granted, ${name}`, `Affirmed: ${name} is back`, `Reversed and remanded… to studying`, `Overruled. Keep going, ${name}`,
+    `Objection! To not studying.`, `Your excuse is hearsay, ${name}`, `Excuses inadmissible, ${name}`,
+    `Statute of limitations on excuses: expired`, `Laches won’t apply if you start now`, `Time is of the essence, ${name}`,
+    `No continuances today, ${name}`, `Questions presented: several`, `Brief answer: yes, you can`, `Holding: ${name} is ready`,
+    `Dicta aside, let’s study`, `Stare decisis: you keep showing up`, `Let’s make some precedent, ${name}`,
+    `Reasonable person standard: met`, `Beyond a reasonable doubt: you’ve got this`, `Preponderance of the evidence says go`,
+    `Clear and convincing: today’s the day`, `Notice and an opportunity to study`, `The burden of proof is on you, ${name}`,
+    `The jury’s in: you’ve got this`, `Hearsay says you’ll ace this`, `Prima facie ready, ${name}`, `Exhibit A: ${name}, studying`,
+    `Discovery is open, ${name}`, `Request for admission: you’re ready`, `Plead your case, ${name}`, `Time to make your case, ${name}`,
+    `Offer: ten questions. Accept?`, `Meeting of the minds, ${name}?`, `Docket’s open, ${name}`, `Raising the bar, ${name}`,
+    `The bar is waiting, ${name}`, `Sua sponte study session`, `Your witness, ${name}`, `No further questions? We have plenty.`,
+    `This greeting is not legal advice`, `Hi, ${name}. Not legal advice.`, `Legally obligated to say hi, ${name}`,
+    // International Law
+    `The Hague says hi, ${name}`, `No diplomatic immunity from studying`, `Pacta sunt servanda: the study pact holds`,
+    `Jus cogens: studying is non-derogable`, `Customary practice: ${name} studies daily`, `Opinio juris says it’s study time`,
+    `Reservations? None. Let’s study.`, `Ratified and ready, ${name}`, `The ICJ will see you now`,
+    // Asylum Law
+    `Well-founded fear of the exam? Fixable.`, `One-year deadline? You’re early, ${name}`, `Credible and ready, ${name}`,
+    `Nexus established: you + studying`,
+    // Professional Responsibility
+    `Rule 1.1 says be competent, ${name}`, `Rule 1.3 says promptness, ${name}`, `Conflict check cleared, ${name}`,
+    `Privileged and confidential: hi, ${name}`, `Candor to the tribunal: you’re ready`, `Model Rules, model student`,
+    `Zealous advocacy starts here, ${name}`, `The MPRE fears you, ${name}`, `Pro bono study hour, ${name}`,
+  ];
+  const weekday = now.toLocaleDateString(undefined, { weekday: "long" });
+  const day = [
+    [`Happy Sunday, ${name}`, `Sunday scaries? Not here.`, `Sunday session, ${name}? Respect.`],
+    [`New week, ${name}`, `Monday: fresh docket`, `Monday motion practice, ${name}`, `New week, new holdings`],
+    [`Tuesday, ${name}. Let’s go.`, `Tuesday’s calendar is clear, ${name}`],
+    [`Midweek, ${name}`, `Midweek recess? Denied.`, `Halfway to the weekend, ${name}`],
+    [`Thursday, ${name}. Almost there.`, `Thursday: Friday’s opening argument`],
+    [`Happy Friday, ${name}`, `Friday: the weekend is in deliberation`, `TGIF: Thank God It’s Filed`],
+    [`Happy ${weekday}, ${name}`, `Saturday session? Respect.`, `Weekend warrior, ${name}`],
+  ][dow];
+  const season: string[] = [];
+  if (month === 9 && date === 31) season.push(`Happy Halloween, ${name}`, `Trick or tort?`, `Scarier than the MPRE? Doubtful.`, `Boo. Ten questions.`);
+  else if (month === 9 && date >= 24) season.push(`Spooky season, ${name}`, `Trick or tort?`);
+  if (month === 10 && dow === 4 && date >= 22 && date <= 28) season.push(`Happy Thanksgiving, ${name}`, `Thankful for spaced review`);
+  if (month === 11 && date <= 20) season.push(`Finals season, ${name}. Let’s go.`, `Exam mode: on`, `Finals? You’ve been ready.`);
+  if (month === 11 && (date === 24 || date === 25)) season.push(`Merry Christmas, ${name}`);
+  if (month === 0 && date === 1) season.push(`Happy New Year, ${name}`, `New year, new precedent`);
+  const ctx: string[] = [];
+  if (state) {
+    const e = studyEngine(state);
+    const dueCount = readyReviews ?? e.queues(filter).due.length;
+    const run = state.runs[0];
+    const st = e.streak();
+    const done = answeredToday ?? e.todayCount?.answered ?? 0;
+    if (dueCount) ctx.push(...(dueCount === 1 ? ["One review is waiting", "One review on the docket"] : [`${dueCount} reviews are waiting`, `${dueCount} reviews on the docket`]));
+    const added = run ? Object.entries(run.byCourse).filter(([c]) => activeCourses(e.today, filter).includes(c as CourseCode)).reduce((a, [, n]) => a + n, 0) : 0;
+    if (run?.date === e.today && added) ctx.push(h < 12 ? `${added} new questions this morning` : `${added} new questions today`, `${added} fresh questions just filed`);
+    if (st >= 2) ctx.push(`Day ${st} in a row, ${name}`, `${st}-day streak. Precedent set.`);
+    if (done >= goal) ctx.push(`Goal met. Extra credit, ${name}?`, `Daily goal: satisfied. Encore?`);
+    else if (done > 0) ctx.push(`Back for more, ${name}?`, `Round two, ${name}?`, `Back on the stand, ${name}`);
+    else if (h >= 17) ctx.push(`Today’s docket is still open`);
+    const weak = e.weakTopics().filter((t) => activeCourses(e.today, filter).includes(t.course)).sort((a, b) => a.c / (a.c + a.w) - b.c / (b.c + b.w))[0];
+    if (weak) ctx.push(`${weak.topic} could use a round`, `${weak.topic} wants a rematch`);
+  }
+  if (h < 5) ctx.push(`Midnight docket, ${name}`, `The court has after-hours counsel`, `One quiet holding before bed`, `Even the footnotes are asleep`, `Last brief under the desk lamp`);
+  if (achievements?.solidYesterday) ctx.push(`Yesterday’s shaky ground is solid`, `One more unit on firm ground`, `You built a little precedent yesterday`, `Yesterday’s work is holding up`, `A stronger record, counselor`);
+  if (achievements?.bestStreak && state && studyEngine(state).streak() > 1) ctx.push(`A personal best on the record`, `Your longest run yet, ${name}`, `Consistency sustained, counselor`, `The streak has set a precedent`, `New record. Same good counsel.`);
+  const pools: [string[], number][] = [[season, 0.2], [ctx, 0.3], [day, 0.1], [time, 0.2], [general, 0.45]];
+  const pick = (a: string[]) => a[Math.floor(Math.random() * a.length)];
+  for (let i = 0; i < 8; i++) {
+    const live = pools.filter(([p]) => p.length);
+    let r = Math.random() * live.reduce((t, [, w]) => t + w, 0);
+    const pool = (live.find(([, w]) => (r -= w) < 0) ?? live[live.length - 1])[0];
+    const fresh = pool.filter((g) => !recent.includes(g));
+    if (fresh.length) return pick(fresh);
+  }
+  return pick(general.filter((g) => !recent.includes(g)).concat(time));
+}
+
+export function momentGreeting(kind: "eve" | "morning" | "welcome", name: string, recent: string[]): string {
+  const lines = {
+    eve: [`Easy does it, ${name}`, `One last pass, counselor`, `You’ve put in the work, ${name}`, `A little review, then rest`, `Steady as you go, ${name}`, `Tonight’s docket is short`, `Counsel may take a breath`, `One calm pass, ${name}`, `The record is ready`, `Close the briefs, then sleep`],
+    morning: [`Good luck today, ${name}`, `You’ve got this, counselor`, `Take your time, ${name}`, `The floor is yours, ${name}`, `Ready for your appearance`, `Breathe. Read. Begin.`, `Go make your case, ${name}`, `Your preparation goes with you`, `One rule at a time, counselor`, `Court is yours today`],
+    welcome: [`Counsel returns from recess`, `The docket kept your seat`, `No objection to a fresh start`, `A comeback worth entering`, `Back in chambers, ${name}`, `Welcome back, ${name}`, `Good to see you, counselor`, `Fresh docket, ${name}`, `Pick up right here, ${name}`, `A few questions will do`, `The briefs kept your place`, `Counsel returns. Court smiles.`, `Let’s ease back in, ${name}`, `Your seat is still here`, `A new day on the docket`],
+  }[kind];
+  const fresh = lines.filter((line) => !recent.includes(line));
+  const pool = fresh.length ? fresh : lines;
+  return pool[Math.floor(Math.random() * pool.length)];
 }

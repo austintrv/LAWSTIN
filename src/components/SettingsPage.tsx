@@ -1,3 +1,4 @@
+import { useSyncedSetting } from "../helpers/useSyncedSetting";
 import React, { useEffect, useRef, useState } from "react";
 import { Aura, auraHost } from "./Aura";
 import { readPendingWritten, WRITTEN_PREFIX } from "../helpers/useWritten";
@@ -48,6 +49,7 @@ function Segments<T extends string>({ value, options, onChange, label }: { value
 export function SettingsPage({ email: account, onClose, onShortcuts, onHow }: { email: string | null; onClose: () => void; onShortcuts?: () => void; onHow?: () => void }) {
   const wide = useWide();
   const { query, action } = useLawstinSettings();
+  const evening=useSyncedSetting<number>("notify_evening_hour",21);
   const s = query.data?.settings;
   const [prefs, setPrefs] = useState(readPrefs);
   const [pushOn, setPushOn] = useState(false);
@@ -238,6 +240,7 @@ export function SettingsPage({ email: account, onClose, onShortcuts, onHow }: { 
                 <span className={styles.label}>Evening reminder</span>
                 <Switch checked={s?.notifyEvening ?? true} disabled={!s} onCheckedChange={(v) => set("notify_evening", v)} aria-label="Evening reminder" />
               </label>
+              <label className={styles.row}><Icon color="var(--badge-purple)"><Moon size={16}/></Icon><span className={styles.label}>Reminder time</span><input type="time" aria-label="Reminder time" value={`${String(evening.value).padStart(2,"0")}:00`} step="3600" onChange={e=>{const hour=Number(e.target.value.split(":")[0]);if(Number.isInteger(hour)&&hour>=0&&hour<=23)evening.save(hour);}}/></label>
               <label className={`${styles.row} ${notifyOff ? styles.off : ""}`}>
                 <Icon color="var(--badge-success)"><Sparkles size={16} /></Icon>
                 <span className={styles.label}>New questions</span>

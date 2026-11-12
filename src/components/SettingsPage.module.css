@@ -64,3 +64,5 @@ button.row:active:not(:disabled) { background: var(--fill); }
 /* Glows only behind the title and profile card. */
 .aura { bottom: auto; height: 340px; --fade-y: linear-gradient(var(--shadow-ink) 55%, transparent); }
 @media (prefers-reduced-motion: reduce) { .page, .closing { animation: none; } }
+.row input[type=time]{font:inherit;min-height:44px;max-width:128px;color:var(--foreground);background:var(--fill);border:0;border-radius:var(--radius-sm);padding:8px}
+:global(.dark) .row input[type=time]{color-scheme:dark}
