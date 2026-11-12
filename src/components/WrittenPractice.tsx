@@ -44,10 +44,11 @@ type Props = {
   /** A graded essay, to count toward the day. */
   onGraded: (entry: WrittenEntry, length: Length) => void;
   onTopic: (course: CourseCode, topic: string) => void;
+  initialView?: WrittenEntry;
   className?: string;
 };
 
-export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos, weak, written, onGraded, onTopic, className }: Props) {
+export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos, weak, written, onGraded, onTopic, initialView, className }: Props) {
   const { spotter, grade } = useLawstinAi();
   const [drafts, setDrafts] = useState(readDrafts);
   const saved = useState(() => hypo ? drafts[draftKey(fromHypo(hypo))] : undefined)[0];
@@ -66,7 +67,7 @@ export function WrittenPractice({ onClose, course: openCourse, full, hypo, hypos
   const [online, setOnline] = useState(navigator.onLine);
   const [grading, setGrading] = useState(false);
   const request = useRef(0);
-  const [view, setView] = useState<WrittenEntry | null>(null);
+  const [view, setView] = useState<WrittenEntry | null>(initialView ?? null);
   const [err, setErr] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
   const [ring, setRing] = useState(0);

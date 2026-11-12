@@ -175,6 +175,7 @@ function StudyCalendar({
 }
 
 export function ProgressView({
+  onHow,
   e,
   state,
   syllabus,
@@ -183,6 +184,7 @@ export function ProgressView({
   onLesson,
   onStudy,
 }: {
+  onHow?: () => void;
   e: Engine;
   state?: QuestionState;
   syllabus: Syllabus;

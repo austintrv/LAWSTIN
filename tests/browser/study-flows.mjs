@@ -68,7 +68,7 @@ async function answer(page) {
   await dlg.getByRole('button',{name:'Check answer',exact:true}).click();
   await dlg.getByRole('heading',{name:'Correct',exact:true}).waitFor();
 }
-async function close(page) {await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await page.waitForTimeout(450);if(await page.getByRole('dialog',{name:'Session recap',exact:true}).isVisible()) await page.getByRole('dialog').getByRole('button',{name:'Done',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});}
+async function close(page) {await page.getByRole('dialog').getByRole('button',{name:'Close',exact:true}).click();await page.waitForTimeout(450);if(await page.getByRole('dialog',{name:'Session recap',exact:true}).isVisible()) await page.getByRole('dialog').getByRole('button',{name:'Done',exact:true}).click();await page.getByRole('dialog').waitFor({state:'hidden'});await page.waitForTimeout(200);}
 try {
   const { Num } = await server.ssrLoadModule('/src/pages/StudyParts.tsx');
   assert.equal(renderToStaticMarkup(createElement(Num, { v: 37, suffix: '%' })), '37%');
@@ -313,3 +313,6 @@ const { essayFlows } = await import('./essay-flows.mjs');
 await essayFlows();
 const { examFlows } = await import('./exam-flows.mjs');
 await examFlows();
+
+const { searchFlows } = await import('./search-flows.mjs');
+await searchFlows();
