@@ -1,9 +1,14 @@
 import { dateKey } from './dateKey';
 export type RepeatRule = 'weekly' | 'fortnightly' | null;
 export function nextRepeatDate(due: string | null, repeat: RepeatRule, today = dateKey.today()) { return repeat ? dateKey.addDays(due ?? today, repeat === 'weekly' ? 7 : 14) : null; }
+/** The next occurrence's id: stable for one task and date (so a replay never makes two), 128 bits so it never meets another task. */
 export function repeatId(id: string, due: string) {
-  let h = 2166136261;
-  const hex = Array.from({length:32}, (_,i) => { h = Math.imul(h ^ `${id}:${due}:${i}`.split('').reduce((n,c)=>n+c.charCodeAt(0),0),16777619); return (h>>>0).toString(16).slice(-1); }).join('');
+  const text = `${id}:${due}`;
+  const hex = [0x811c9dc5, 0x01000193, 0x9e3779b9, 0x85ebca6b].map((seed) => {
+    let h = seed >>> 0;
+    for (let i = 0; i < text.length; i++) { h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; h ^= h >>> 13; h = Math.imul(h, 0x5bd1e995) >>> 0; }
+    return (h ^ (h >>> 15)).toString(16).padStart(8, "0").slice(-8);
+  }).join("");
   return `${hex.slice(0,8)}-${hex.slice(8,12)}-4${hex.slice(13,16)}-a${hex.slice(17,20)}-${hex.slice(20)}`;
 }
 export type HoursEntry = { id: string; date: string; hours: number; note: string };

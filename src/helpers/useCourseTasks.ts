@@ -95,6 +95,8 @@ export function useCourseTasks() {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      // A queued edit must not bring a deleted task back.
+      const rest = pendingTasks(); if (rest[id]) { delete rest[id]; writeCache("tasks-pending", rest); }
       const { error } = await supabase.from("course_tasks").delete().eq("id", id);
       if (error) throw error;
     },

@@ -40,9 +40,14 @@ function chicagoNow() {
 type Ctx = { db: SupabaseClient; settings: Record<string, string> };
 
 async function loadSettings(db: SupabaseClient): Promise<Record<string, string>> {
-  const { data, error } = await db.from("app_settings").select("key, value");
-  if (error) throw new Error(error.message);
-  return Object.fromEntries((data ?? []).map((r) => [r.key, r.value]));
+  const rows: { key: string; value: string }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from("app_settings").select("key, value").order("key").range(from, from + 999);
+    if (error) throw new Error(error.message);
+    rows.push(...(data ?? []));
+    if ((data ?? []).length < 1000) break;
+  }
+  return Object.fromEntries(rows.map((r) => [r.key, r.value]));
 }
 async function setSetting(db: SupabaseClient, key: string, value: string) {
   const { error } = await db.from("app_settings").upsert({ key, value, updated_at: new Date().toISOString() });
@@ -79,7 +84,7 @@ async function evening(ctx: Ctx, today: string, force: boolean) {
   if (!force && s.last_evening_push === today) return "Already sent today";
   const state = await loadState(db, today);
   const [{data:materials,error:materialError},{data:tasks,error:taskError}]=await Promise.all([
-    db.from("study_materials").select("data"),db.from("course_tasks").select("title").eq("due",today).is("done_at",null)
+    db.from("study_materials").select("data").eq("retired", false).limit(5000),db.from("course_tasks").select("title").eq("due",today).is("done_at",null)
   ]);
   if(materialError || taskError)throw new Error((materialError??taskError)!.message);
   const cards=(materials??[]).map(r=>r.data).filter(m=>m.kind==="flashcard");

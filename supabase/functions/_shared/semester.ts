@@ -13,7 +13,7 @@ export function parseSemester(value:unknown):Semester {
  return {name:typeof obj?.name==='string' && obj.name.trim()?obj.name.trim():DEFAULT_SEMESTER.name,courses:DEFAULT_SEMESTER.courses.map(base=>{
  const c=Array.isArray(obj?.courses)?obj.courses.find(c=>c?.code===base.code):undefined;
  return {...base,name:typeof c?.name==='string'&&c.name.trim()?c.name.trim():base.name,short:typeof c?.short==='string'&&c.short.trim()?c.short.trim():base.short,
- kind:base.kind,...(base.kind==='exam'?{format:c?.format==='mc'||c?.format==='essay'?c.format:base.format,notes:['closed','open','printed'].includes(c?.notes??'')?c!.notes:base.notes,final:c?.final===''?'':validFinal(c?.final)?c.final:base.final}:{} )};})};
+ kind:base.kind,...(base.kind==='exam'?{format:c?.format==='mc'||c?.format==='essay'?c.format:base.format,notes:['closed','open','printed'].includes(c?.notes??'')?c!.notes:base.notes,final:validFinal(c?.final)?c.final:base.final}:{} )};})};
 }
 
 import { COURSES, EXAMS, FINALS, type CourseCode } from './studyEngine.ts';
