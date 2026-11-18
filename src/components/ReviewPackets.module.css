@@ -1,0 +1,81 @@
+.panel,
+.section,
+.card,
+.written {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+.panel {
+  align-items: start;
+  justify-items: start;
+  overflow-wrap: anywhere;
+}
+.panel > section,
+.section,
+.card,
+.panel > label,
+.panel > details {
+  width: 100%;
+}
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: clamp(1rem, 3vw, 1.6rem);
+  scroll-margin: 5rem;
+}
+.panel label {
+  display: grid;
+  gap: 0.4rem;
+}
+.panel select {
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  min-height: 44px;
+  padding: 0.4rem;
+  max-width: 100%;
+  width: 100%;
+}
+.panel fieldset {
+  min-width: 0;
+  border: 0;
+  padding: 0;
+}
+.panel .choice {
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+  padding: 0.6rem 0;
+  min-height: 44px;
+}
+.panel button {
+  white-space: normal;
+  height: auto;
+}
+.panel ul {
+  padding-left: 1.4rem;
+}
+.panel p {
+  white-space: pre-wrap;
+}
+.panel summary {
+  cursor: pointer;
+  padding: 0.6rem 0;
+}
+.compare {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+}
+.compare > div {
+  padding: 1rem;
+  border-radius: 12px;
+  background: var(--fill);
+}
+.compare h5 {
+  font-size: inherit;
+  margin-bottom: 0.4rem;
+}

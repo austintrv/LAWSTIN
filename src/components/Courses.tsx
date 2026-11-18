@@ -18,6 +18,7 @@ import { cardQueue, MATERIAL_LABELS, reviewCard, SCHOOL_COURSES, SCHOOL_ORDER, w
 import { EXAMS, studyEngine, type CourseCode } from "../helpers/studyEngine";
 import { useSyllabus } from "../helpers/useSyllabus";
 import { STATUS_COLOR } from "../pages/StudyParts";
+import { ReviewPackets } from "./ReviewPackets";
 import { Rulebook } from "./Rulebook";
 import IssueSpot from "./tools/IssueSpot";
 import { TaskList, type WorkspaceLink } from "./TaskList";
@@ -32,11 +33,12 @@ export type LessonReturn = { back: () => void; end: () => void };
 type Store = ReturnType<typeof useStudyMaterials>;
 /** `store` is the app's one study-progress store. `onWrite` opens Written practice, on a hypothetical when one is given. */
 type Props = { store: Store; state?: QuestionState; onQuiz: (course: CourseCode, topic?: string) => void; onWrite: (hypo?: Hypothetical) => void; lesson?: LessonReturn };
-type Route = { course?: SchoolCourse; kind?: MaterialKind; item?: string; rules?: boolean; topic?: string };
+type Route = { packet?: string; course?: SchoolCourse; kind?: MaterialKind; item?: string; rules?: boolean; topic?: string };
 const safeDecode = (v: string) => { try { return decodeURIComponent(v); } catch { return v; } };
 const readRoute = (): Route => {
   const [, section, course, kind, item] = window.location.hash.split("/");
   if (section !== "courses" || !SCHOOL_ORDER.includes(course as SchoolCourse)) return {};
+  if (kind === "packets") return { course: course as SchoolCourse, packet: item };
   if (kind === "rules") return { course: course as SchoolCourse, rules: true, topic: item ? safeDecode(item) : undefined };
   return { course: course as SchoolCourse, kind: KINDS.includes(kind as MaterialKind) ? kind as MaterialKind : undefined, item };
 };
@@ -102,11 +104,11 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
   const scrolledFor = useRef(`${route.course}/${route.kind}`);
   useEffect(() => {
     if (route.item) return;
-    const key = `${route.course}/${route.kind}`;
+    const key = `${route.course}/${route.kind}/${route.packet ?? ""}`;
     if (key === scrolledFor.current) return;
     scrolledFor.current = key;
     root.current?.closest("[data-pane]")?.scrollTo({ top: 0 });
-  }, [route.course, route.kind, route.item]);
+  }, [route.course, route.kind, route.item, route.packet]);
 
   const offline = store.syncStatus === "offline";
   useEffect(() => { if (offline) toast("Offline. Study progress will sync later."); }, [offline]);
@@ -169,7 +171,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
 
   return <div ref={root} className={styles.courses}>
     <div key={viewKey} className={styles.view} data-dir={dir}>
-    {!course ? <>
+    {course && view.packet ? <ReviewPackets key={view.packet} course={course} id={view.packet} /> : !course ? <>
       <div className={styles.sectionHead}><h2>Your courses</h2></div>
       <div className={styles.courseGrid}>
         {SCHOOL_ORDER.map((key, index) => {
@@ -202,6 +204,7 @@ export function Courses({ store, state, onQuiz, onWrite, lesson }: Props) {
         <h2>{SCHOOL_COURSES[course].name}</h2>
         {isStudyCourse(course) ? <div className={styles.heroActions}><button className={styles.primary} onClick={() => startCards()} disabled={!queue.length}><Layers3 size={20} />{queue.length ? `Review ${Math.min(queue.length, 30)} cards` : store.unavailable ? "Offline" : "Cards up to date"}</button><button className={styles.secondary} onClick={() => onQuiz(course)}>Practice questions</button><button className={styles.secondary} onClick={() => openRules(course)}>Rulebook</button><button className={styles.secondary} onClick={() => { window.location.hash = `#/tool/Notes/${course}`; }}>My notes</button>{EXAMS[course].format === "essay" && <button className={styles.secondary} onClick={() => onWrite()}>Written practice</button>}</div> : null}
       </section>
+      <ReviewPackets key={course} course={course} />
       {!isStudyCourse(course) ? <TaskList course={course} color={SCHOOL_COURSES[course].color} links={LINKS[course]} /> : <div className={styles.courseWorkspace}>
         <aside className={styles.sidebar}><nav aria-label="Course study tools"><button aria-current={!view.kind ? "page" : undefined} onClick={() => go(course)}><BookOpen size={20} />All materials<span>{materials.length}</span></button>{KINDS.map(kind => {
           const Icon = TOOLS[kind]; return <button key={kind} aria-current={view.kind === kind ? "page" : undefined} onClick={() => go(course, kind)}><Icon size={20} />{MATERIAL_LABELS[kind]}<span>{materials.filter(m => m.kind === kind).length}</span></button>;

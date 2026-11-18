@@ -29,7 +29,7 @@ export function matchPairs(questions: QuestionDTO[], course: MatchCourse = "all"
   return out;
 }
 
-function shuffle<T>(items: T[], random: () => number): T[] {
+export function shuffle<T>(items: T[], random: () => number): T[] {
   const a = items.slice();
   for (let i = a.length - 1; i > 0; i--) {
     const j = Math.min(i, Math.floor(random() * (i + 1)));

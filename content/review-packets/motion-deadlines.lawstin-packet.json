@@ -1,0 +1,238 @@
+{
+  "version": 1,
+  "title": "When is the motion due?",
+  "instructions": "Civil Procedure • Apply fictional Practice Order 7. Work closed-book. Assume no holidays or closures.",
+  "sections": [
+    {
+      "kind": "matching",
+      "title": "Match the terms",
+      "questions": [
+        {
+          "id": "trigger",
+          "text": "Trigger day",
+          "topics": [
+            "Computing motion deadlines"
+          ],
+          "tasks": [
+            "recall",
+            "recognition"
+          ],
+          "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+          "explanation": "Service starts the clock, but the day of service is excluded.",
+          "correctId": "service",
+          "recall": {
+            "prompt": "What starts the clock, and how is that day counted?",
+            "model": "Service starts the clock. Exclude the day of service.",
+            "criteria": [
+              "Identify service.",
+              "Exclude the trigger day."
+            ]
+          }
+        },
+        {
+          "id": "last",
+          "text": "Nominal last day",
+          "topics": [
+            "Computing motion deadlines"
+          ],
+          "tasks": [
+            "recognition"
+          ],
+          "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+          "explanation": "Count the specified number of days before testing the endpoint for a weekend.",
+          "correctId": "endpoint"
+        }
+      ],
+      "definitions": [
+        {
+          "id": "service",
+          "text": "The date notice is served"
+        },
+        {
+          "id": "endpoint",
+          "text": "The endpoint before a weekend adjustment"
+        }
+      ]
+    },
+    {
+      "kind": "true-false",
+      "title": "True or false and repair",
+      "questions": [
+        {
+          "id": "inside",
+          "text": "A Saturday inside the counting period is skipped.",
+          "topics": [
+            "Computing motion deadlines"
+          ],
+          "tasks": [
+            "application"
+          ],
+          "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+          "explanation": "Only the endpoint is subject to a weekend adjustment.",
+          "truth": false,
+          "repair": {
+            "model": "A Saturday inside the counting period is counted.",
+            "criteria": [
+              "Distinguish internal days from the endpoint."
+            ]
+          }
+        },
+        {
+          "id": "monday",
+          "text": "A nominal Sunday endpoint moves to Monday.",
+          "topics": [
+            "Computing motion deadlines"
+          ],
+          "tasks": [
+            "recognition"
+          ],
+          "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+          "explanation": "The order carries a weekend endpoint forward.",
+          "truth": true,
+          "justification": {
+            "prompt": "Justify your choice in one sentence.",
+            "model": "Sunday is a weekend endpoint, so the order continues the deadline to Monday.",
+            "criteria": [
+              "Identify the endpoint and the direction of adjustment."
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "direct-rule",
+      "title": "State the rule",
+      "questions": [
+        {
+          "id": "count",
+          "text": "Which method computes the nominal endpoint?",
+          "topics": [
+            "Computing motion deadlines"
+          ],
+          "tasks": [
+            "recall",
+            "recognition"
+          ],
+          "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+          "explanation": "Begin on the day after service, counting calendar days.",
+          "correctId": "after",
+          "recall": {
+            "prompt": "State the counting method before looking.",
+            "model": "Exclude service day and count each following calendar day.",
+            "criteria": [
+              "State the start day.",
+              "Use calendar days."
+            ]
+          },
+          "choices": [
+            {
+              "id": "after",
+              "text": "Start after service and count calendar days.",
+              "why": "This applies both parts of the counting method."
+            },
+            {
+              "id": "on",
+              "text": "Start on service and count calendar days.",
+              "why": "This includes the excluded trigger day."
+            },
+            {
+              "id": "business",
+              "text": "Start after service and count weekdays.",
+              "why": "This removes intervening weekend days."
+            },
+            {
+              "id": "both",
+              "text": "Start on service and count weekdays.",
+              "why": "This includes the trigger day and removes intervening weekends."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "hypothetical",
+      "title": "Apply the rule",
+      "questions": [
+        {
+          "id": "motion",
+          "text": "When must counsel file?",
+          "topics": [
+            "Computing motion deadlines"
+          ],
+          "tasks": [
+            "application"
+          ],
+          "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+          "explanation": "Friday is day one, Saturday day two, and Sunday day three. Move the endpoint to Monday.",
+          "facts": "Notice is served Thursday. Counsel has three days to file a motion.",
+          "correctId": "mon",
+          "caseIdentification": "Original hypothetical applying fictional Practice Order 7.",
+          "choices": [
+            {
+              "id": "sat",
+              "text": "Saturday",
+              "why": "Saturday is only day two."
+            },
+            {
+              "id": "sun",
+              "text": "Sunday",
+              "why": "Sunday is the nominal endpoint and requires an adjustment."
+            },
+            {
+              "id": "mon",
+              "text": "Monday",
+              "why": "Monday is the first Monday after the nominal Sunday endpoint."
+            },
+            {
+              "id": "tue",
+              "text": "Tuesday",
+              "why": "Tuesday follows only if both weekend days are incorrectly omitted."
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "short-response",
+      "title": "Short response",
+      "questions": [
+        {
+          "id": "flip",
+          "text": "Notice is served Tuesday with two days to respond. Give the deadline and shift service by the fewest days forward that would make the deadline Monday.",
+          "topics": [
+            "Computing motion deadlines"
+          ],
+          "tasks": [
+            "application"
+          ],
+          "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+          "explanation": "Wednesday service still ends Friday. Thursday service produces a Saturday endpoint.",
+          "challenge": "Flip the result",
+          "key": {
+            "model": "Originally Thursday. Move service forward two days to Thursday. The second day is Saturday, so the response is due Monday.",
+            "criteria": [
+              "Compute the original deadline.",
+              "Give the smallest forward shift.",
+              "Apply the weekend adjustment."
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "tomorrow": [
+    {
+      "id": "fresh",
+      "text": "A four-day period starts with service on Friday. Reconstruct the count and give the deadline.",
+      "source": "Practice Order 7 (fictional), § 1: Exclude the day notice is served. Count every following calendar day. If the last day is Saturday or Sunday, continue to the next Monday.",
+      "key": {
+        "model": "Exclude Friday. Count Saturday, Sunday, Monday, Tuesday. File Tuesday.",
+        "criteria": [
+          "Exclude the trigger day.",
+          "Count intervening weekend days.",
+          "Keep the weekday endpoint."
+        ]
+      }
+    }
+  ]
+}
